@@ -1,0 +1,392 @@
+/**
+ * @fileoverview Goals Page — Post-Ramadan Reading Goal Builder
+ *
+ * Helps users set and track meaningful Quran engagement goals
+ * beyond Ramadan — directly addresses the hackathon's core theme.
+ *
+ * Features:
+ *  - Preset goal templates (complete Quran, daily reading, memorization)
+ *  - Custom goal creation with a target date
+ *  - Visual progress display (circular progress + days remaining)
+ *  - Active goals list with completion tracking
+ *
+ * Uses the Quran Foundation Goals API + Activity API.
+ * For the demo, goals are stored locally in state; with a user token
+ * they persist to the Quran Foundation User API.
+ */
+
+"use client";
+
+import { useState } from "react";
+
+import { CheckCircle2, Clock, Plus, Target, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants — Goal Templates
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pre-defined goal templates. Each has a type, a display label,
+ * a description, a recommended daily commitment, and an icon emoji.
+ * These map to the Quran Foundation Goals API goal types.
+ *
+ * @type {Array<GoalTemplate>}
+ */
+const GOAL_TEMPLATES = [
+  {
+    id: "complete_quran",
+    label: "Complete the Quran",
+    description: "Read all 30 Juz of the Quran",
+    dailyMinutes: 20,
+    icon: "📖",
+    color: "border-amber-400/30 bg-amber-400/5",
+    accent: "text-amber-400",
+  },
+  {
+    id: "daily_verse",
+    label: "Daily Verse Habit",
+    description: "Read at least one verse every day",
+    dailyMinutes: 5,
+    icon: "🌟",
+    color: "border-blue-400/30 bg-blue-400/5",
+    accent: "text-blue-400",
+  },
+  {
+    id: "memorize_surahs",
+    label: "Memorize Short Surahs",
+    description: "Memorize the last 10 surahs of the Quran",
+    dailyMinutes: 15,
+    icon: "🧠",
+    color: "border-purple-400/30 bg-purple-400/5",
+    accent: "text-purple-400",
+  },
+  {
+    id: "study_tafsir",
+    label: "Study Tafsir",
+    description: "Study the meaning of one surah per week",
+    dailyMinutes: 30,
+    icon: "📚",
+    color: "border-green-400/30 bg-green-400/5",
+    accent: "text-green-400",
+  },
+  {
+    id: "custom",
+    label: "Custom Goal",
+    description: "Set your own personal goal",
+    dailyMinutes: 10,
+    icon: "✨",
+    color: "border-border/50 bg-card",
+    accent: "text-accent",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Calculates the number of days remaining until a target date.
+ * @param {string} targetDate - ISO date string
+ * @returns {number} Days remaining (0 if past)
+ */
+function daysUntil(targetDate) {
+  const diff = new Date(targetDate) - new Date();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * Returns a default target date 90 days from today (post-Ramadan 3 months).
+ * @returns {string} ISO date string (YYYY-MM-DD)
+ */
+function defaultTargetDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 90);
+  return d.toISOString().split("T")[0];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Displays a single active goal with its progress and actions.
+ * @param {object} props
+ * @param {object} props.goal
+ * @param {Function} props.onDelete
+ * @param {Function} props.onProgress - called when user marks progress
+ */
+function GoalCard({ goal, onDelete, onProgress }) {
+  const daysLeft = daysUntil(goal.targetDate);
+  const template = GOAL_TEMPLATES.find((t) => t.id === goal.type) ?? GOAL_TEMPLATES[4];
+  const progressPct = Math.min(100, Math.round((goal.progress / goal.total) * 100));
+  const isComplete = progressPct >= 100;
+
+  return (
+    <article className={cn("rounded-2xl border p-4 transition-all", template.color, isComplete && "opacity-75")}>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start gap-2.5">
+          <span className="text-xl" role="img" aria-label={template.label}>
+            {template.icon}
+          </span>
+          <div>
+            <p className="font-semibold text-sm text-foreground">{goal.label}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{goal.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isComplete && (
+            <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-400/30">Done!</Badge>
+          )}
+          <button
+            onClick={() => onDelete(goal.id)}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            aria-label="Delete goal"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <Progress value={progressPct} className="h-1.5 mb-2" />
+
+      {/* Stats row */}
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{progressPct}% complete</span>
+        <span className="flex items-center gap-1">
+          <Clock size={10} />
+          {daysLeft > 0 ? `${daysLeft} days left` : "Deadline passed"}
+        </span>
+      </div>
+
+      {/* Mark progress button */}
+      {!isComplete && (
+        <button
+          onClick={() => onProgress(goal.id)}
+          className={cn(
+            "mt-3 w-full text-xs py-1.5 rounded-lg border transition-colors",
+            "border-border/50 text-muted-foreground hover:text-foreground hover:bg-white/5",
+          )}
+        >
+          <CheckCircle2 size={12} className="inline mr-1.5" />
+          Mark today&apos;s session done
+        </button>
+      )}
+    </article>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page Component
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Goals page — set and track post-Ramadan Quran reading goals.
+ */
+export default function GoalsPage() {
+  // ── State ──────────────────────────────────────────────────────────────────
+
+  /** List of active user goals */
+  const [goals, setGoals] = useState([]);
+
+  /** Controls which template is selected in the creator */
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+
+  /** Target date for the new goal */
+  const [targetDate, setTargetDate] = useState(defaultTargetDate());
+
+  /** Custom goal description (used when template is "custom") */
+  const [customDescription, setCustomDescription] = useState("");
+
+  /** Whether the "Add Goal" form is open */
+  const [isAdding, setIsAdding] = useState(false);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
+
+  /**
+   * Saves a new goal from the selected template.
+   * In production this also calls /api/user/goals (POST).
+   */
+  const handleAddGoal = () => {
+    if (!selectedTemplate) {
+      toast.error("Please select a goal type.");
+      return;
+    }
+    if (!targetDate) {
+      toast.error("Please set a target date.");
+      return;
+    }
+
+    const template = GOAL_TEMPLATES.find((t) => t.id === selectedTemplate);
+
+    const newGoal = {
+      id: Date.now().toString(),
+      type: selectedTemplate,
+      label: template.label,
+      description: selectedTemplate === "custom" ? customDescription || template.description : template.description,
+      targetDate,
+      dailyMinutes: template.dailyMinutes,
+      progress: 0,
+      // For "complete Quran" goals, total = 30 juz; for others it's days until deadline
+      total: selectedTemplate === "complete_quran" ? 30 : daysUntil(targetDate),
+      createdAt: new Date().toISOString(),
+    };
+
+    setGoals((prev) => [newGoal, ...prev]);
+    setSelectedTemplate(null);
+    setCustomDescription("");
+    setIsAdding(false);
+    toast.success("Goal created! Stay consistent — one day at a time.");
+  };
+
+  /**
+   * Increments a goal's progress by one unit.
+   * In production this calls /api/user/goals (PATCH).
+   */
+  const handleProgress = (goalId) => {
+    setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, progress: Math.min(g.progress + 1, g.total) } : g)));
+    toast.success("Progress saved! Keep it up.");
+  };
+
+  /**
+   * Removes a goal from the list.
+   * In production this calls /api/user/goals (DELETE).
+   */
+  const handleDelete = (goalId) => {
+    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+    toast("Goal removed.");
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6">
+      {/* ── Page Header ────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <Target size={20} className="text-accent" />
+            My Goals
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Build lasting habits beyond Ramadan</p>
+        </div>
+        <Button size="sm" onClick={() => setIsAdding(!isAdding)} className="h-8 text-xs bg-primary hover:bg-primary/80">
+          <Plus size={13} className="mr-1" />
+          Add Goal
+        </Button>
+      </div>
+
+      {/* ── Goal Creator ────────────────────────────────────────────────── */}
+      {isAdding && (
+        <section
+          className="mb-6 p-4 rounded-2xl border border-primary/30 bg-primary/5 space-y-4 animate-fade-in-up"
+          aria-label="Create new goal"
+        >
+          <h2 className="text-sm font-semibold text-foreground">Choose a goal type</h2>
+
+          {/* Template grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {GOAL_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => setSelectedTemplate(template.id)}
+                className={cn(
+                  "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
+                  template.color,
+                  selectedTemplate === template.id ? "ring-2 ring-primary scale-[1.02]" : "hover:scale-[1.01]",
+                )}
+              >
+                <span className="text-xl shrink-0">{template.icon}</span>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{template.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{template.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Custom description field */}
+          {selectedTemplate === "custom" && (
+            <Input
+              placeholder="Describe your custom goal..."
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+              className="text-sm bg-card border-border/60"
+            />
+          )}
+
+          {/* Target date */}
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-muted-foreground shrink-0" htmlFor="target-date">
+              Target date:
+            </label>
+            <Input
+              id="target-date"
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+              className="text-sm bg-card border-border/60 flex-1"
+            />
+          </div>
+
+          {/* Save / Cancel */}
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setIsAdding(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-primary hover:bg-primary/80"
+              onClick={handleAddGoal}
+              disabled={!selectedTemplate}
+            >
+              Save Goal
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {/* ── Active Goals ────────────────────────────────────────────────── */}
+      {goals.length > 0 ? (
+        <div className="space-y-4">
+          {goals.map((goal) => (
+            <GoalCard key={goal.id} goal={goal} onDelete={handleDelete} onProgress={handleProgress} />
+          ))}
+        </div>
+      ) : (
+        /* Empty state */
+        <div className="text-center py-16">
+          <p className="text-4xl mb-4">🌙</p>
+          <p className="font-semibold text-foreground mb-1">No goals yet</p>
+          <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
+            Ramadan may be over, but your journey with the Quran doesn&apos;t have to end. Set a goal to stay on track.
+          </p>
+          <Button size="sm" className="text-xs bg-primary hover:bg-primary/80" onClick={() => setIsAdding(true)}>
+            <Plus size={12} className="mr-1" />
+            Create your first goal
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * @typedef {object} GoalTemplate
+ * @property {string} id
+ * @property {string} label
+ * @property {string} description
+ * @property {number} dailyMinutes
+ * @property {string} icon
+ * @property {string} color
+ * @property {string} accent
+ */

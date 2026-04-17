@@ -2,6 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Google Fonts — Arabic (Amiri) + Latin (Inter)
+   Amiri is a classical Naskh typeface designed for Quranic text rendering.
+───────────────────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -46,85 +52,160 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Qalb custom color tokens ─────────────────────────────────────────── */
+  --color-emerald:        #1a5c4a; /* primary brand — deep Islamic green     */
+  --color-emerald-light:  #2d8c6f; /* hover state for emerald elements       */
+  --color-gold:           #c8a951; /* accent — warm gold for highlights      */
+  --color-gold-light:     #e0c275; /* lighter gold for hover/glow            */
+  --color-surface:        #1c2d24; /* card/panel background in dark mode     */
+  --color-surface-2:      #243b2e; /* slightly lighter surface for nesting   */
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Color Scheme — Dark mode by default (Islamic apps feel better dark)
+───────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Dark-first design — override per component if needed */
+  --background:           oklch(0.11 0.025 155);   /* deep forest-green dark  */
+  --foreground:           oklch(0.95 0.01 90);      /* warm off-white          */
+  --card:                 oklch(0.16 0.03 155);     /* surface card            */
+  --card-foreground:      oklch(0.95 0.01 90);
+  --popover:              oklch(0.16 0.03 155);
+  --popover-foreground:   oklch(0.95 0.01 90);
+  --primary:              oklch(0.68 0.13 155);     /* emerald green           */
+  --primary-foreground:   oklch(0.98 0 0);
+  --secondary:            oklch(0.20 0.03 155);
+  --secondary-foreground: oklch(0.85 0.02 90);
+  --muted:                oklch(0.20 0.025 155);
+  --muted-foreground:     oklch(0.65 0.02 90);
+  --accent:               oklch(0.72 0.13 75);      /* warm gold accent        */
+  --accent-foreground:    oklch(0.12 0 0);
+  --destructive:          oklch(0.577 0.245 27.325);
+  --border:               oklch(1 0 0 / 8%);
+  --input:                oklch(1 0 0 / 12%);
+  --ring:                 oklch(0.68 0.13 155);
+  --radius:               0.75rem;
+
+  /* Chart colors */
+  --chart-1: oklch(0.68 0.13 155);
+  --chart-2: oklch(0.72 0.13 75);
+  --chart-3: oklch(0.60 0.10 220);
+  --chart-4: oklch(0.55 0.10 30);
+  --chart-5: oklch(0.45 0.08 280);
+
+  /* Sidebar */
+  --sidebar:                    oklch(0.13 0.03 155);
+  --sidebar-foreground:         oklch(0.95 0.01 90);
+  --sidebar-primary:            oklch(0.68 0.13 155);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent:             oklch(0.20 0.03 155);
+  --sidebar-accent-foreground:  oklch(0.85 0.02 90);
+  --sidebar-border:             oklch(1 0 0 / 8%);
+  --sidebar-ring:               oklch(0.68 0.13 155);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
+/* ─────────────────────────────────────────────────────────────────────────────
+   Base Styles
+───────────────────────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    /* Subtle Islamic geometric pattern as a background texture */
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
+
   html {
-    @apply font-sans;
+    font-family: 'Inter', sans-serif;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Arabic Text — Quranic rendering using Amiri typeface
+───────────────────────────────────────────────────────────────────────────── */
+
+.arabic-text {
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2;           /* Generous line height for Arabic diacritics    */
+  font-size: 1.5rem;        /* Arabic letters need more visual space         */
+  letter-spacing: 0.02em;
+}
+
+.arabic-text-sm {
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 1.8;
+  font-size: 1.125rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Animations
+───────────────────────────────────────────────────────────────────────────── */
+
+@keyframes streak-pulse {
+  0%, 100% { transform: scale(1);   opacity: 1;    }
+  50%       { transform: scale(1.2); opacity: 0.85; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.animate-streak-pulse {
+  animation: streak-pulse 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.16 0.03 155) 25%,
+    oklch(0.20 0.03 155) 50%,
+    oklch(0.16 0.03 155) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
+
+/* Staggered entrance for verse cards in discover results */
+.verse-card-enter:nth-child(1) { animation-delay: 0ms;   }
+.verse-card-enter:nth-child(2) { animation-delay: 100ms; }
+.verse-card-enter:nth-child(3) { animation-delay: 200ms; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Utility: Gold gradient text (used on "Qalb" logo and headings)
+───────────────────────────────────────────────────────────────────────────── */
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #c8a951 0%, #e0c275 50%, #c8a951 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scrollbar — subtle, matches dark theme
+───────────────────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(0.35 0.05 155); border-radius: 2px; }

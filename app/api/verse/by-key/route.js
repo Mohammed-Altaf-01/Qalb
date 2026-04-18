@@ -23,22 +23,29 @@ export async function GET(request) {
     return NextResponse.json({ error: "Invalid verse key format. Expected format: '2:255'" }, { status: 400 });
   }
 
+  const translationId = parseInt(searchParams.get("translation") ?? "20", 10) || 20;
+
   try {
     const chapterId = parseInt(verseKey.split(":")[0], 10);
 
-    // Fetch verse, tafsir, and chapter info concurrently
+    // Fetch verse, tafsir, and chapter info concurrently.
+    // Tafsir and chapter are optional — pre-production API may 404 on some chapters.
     const [verseData, tafsirData, chapterData] = await Promise.all([
-      QuranRepository.getVerseByKey(verseKey, { translationId: 131 }),
-      QuranRepository.getTafsirByVerse(verseKey).catch(() => null), // tafsir is optional
-      QuranRepository.getChapter(chapterId),
+      QuranRepository.getVerseByKey(verseKey, { translationId }),
+      QuranRepository.getTafsirByVerse(verseKey).catch(() => null),
+      QuranRepository.getChapter(chapterId).catch(() => null),
     ]);
 
     return NextResponse.json({
       verse: verseData.verse,
       tafsir: tafsirData?.tafsir ?? null,
-      chapter: chapterData.chapter,
+      chapter: chapterData?.chapter ?? null,
     });
   } catch (error) {
+    // Propagate 404 so callers can retry with a different key instead of crashing.
+    if (error.message?.includes("[404]")) {
+      return NextResponse.json({ error: "Verse not found in API" }, { status: 404 });
+    }
     console.error(`[/api/verse/by-key] Error for key=${verseKey}:`, error);
     return NextResponse.json({ error: "Failed to fetch verse" }, { status: 500 });
   }

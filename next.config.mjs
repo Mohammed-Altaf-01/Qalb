@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  // Remove the Next.js dev-mode badge from the bottom-right corner
+  devIndicators: false,
 };
 
 export default nextConfig;

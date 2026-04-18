@@ -146,7 +146,7 @@ export default function DiscoverPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-5xl px-4 md:px-8 py-6">
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 mb-4">

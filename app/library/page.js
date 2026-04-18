@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BookMarked, BookOpen, FolderOpen, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -150,18 +150,17 @@ export default function LibraryPage() {
 
   const [activeTab, setActiveTab] = useState("bookmarks"); // "bookmarks" | "collections"
 
-  /**
-   * Demo bookmarks — in production fetched from /api/user/bookmark.
-   * Seeded with Ayat al-Kursi so the demo page is never empty.
-   */
-  const [bookmarks, setBookmarks] = useState([
-    {
-      verseKey: "2:255",
-      chapterName: "Al-Baqarah",
-      arabicText: "ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ",
-      translation: "Allah — there is no deity except Him, the Ever-Living, the Sustainer of existence.",
-    },
-  ]);
+  // Load bookmarks from localStorage (written by VerseDetailClient)
+  const [bookmarks, setBookmarks] = useState([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "null");
+      if (stored && typeof stored === "object") {
+        setBookmarks(Object.values(stored).sort((a, b) => new Date(b.bookmarkedAt) - new Date(a.bookmarkedAt)));
+      }
+    } catch {}
+  }, []);
 
   /** Collections with their verse lists */
   const [collections, setCollections] = useState([
@@ -178,9 +177,14 @@ export default function LibraryPage() {
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  /** Removes a bookmark from the local list (and calls API when authenticated). */
+  /** Removes a bookmark from local state and localStorage. */
   const handleRemoveBookmark = (verseKey) => {
     setBookmarks((prev) => prev.filter((b) => b.verseKey !== verseKey));
+    try {
+      const stored = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "{}");
+      delete stored[verseKey];
+      localStorage.setItem("qalb_bookmarks", JSON.stringify(stored));
+    } catch {}
     toast("Bookmark removed.");
   };
 
@@ -206,7 +210,7 @@ export default function LibraryPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-5xl px-4 md:px-8 py-6">
       {/* ── Page Header ────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>

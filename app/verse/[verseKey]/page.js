@@ -52,10 +52,12 @@ async function fetchVerseData(verseKey) {
  * Generates dynamic <title> and <meta> tags for each verse page.
  * Improves SEO and social sharing previews.
  *
- * @param {{ params: { verseKey: string } }} context
+ * Next.js 15+ made `params` a Promise — must be awaited before accessing properties.
+ * @param {{ params: Promise<{ verseKey: string }> }} context
  */
 export async function generateMetadata({ params }) {
-  const verseKey = decodeURIComponent(params.verseKey);
+  const { verseKey: rawKey } = await params;
+  const verseKey = decodeURIComponent(rawKey);
   const data = await fetchVerseData(verseKey);
   const chapterName = data?.chapter?.name_simple ?? "Quran";
   const translation = data?.verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
@@ -74,16 +76,18 @@ export async function generateMetadata({ params }) {
  * Verse detail page — Server Component shell that fetches data and passes
  * it to the interactive Client Component.
  *
- * @param {{ params: { verseKey: string } }} props
+ * Next.js 15+ made `params` a Promise — must be awaited before accessing properties.
+ * @param {{ params: Promise<{ verseKey: string }> }} props
  */
 export default async function VerseDetailPage({ params }) {
-  const verseKey = decodeURIComponent(params.verseKey);
+  const { verseKey: rawKey } = await params;
+  const verseKey = decodeURIComponent(rawKey);
   const data = await fetchVerseData(verseKey);
 
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-2xl px-4 py-6 space-y-4">
+        <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-2xl animate-shimmer" />
           ))}

@@ -30,7 +30,6 @@ const CURATED_VERSE_KEYS = [
   "39:53", // "Do not despair of the mercy of Allah"
   "13:28", // "Verily, in the remembrance of Allah do hearts find rest"
   "2:152", // "Remember Me, and I will remember you"
-  "29:69", // "Those who strive for Us — We will guide them"
   "18:10", // The companions of the cave — trust in Allah
   "3:139", // "Do not lose heart, nor fall into despair"
   "55:13", // "Which of your Lord's favors will you deny?"
@@ -41,8 +40,6 @@ const CURATED_VERSE_KEYS = [
   "16:97", // "Whoever does righteous deeds — a good life"
   "25:63", // Attributes of the servants of the Most Merciful
   "57:20", // The nature of the worldly life
-  "103:1", // Surah Al-Asr — the time
-  "112:1", // Surah Al-Ikhlas — pure monotheism
   "1:1", // Al-Fatiha — the opening
   "67:2", // "He who created death and life to test you"
   "51:56", // "I created jinn and mankind only to worship Me"
@@ -52,6 +49,7 @@ const CURATED_VERSE_KEYS = [
   "24:35", // The Light Verse
   "59:22", // The attributes of Allah
   "33:41", // "O you who believe, remember Allah often"
+  // Removed: 29:69 (verse 404 in pre-prod), 103:1 / 112:1 (chapter 404 in pre-prod)
 ];
 
 /**
@@ -86,11 +84,11 @@ export async function GET(_request) {
       Promise.resolve(parseInt(verseKey.split(":")[0], 10)),
     ]);
 
-    const chapterData = await QuranRepository.getChapter(chapterId);
+    const chapterData = await QuranRepository.getChapter(chapterId).catch(() => null);
 
     return NextResponse.json({
       verse: verseData.verse,
-      chapter: chapterData.chapter,
+      chapter: chapterData?.chapter ?? null,
       date: new Date().toISOString().split("T")[0], // YYYY-MM-DD
     });
   } catch (error) {

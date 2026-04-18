@@ -1,55 +1,54 @@
 /**
  * @fileoverview AudioPlayer Component
  *
- * Plays Quranic recitation audio for a given verse using the
- * Quran Foundation Audio API.
+ * Plays Quranic verse recitation audio. Fetches the verified audio URL
+ * from our /api/verse/audio proxy (which calls the Quran Foundation
+ * Recitations API) rather than hardcoding CDN path patterns.
  *
- * Design:
- *  - Fetches audio URL client-side (avoids SSR audio issues)
- *  - Native HTML5 <audio> element — no external audio library needed
- *  - Exposes play/pause, progress scrubbing, and playback speed
- *  - Shows the reciter name so users know who is reciting
+ * States:
+ *  loading   — fetching the audio URL from our API
+ *  ready     — audio URL resolved, player is interactive
+ *  playing   — recitation is actively playing
+ *  error     — URL fetch failed or audio element errored
  *
- * Audio CDN: The Quran Foundation serves audio files from their CDN.
- * We use Mishary Rashid Alafasy (recitation ID 7) as the default —
- * universally recognized and most commonly used on Quran apps.
+ * Design Patterns:
+ *  - State Machine : explicit loading → ready → playing → ended lifecycle
+ *  - Null Object   : graceful "unavailable" UI instead of throwing
  */
 
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Loader2, Pause, Play, RotateCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-/** CDN base for Quran Foundation audio files */
-const AUDIO_CDN_BASE = "https://verses.quran.com";
+/** Playback speed options — cycles on button click */
+const SPEEDS = [0.75, 1, 1.25, 1.5];
 
 /**
- * Builds the audio URL for a given verse from Alafasy's recitation.
- * Format: /Alafasy_128kbps/001001.mp3  (chapter zero-padded to 3 digits, verse to 3 digits)
- *
- * @param {string} verseKey - e.g. "2:255"
- * @returns {string} Full audio URL
+ * Supported reciters — IDs match Quran Foundation Recitations API.
+ * Verified to work in pre-production.
  */
-function buildAudioUrl(verseKey) {
-  const [chapter, verse] = verseKey.split(":");
-  const paddedChapter = chapter.padStart(3, "0");
-  const paddedVerse = verse.padStart(3, "0");
-  return `${AUDIO_CDN_BASE}/Alafasy_128kbps/${paddedChapter}${paddedVerse}.mp3`;
-}
+// Verified against Quran Foundation Recitations API — /content/api/v4/resources/recitations
+const RECITERS = [
+  { id: 7, name: "Mishari Alafasy" },
+  { id: 3, name: "Abdul Rahman Al-Sudais" },
+  { id: 2, name: "AbdulBaset (Murattal)" },
+  { id: 1, name: "AbdulBaset (Mujawwad)" },
+  { id: 6, name: "Mahmoud Al-Husary" },
+  { id: 10, name: "Saud Al-Shuraym" },
+];
 
 /**
- * Formats a time in seconds to mm:ss string.
- * @param {number} seconds
+ * Formats seconds into mm:ss display string.
+ * @param {number} s
  * @returns {string}
  */
-function formatTime(seconds) {
-  if (!isFinite(seconds) || isNaN(seconds)) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function fmt(s) {
+  if (!isFinite(s) || isNaN(s) || s < 0) return "0:00";
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,49 +56,94 @@ function formatTime(seconds) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @param {object} props
- * @param {string} props.verseKey    - The verse to play (e.g. "2:255")
- * @param {string} [props.className]
+ * @param {object}  props
+ * @param {string}  props.verseKey   - e.g. "2:255" — used to fetch the audio URL
+ * @param {string}  [props.className]
  */
 export default function AudioPlayer({ verseKey, className }) {
-  // ── Refs ───────────────────────────────────────────────────────────────────
-
-  /** Reference to the native <audio> element */
   const audioRef = useRef(null);
 
-  // ── State ──────────────────────────────────────────────────────────────────
-
+  // ── State Machine ──────────────────────────────────────────────────────────
+  const [status, setStatus] = useState("loading"); // "loading" | "ready" | "error"
+  const [audioUrl, setAudioUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [speed, setSpeed] = useState(1);
-  const [hasError, setHasError] = useState(false);
+  const [speedIdx, setSpeedIdx] = useState(1); // index into SPEEDS array
+  // Initialise from localStorage so the chosen reciter persists across pages
+  const [reciterId, setReciterId] = useState(() => {
+    if (typeof window === "undefined") return RECITERS[0].id;
+    const saved = parseInt(localStorage.getItem("qalb_reciter_id") ?? "0", 10);
+    return RECITERS.some((r) => r.id === saved) ? saved : RECITERS[0].id;
+  });
+  const [showReciterPicker, setShowReciterPicker] = useState(false);
+  /**
+   * True only when swapping reciters mid-session.
+   * Keeps the full player UI visible — only the play button shows a spinner.
+   */
+  const [isReloading, setIsReloading] = useState(false);
 
-  const audioUrl = buildAudioUrl(verseKey);
-
-  // ── Effects ────────────────────────────────────────────────────────────────
-
-  /** Reset player state whenever the verse changes */
+  // ── Fetch audio URL on mount / verse change / reciter change ──────────────
   useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setHasError(false);
-  }, [verseKey]);
+    if (!verseKey) return;
 
-  /** Apply playback speed changes to the audio element */
+    // Distinguish first load (no URL yet) from a reciter swap (URL exists)
+    const isReciterSwap = audioUrl !== null;
+
+    if (isReciterSwap) {
+      // Keep controls visible — just spin the play button
+      setIsReloading(true);
+      setIsPlaying(false);
+    } else {
+      setStatus("loading");
+      setAudioUrl(null);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    }
+
+    let cancelled = false;
+
+    fetch(`/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (!data.audioUrl) throw new Error("No URL in response");
+        setAudioUrl(data.audioUrl);
+        setStatus("ready");
+        setIsReloading(false);
+        // Reset position so the new reciter starts from the beginning
+        setCurrentTime(0);
+        setDuration(0);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("[AudioPlayer] URL fetch failed:", err.message);
+        setStatus("error");
+        setIsReloading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verseKey, reciterId]);
+
+  // ── Apply playback speed to audio element ──────────────────────────────────
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.playbackRate = speed;
+      audioRef.current.playbackRate = SPEEDS[speedIdx];
     }
-  }, [speed]);
+  }, [speedIdx]);
 
-  // ── Event Handlers ─────────────────────────────────────────────────────────
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handlePlayPause = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio) return;
-
+    if (!audio || status !== "ready") return;
     try {
       if (isPlaying) {
         audio.pause();
@@ -108,62 +152,42 @@ export default function AudioPlayer({ verseKey, className }) {
         await audio.play();
         setIsPlaying(true);
       }
-    } catch (err) {
-      console.error("[AudioPlayer] Playback error:", err);
-      setHasError(true);
+    } catch (e) {
+      console.error("[AudioPlayer] Playback error:", e);
+      setStatus("error");
     }
-  }, [isPlaying]);
+  }, [isPlaying, status]);
 
   const handleTimeUpdate = useCallback(() => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
+    if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
   }, []);
-
-  const handleLoadedMetadata = useCallback(() => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
+  const handleLoadedMeta = useCallback(() => {
+    if (audioRef.current) setDuration(audioRef.current.duration);
   }, []);
-
   const handleEnded = useCallback(() => {
     setIsPlaying(false);
     setCurrentTime(0);
     if (audioRef.current) audioRef.current.currentTime = 0;
   }, []);
-
-  const handleError = useCallback(() => {
-    setHasError(true);
+  const handleAudioError = useCallback(() => {
+    setStatus("error");
     setIsPlaying(false);
   }, []);
-
-  /**
-   * Handles user scrubbing the progress bar.
-   * @param {React.ChangeEvent<HTMLInputElement>} e
-   */
-  const handleSeek = useCallback((e) => {
-    const newTime = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  }, []);
-
   const handleRestart = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       setCurrentTime(0);
     }
   }, []);
+  const handleSeek = useCallback((e) => {
+    const t = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = t;
+      setCurrentTime(t);
+    }
+  }, []);
+  const cycleSpeed = useCallback(() => setSpeedIdx((i) => (i + 1) % SPEEDS.length), []);
 
-  /** Cycle through 0.75×, 1×, 1.25×, 1.5× speeds */
-  const cycleSpeed = useCallback(() => {
-    const speeds = [0.75, 1, 1.25, 1.5];
-    const nextIndex = (speeds.indexOf(speed) + 1) % speeds.length;
-    setSpeed(speeds[nextIndex]);
-  }, [speed]);
-
-  // ── Progress percentage for custom styled range input ─────────────────────
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -174,48 +198,66 @@ export default function AudioPlayer({ verseKey, className }) {
       role="region"
       aria-label="Verse audio player"
     >
-      {/* Native audio element — hidden, controlled programmatically */}
-      <audio
-        ref={audioRef}
-        src={audioUrl}
-        preload="metadata"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
-        onError={handleError}
-      />
+      {/* Hidden native audio element */}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="metadata"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMeta}
+          onEnded={handleEnded}
+          onError={handleAudioError}
+        />
+      )}
 
-      {hasError ? (
-        <p className="text-xs text-muted-foreground text-center">Audio unavailable for this verse.</p>
-      ) : (
+      {/* ── Loading ─────────────────────────────────────────────────── */}
+      {status === "loading" && (
+        <div className="flex items-center gap-2 justify-center py-1">
+          <Loader2 size={13} className="animate-spin text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Loading recitation…</span>
+        </div>
+      )}
+
+      {/* ── Error ───────────────────────────────────────────────────── */}
+      {status === "error" && (
+        <p className="text-xs text-muted-foreground text-center py-1">Audio unavailable for this verse.</p>
+      )}
+
+      {/* ── Player Controls ─────────────────────────────────────────── */}
+      {(status === "ready" || isReloading) && (
         <>
-          {/* ── Controls Row ───────────────────────────────────────────── */}
           <div className="flex items-center gap-3">
-            {/* Restart button */}
+            {/* Restart */}
             <button
               onClick={handleRestart}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Restart recitation"
+              disabled={isReloading}
+              className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+              aria-label="Restart"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={13} />
             </button>
 
-            {/* Play / Pause */}
+            {/* Play / Pause — shows spinner while fetching a new reciter URL */}
             <button
               onClick={handlePlayPause}
-              className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                "bg-primary text-primary-foreground hover:bg-primary/80",
-              )}
-              aria-label={isPlaying ? "Pause recitation" : "Play recitation"}
+              disabled={isReloading}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-all disabled:opacity-60 disabled:cursor-default"
+              aria-label={isReloading ? "Loading reciter" : isPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? <Pause size={14} /> : <Play size={14} className="ml-0.5" />}
+              {isReloading ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : isPlaying ? (
+                <Pause size={13} />
+              ) : (
+                <Play size={13} className="ml-0.5" />
+              )}
             </button>
 
-            {/* Progress bar */}
+            {/* Progress scrubber */}
             <div className="flex-1 relative h-1 bg-white/10 rounded-full">
               <div
-                className="absolute left-0 top-0 h-full bg-primary rounded-full pointer-events-none"
+                className="absolute left-0 top-0 h-full bg-primary rounded-full pointer-events-none transition-all"
                 style={{ width: `${progress}%` }}
               />
               <input
@@ -226,27 +268,61 @@ export default function AudioPlayer({ verseKey, className }) {
                 value={currentTime}
                 onChange={handleSeek}
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
-                aria-label="Seek position"
+                aria-label="Seek"
               />
             </div>
 
-            {/* Time display */}
-            <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right shrink-0">
-              {formatTime(currentTime)} / {formatTime(duration)}
+            {/* Time */}
+            <span className="text-[10px] text-muted-foreground tabular-nums w-14 text-right shrink-0">
+              {fmt(currentTime)} / {fmt(duration)}
             </span>
 
-            {/* Speed toggle */}
+            {/* Speed */}
             <button
               onClick={cycleSpeed}
-              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors w-8 text-center"
-              aria-label={`Playback speed: ${speed}x. Click to change.`}
+              disabled={isReloading}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors w-8 text-center disabled:opacity-30"
+              aria-label={`Speed ${SPEEDS[speedIdx]}x`}
             >
-              {speed}×
+              {SPEEDS[speedIdx]}×
             </button>
           </div>
 
-          {/* Reciter label */}
-          <p className="text-[10px] text-muted-foreground/60 text-center">Recited by Mishary Rashid Alafasy</p>
+          {/* Reciter selector */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowReciterPicker((v) => !v)}
+              className="text-[10px] text-muted-foreground/60 hover:text-accent transition-colors flex items-center gap-1"
+              aria-label="Change reciter"
+            >
+              <span>{RECITERS.find((r) => r.id === reciterId)?.name ?? "Reciter"}</span>
+              <span className="opacity-50">▾</span>
+            </button>
+          </div>
+
+          {/* Reciter chips — shown when picker is open */}
+          {showReciterPicker && (
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {RECITERS.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setReciterId(r.id);
+                    localStorage.setItem("qalb_reciter_id", String(r.id));
+                    setShowReciterPicker(false);
+                  }}
+                  className={cn(
+                    "text-[10px] px-2.5 py-1 rounded-full border transition-all duration-150",
+                    r.id === reciterId
+                      ? "border-accent/60 bg-accent/15 text-accent"
+                      : "border-border/50 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-foreground",
+                  )}
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0f2d24"/>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c8a951"/>
+      <stop offset="50%" stop-color="#e0c275"/>
+      <stop offset="100%" stop-color="#c8a951"/>
+    </linearGradient>
+  </defs>
+  <!-- Cube body -->
+  <rect x="5" y="13" width="22" height="14" rx="1.5" stroke="url(#g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Kiswa band -->
+  <line x1="5" y1="18" x2="27" y2="18" stroke="url(#g)" stroke-width="1.5"/>
+  <!-- Door arch -->
+  <path d="M13.5 27 L13.5 22 Q13.5 19.5 16 19.5 Q18.5 19.5 18.5 22 L18.5 27" stroke="url(#g)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Roof peak / drape -->
+  <path d="M5 13 L16 8 L27 13" stroke="url(#g)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

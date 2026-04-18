@@ -153,6 +153,16 @@
    Animations
 ───────────────────────────────────────────────────────────────────────────── */
 
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
 @keyframes streak-pulse {
   0%,
   100% {
@@ -211,6 +221,91 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   BismillahHeader animations
+   Load: text materializes from near-invisible + blurred → full clarity.
+   Hover: energy rings expand outward; controlled by BismillahHeader.js state.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Arabic text: starts barely visible and blurred, sharpens into full gold */
+@keyframes bismillah-in {
+  0% {
+    opacity: 0.04;
+    filter: blur(10px) brightness(0.25);
+  }
+  30% {
+    opacity: 0.22;
+    filter: blur(5px) brightness(0.5);
+  }
+  65% {
+    opacity: 0.75;
+    filter: blur(1px) brightness(0.88);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+  }
+}
+
+/* English translation: appears after Arabic has mostly loaded */
+@keyframes bismillah-translation-in {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Date: appears last, slightly after the translation */
+@keyframes bismillah-date-in {
+  0%,
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Energy ring: expands outward and vanishes */
+@keyframes bismillah-ring-expand {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.bismillah-animate {
+  /* 'both' applies the 0% keyframe before the animation starts */
+  animation: bismillah-in 3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.bismillah-translation-animate {
+  animation: bismillah-translation-in 4s ease both;
+}
+
+.bismillah-date-animate {
+  animation: bismillah-date-in 4.5s ease both;
+}
+
+/* Ring 1 — expands immediately */
+.bismillah-ring-1 {
+  animation: bismillah-ring-expand 1.3s cubic-bezier(0.2, 0, 0.8, 1) forwards;
+}
+
+/* Ring 2 — 320ms behind ring 1 for a layered ripple feel */
+.bismillah-ring-2 {
+  animation: bismillah-ring-expand 1.3s 0.32s cubic-bezier(0.2, 0, 0.8, 1) forwards;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Utility: Gold gradient text (used on "Qalb" logo and headings)
 ───────────────────────────────────────────────────────────────────────────── */
 
@@ -219,6 +314,152 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tafsir content — renders Ibn Kathir HTML with readable typography
+   The API returns <h2>, <p>, and Arabic <span> tags.
+───────────────────────────────────────────────────────────────────────────── */
+
+.tafsir-content {
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.75;
+  color: oklch(0.78 0.02 155 / 0.75);
+}
+
+.tafsir-content h2 {
+  font-size: 0.8125rem; /* slightly smaller than body */
+  font-weight: 600;
+  color: oklch(0.85 0.04 75 / 0.9); /* warm gold-tinted white */
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid oklch(0.72 0.13 75 / 0.15);
+  letter-spacing: 0.01em;
+}
+
+.tafsir-content h2:first-child {
+  margin-top: 0;
+}
+
+.tafsir-content p {
+  margin-bottom: 0.85rem;
+}
+
+.tafsir-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Arabic quotes and hadith fragments embedded in the tafsir */
+.tafsir-content p:has([lang="ar"]),
+.tafsir-content span[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+  font-family: var(--font-arabic, "Scheherazade New", "Noto Naskh Arabic", serif);
+  font-size: 1rem;
+  color: oklch(0.82 0.08 75 / 0.85);
+  display: block;
+  margin: 0.5rem 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Chat Markdown — AI assistant bubbles in VerseChat
+───────────────────────────────────────────────────────────────────────────── */
+
+.chat-markdown {
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  font-weight: 600;
+  margin-top: 0.9rem;
+  margin-bottom: 0.35rem;
+  color: oklch(0.92 0.04 155);
+}
+
+.chat-markdown h1 {
+  font-size: 1rem;
+}
+.chat-markdown h2 {
+  font-size: 0.9375rem;
+}
+.chat-markdown h3 {
+  font-size: 0.875rem;
+}
+
+.chat-markdown h1:first-child,
+.chat-markdown h2:first-child,
+.chat-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.chat-markdown p {
+  margin-bottom: 0.6rem;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown strong {
+  font-weight: 600;
+  color: oklch(0.88 0.06 75);
+}
+
+.chat-markdown em {
+  font-style: italic;
+  color: oklch(0.82 0.04 155 / 0.9);
+}
+
+.chat-markdown blockquote {
+  border-left: 2px solid oklch(0.65 0.12 75 / 0.6);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  color: oklch(0.8 0.04 155 / 0.85);
+  font-style: italic;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.6rem;
+  space-y: 0.25rem;
+}
+
+.chat-markdown ul {
+  list-style-type: disc;
+}
+.chat-markdown ol {
+  list-style-type: decimal;
+}
+
+.chat-markdown li {
+  margin-bottom: 0.3rem;
+}
+
+.chat-markdown hr {
+  border: none;
+  border-top: 1px solid oklch(0.4 0.04 155 / 0.4);
+  margin: 0.75rem 0;
+}
+
+.chat-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  background: oklch(0.25 0.03 155 / 0.5);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+}
+
+/* Collapsed state — fade out after 5 lines */
+.tafsir-collapsed {
+  max-height: 8rem; /* ~4–5 lines */
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

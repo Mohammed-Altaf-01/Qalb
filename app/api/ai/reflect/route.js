@@ -27,8 +27,8 @@ export async function POST(request) {
 
   const { verseKey, arabicText, translation, tafsirSnippet } = body;
 
-  if (!verseKey || !translation) {
-    return NextResponse.json({ error: "verseKey and translation are required" }, { status: 400 });
+  if (!verseKey) {
+    return NextResponse.json({ error: "verseKey is required" }, { status: 400 });
   }
 
   try {

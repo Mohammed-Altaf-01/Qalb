@@ -3,6 +3,8 @@
  *
  * Server Component: pre-fetches all 114 chapters so the surah picker
  * renders instantly with no client-side loading state.
+ *
+ * Accepts ?surah=<id> to auto-open a specific surah (linked from home page).
  */
 import { QuranRepository } from "@/lib/quran-api";
 
@@ -13,7 +15,7 @@ export const metadata = {
   description: "Read the Quran with AI-powered page summaries and multi-language translations.",
 };
 
-export default async function ReadPage() {
+export default async function ReadPage({ searchParams }) {
   let chapters = [];
   try {
     const data = await QuranRepository.getChapters("en");
@@ -22,5 +24,8 @@ export default async function ReadPage() {
     console.error("[/read] Failed to load chapters:", error.message);
   }
 
-  return <ReadClient chapters={chapters} />;
+  const params = await searchParams;
+  const initialSurahId = params?.surah ? parseInt(params.surah, 10) : null;
+
+  return <ReadClient chapters={chapters} initialSurahId={initialSurahId} />;
 }

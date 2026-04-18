@@ -35,39 +35,34 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const verseKey = searchParams.get("key");
   const reciterParam = parseInt(searchParams.get("reciter") ?? "0", 10);
+  const withSegments = searchParams.get("segments") === "true";
 
   if (!verseKey || !/^\d+:\d+$/.test(verseKey)) {
     return NextResponse.json({ error: "Invalid verse key. Expected format: '2:255'" }, { status: 400 });
   }
 
-  // If a valid reciter was requested, try it first; otherwise use fallbacks
   const idsToTry = SUPPORTED_RECITER_IDS.has(reciterParam)
     ? [reciterParam, ...RECITATION_FALLBACK_IDS.filter((id) => id !== reciterParam)]
     : RECITATION_FALLBACK_IDS;
 
-  // Try each recitation in order until we get a valid audio URL
   for (const recitationId of idsToTry) {
     try {
-      const data = await QuranRepository.getVerseAudio(verseKey, recitationId);
-
-      // The API returns an array of audio_files — grab the first match
+      const data = await QuranRepository.getVerseAudio(verseKey, recitationId, withSegments);
       const audioFile = data?.audio_files?.[0] ?? data?.audio_file ?? null;
 
       if (!audioFile) continue;
 
-      // The `url` field is a relative path — prepend the CDN base
       const relativePath = audioFile.url ?? audioFile.audio_url ?? "";
       if (!relativePath) continue;
 
       const audioUrl = relativePath.startsWith("http") ? relativePath : `${AUDIO_CDN_BASE}/${relativePath}`;
 
-      return NextResponse.json({
-        audioUrl,
-        verseKey,
-        recitationId,
-      });
+      const response = { audioUrl, verseKey, recitationId };
+      // segments: [[word_idx, start_ms, end_ms], ...] — only present when requested
+      if (withSegments) response.segments = audioFile.segments ?? null;
+
+      return NextResponse.json(response);
     } catch (err) {
-      // Try next recitation on failure
       console.warn(`[/api/verse/audio] Recitation ${recitationId} failed:`, err.message);
     }
   }

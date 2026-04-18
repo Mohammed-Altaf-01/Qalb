@@ -35,6 +35,19 @@ import { cn } from "@/lib/utils";
 const LS_BOOKMARKS = "qalb_bookmarks";
 const LS_REFLECTIONS = "qalb_reflections";
 const LS_NOTES = "qalb_notes";
+const LS_CHAT = "qalb_chat";
+
+// Curated tafsirs available from the Quran Foundation API
+const TAFSIRS = [
+  { id: 169, name: "Ibn Kathir (Abridged)", author: "Hafiz Ibn Kathir", language: "English" },
+  { id: 168, name: "Ma'arif al-Qur'an", author: "Mufti Muhammad Shafi", language: "English" },
+  { id: 817, name: "Tazkirul Quran", author: "Maulana Wahiduddin Khan", language: "English" },
+  { id: 160, name: "Tafsir Ibn Kathir", author: "Hafiz Ibn Kathir", language: "Urdu" },
+  { id: 159, name: "Bayan ul Quran", author: "Dr. Israr Ahmad", language: "Urdu" },
+  { id: 157, name: "Fi Zilal al-Quran", author: "Sayyid Qutb", language: "Urdu" },
+  { id: 14, name: "Tafsir Ibn Kathir", author: "Hafiz Ibn Kathir", language: "Arabic" },
+  { id: 91, name: "Al-Sa'di", author: "Al-Sa'di", language: "Arabic" },
+];
 
 function lsGet(key) {
   try {
@@ -179,8 +192,50 @@ export default function VerseDetailClient({ verseKey, initialData }) {
     }
   }
 
-  // ── Tafsir expand ──────────────────────────────────────────────────────────
+  // ── Tafsir switcher ────────────────────────────────────────────────────────
+  const [tafsirId, setTafsirId] = useState(169);
+  const [activeTafsirHtml, setActiveTafsirHtml] = useState(tafsirHtml);
+  const [isFetchingTafsir, setIsFetchingTafsir] = useState(false);
+  const [showTafsirPicker, setShowTafsirPicker] = useState(false);
   const [tafsirExpanded, setTafsirExpanded] = useState(false);
+
+  async function handleChangeTafsir(tid) {
+    setShowTafsirPicker(false);
+    if (tid === tafsirId) return;
+    setTafsirId(tid);
+    setTafsirExpanded(false);
+    setIsFetchingTafsir(true);
+    try {
+      const res = await fetch(`/api/verse/tafsir?key=${verseKey}&tafsirId=${tid}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveTafsirHtml(data?.tafsir?.text ?? "");
+      }
+    } catch {
+      // keep old tafsir
+    } finally {
+      setIsFetchingTafsir(false);
+    }
+  }
+
+  // ── Chat history ────────────────────────────────────────────────────────────
+  const [chatHistory, setChatHistory] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(LS_CHAT) ?? "null");
+      return stored?.[verseKey] ?? [];
+    } catch {
+      return [];
+    }
+  });
+
+  function handleChatHistoryChange(messages) {
+    setChatHistory(messages);
+    try {
+      const stored = JSON.parse(localStorage.getItem(LS_CHAT) ?? "{}") ?? {};
+      stored[verseKey] = messages;
+      localStorage.setItem(LS_CHAT, JSON.stringify(stored));
+    } catch {}
+  }
 
   // ── Reflection questions ───────────────────────────────────────────────────
   const [reflectionQuestions, setReflectionQuestions] = useState([]);
@@ -335,7 +390,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       {activeTab === "overview" && (
         <div className="space-y-5 pt-5">
           {/* Arabic */}
-          <div className="rounded-2xl border border-border/50 bg-card p-5">
+          <div className="rounded-2xl border border-border/50 bg-card p-5 overflow-hidden">
             <p className="arabic-text text-foreground/90 text-center" lang="ar" dir="rtl">
               {arabicText}
             </p>
@@ -405,23 +460,71 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       {/* ── Tab: Tafsir ─────────────────────────────────────────────────── */}
       {activeTab === "tafsir" && (
         <div className="pt-5">
-          {tafsirHtml ? (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <ScrollText size={14} className="text-accent" />
-                  Ibn Kathir Commentary
-                </h2>
+          {/* Tafsir header: title + source picker */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <ScrollText size={14} className="text-accent" />
+              {TAFSIRS.find((t) => t.id === tafsirId)?.name ?? "Commentary"}
+            </h2>
+            <div className="flex items-center gap-3">
+              {activeTafsirHtml && (
                 <button
                   onClick={() => setTafsirExpanded((v) => !v)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {tafsirExpanded ? "Collapse" : "Expand all"}
+                  {tafsirExpanded ? "Collapse" : "Expand"}
                 </button>
+              )}
+              {/* Source picker */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowTafsirPicker((v) => !v)}
+                  className="text-[10px] text-muted-foreground/60 hover:text-accent transition-colors flex items-center gap-1"
+                >
+                  {TAFSIRS.find((t) => t.id === tafsirId)?.language ?? "Source"}
+                  <span className="opacity-50">▾</span>
+                </button>
+                {showTafsirPicker && (
+                  <div className="absolute right-0 top-6 z-50 w-72 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+                    {["English", "Urdu", "Arabic"].map((lang) => (
+                      <div key={lang}>
+                        <p className="text-[10px] text-muted-foreground/50 px-3 pt-2 pb-1 uppercase tracking-wider">
+                          {lang}
+                        </p>
+                        {TAFSIRS.filter((t) => t.language === lang).map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => handleChangeTafsir(t.id)}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                              t.id === tafsirId
+                                ? "bg-accent/15 text-accent font-medium"
+                                : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
+                            )}
+                          >
+                            <span className="font-medium">{t.name}</span>
+                            <span className="ml-2 text-muted-foreground/50 text-[10px]">{t.author}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+            </div>
+          </div>
+
+          {isFetchingTafsir ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-4 rounded bg-muted/40" style={{ width: `${85 - i * 5}%` }} />
+              ))}
+            </div>
+          ) : activeTafsirHtml ? (
+            <>
               <div
                 className={`tafsir-content ${tafsirExpanded ? "" : "tafsir-collapsed"}`}
-                dangerouslySetInnerHTML={{ __html: tafsirHtml }}
+                dangerouslySetInnerHTML={{ __html: activeTafsirHtml }}
               />
               {!tafsirExpanded && (
                 <button
@@ -552,6 +655,9 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       {activeTab === "chat" && (
         <div className="pt-5">
           <VerseChat
+            inline
+            initialMessages={chatHistory}
+            onHistoryChange={handleChatHistoryChange}
             verseKey={verseKey}
             arabicText={arabicText}
             translation={translation}

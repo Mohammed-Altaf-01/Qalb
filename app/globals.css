@@ -108,6 +108,59 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Light Mode — applied when <html class="light">
+   Warm parchment / Islamic manuscript aesthetic
+───────────────────────────────────────────────────────────────────────────── */
+
+html.light {
+  --background: oklch(0.97 0.008 80); /* warm parchment                  */
+  --foreground: oklch(0.13 0.025 155); /* deep green-black                */
+  --card: oklch(1 0 0); /* white card                      */
+  --card-foreground: oklch(0.13 0.025 155);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0.025 155);
+  --primary: oklch(0.42 0.13 155); /* deeper emerald (legible on white)*/
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.92 0.012 80);
+  --secondary-foreground: oklch(0.25 0.025 155);
+  --muted: oklch(0.93 0.01 80);
+  --muted-foreground: oklch(0.46 0.018 90);
+  --accent: oklch(0.52 0.12 75); /* darker gold for light bg        */
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.5 0.22 27);
+  --border: oklch(0 0 0 / 12%);
+  --input: oklch(0 0 0 / 8%);
+  --ring: oklch(0.42 0.13 155);
+  --sidebar: oklch(0.94 0.01 80);
+  --sidebar-foreground: oklch(0.13 0.025 155);
+  --sidebar-primary: oklch(0.42 0.13 155);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.9 0.012 80);
+  --sidebar-accent-foreground: oklch(0.25 0.025 155);
+  --sidebar-border: oklch(0 0 0 / 10%);
+  --sidebar-ring: oklch(0.42 0.13 155);
+}
+
+html.light body {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+html.light .animate-shimmer {
+  background: linear-gradient(90deg, oklch(0.94 0.01 80) 25%, oklch(0.98 0.005 80) 50%, oklch(0.94 0.01 80) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+html.light .tafsir-content {
+  color: oklch(0.35 0.02 155 / 0.85);
+}
+
+html.light .tafsir-content h2 {
+  color: oklch(0.42 0.12 75 / 0.95);
+  border-bottom-color: oklch(0.52 0.12 75 / 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Base Styles
 ───────────────────────────────────────────────────────────────────────────── */
 
@@ -139,6 +192,8 @@
   line-height: 2; /* Generous line height for Arabic diacritics    */
   font-size: 1.5rem; /* Arabic letters need more visual space         */
   letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .arabic-text-sm {

@@ -20,6 +20,8 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
+import ThemeToggle from "./ThemeToggle";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Kaaba Icon — geometric SVG used as the home-button logomark
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,10 +116,13 @@ export default function Navigation() {
             <span className="font-semibold text-lg tracking-tight text-gradient-gold">Qalb</span>
           </Link>
 
-          {/* Tagline */}
-          <span className="hidden sm:block text-xs text-muted-foreground/70 italic tracking-wide">
-            Your Daily Quran Companion
-          </span>
+          {/* Tagline + Theme Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:block text-xs text-muted-foreground/70 italic tracking-wide">
+              Your Daily Quran Companion
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

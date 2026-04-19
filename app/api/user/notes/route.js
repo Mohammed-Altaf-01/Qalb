@@ -17,11 +17,11 @@ export async function GET(request) {
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   try {
-    const data = await UserRepository.getGoals(token);
-    return NextResponse.json(data ?? { goals: [] });
+    const data = await UserRepository.getNotes(token);
+    return NextResponse.json(data ?? { notes: [] });
   } catch (error) {
-    console.error("[/api/user/goals GET]", error);
-    return NextResponse.json({ error: "Failed to fetch goals" }, { status: 500 });
+    console.error("[/api/user/notes GET]", error);
+    return NextResponse.json({ error: "Failed to fetch notes" }, { status: 500 });
   }
 }
 
@@ -29,17 +29,17 @@ export async function POST(request) {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-  const goal = await request.json().catch(() => null);
-  if (!goal?.type || !goal?.targetDate) {
-    return NextResponse.json({ error: "type and targetDate are required" }, { status: 400 });
+  const { verseKey, text } = await request.json().catch(() => ({}));
+  if (!verseKey || !text?.trim()) {
+    return NextResponse.json({ error: "verseKey and text are required" }, { status: 400 });
   }
 
   try {
-    const data = await UserRepository.createGoal(token, goal);
+    const data = await UserRepository.createNote(token, verseKey, text.trim());
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/user/goals POST]", error);
-    return NextResponse.json({ error: "Failed to create goal" }, { status: 500 });
+    console.error("[/api/user/notes POST]", error);
+    return NextResponse.json({ error: "Failed to save note" }, { status: 500 });
   }
 }
 
@@ -47,15 +47,17 @@ export async function PATCH(request) {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-  const { goalId, ...updates } = await request.json().catch(() => ({}));
-  if (!goalId) return NextResponse.json({ error: "goalId is required" }, { status: 400 });
+  const { noteId, text } = await request.json().catch(() => ({}));
+  if (!noteId || !text?.trim()) {
+    return NextResponse.json({ error: "noteId and text are required" }, { status: 400 });
+  }
 
   try {
-    const data = await UserRepository.updateGoal(token, goalId, updates);
+    const data = await UserRepository.updateNote(token, noteId, text.trim());
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[/api/user/goals PATCH]", error);
-    return NextResponse.json({ error: "Failed to update goal" }, { status: 500 });
+    console.error("[/api/user/notes PATCH]", error);
+    return NextResponse.json({ error: "Failed to update note" }, { status: 500 });
   }
 }
 
@@ -63,14 +65,14 @@ export async function DELETE(request) {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
-  const { goalId } = await request.json().catch(() => ({}));
-  if (!goalId) return NextResponse.json({ error: "goalId is required" }, { status: 400 });
+  const { noteId } = await request.json().catch(() => ({}));
+  if (!noteId) return NextResponse.json({ error: "noteId is required" }, { status: 400 });
 
   try {
-    await UserRepository.deleteGoal(token, goalId);
+    await UserRepository.deleteNote(token, noteId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/user/goals DELETE]", error);
-    return NextResponse.json({ error: "Failed to delete goal" }, { status: 500 });
+    console.error("[/api/user/notes DELETE]", error);
+    return NextResponse.json({ error: "Failed to delete note" }, { status: 500 });
   }
 }

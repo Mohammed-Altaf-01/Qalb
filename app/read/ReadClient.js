@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,10 +48,6 @@ const RECITERS = [
 ];
 
 const DEFAULT_TRANSLATION_ID = 20;
-
-function stripVerseEndMarker(text) {
-  return text.replace(/\s*[﴿﴾][\u0660-\u0669\u06F0-\u06F9]+[﴿﴾]\s*$/, "").trimEnd();
-}
 const BATCH_SIZE = 20;
 const LS_KEY = "qalb_reading_progress";
 
@@ -75,8 +72,8 @@ function findActiveWord(currentMs, segments) {
 
 function VersePlayer({ verse, reciterId, playingKey, setPlayingKey }) {
   const verseKey = verse.verse_key ?? "";
-  const words = verse.words ?? [];
-  const arabic = verse.text_uthmani ?? "";
+  const words = filterVerseWords(verse.words);
+  const arabic = stripVerseEndMarker(verse.text_uthmani ?? "");
   const translation = verse.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
 
   const audioRef = useRef(null);
@@ -150,7 +147,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey }) {
   }, [setPlayingKey]);
 
   return (
-    <div className="py-7 border-b border-border/20 last:border-0 group/verse">
+    <div id={`verse-${verseKey}`} className="py-7 border-b border-border/20 last:border-0 group/verse">
       {/* Verse number badge */}
       <div className="flex justify-center mb-5">
         <span className="text-[10px] text-accent/60 bg-accent/8 border border-accent/15 rounded-full px-3 py-0.5 font-medium">
@@ -331,7 +328,7 @@ function SummaryPanel({ verses, surahName, onClose }) {
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ReadClient({ chapters, initialSurahId }) {
+export default function ReadClient({ chapters, initialSurahId, initialStartVerse = 1 }) {
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState("picker");
 
@@ -366,6 +363,9 @@ export default function ReadClient({ chapters, initialSurahId }) {
 
   // ── Sentinel for infinite scroll ─────────────────────────────────────────
   const sentinelRef = useRef(null);
+
+  // ── Target verse to scroll to after initial load ─────────────────────────
+  const targetVerseRef = useRef(null);
 
   // ── Load more verses ──────────────────────────────────────────────────────
   const loadMore = useCallback(async () => {
@@ -431,7 +431,7 @@ export default function ReadClient({ chapters, initialSurahId }) {
     if (initialSurahId) {
       const chapter = chapters.find((c) => c.id === initialSurahId);
       if (chapter) {
-        startReading(chapter);
+        startReading(chapter, initialStartVerse ?? 1);
         return;
       }
     }
@@ -464,12 +464,26 @@ export default function ReadClient({ chapters, initialSurahId }) {
     }
   }, [selectedChapter, translationId]);
 
+  // ── Scroll to target verse after initial batch loads ─────────────────────
+  useEffect(() => {
+    if (!targetVerseRef.current || verses.length === 0) return;
+    const el = document.getElementById(`verse-${targetVerseRef.current}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      targetVerseRef.current = null;
+    }
+  }, [verses]);
+
   // ── Start reading a chapter ───────────────────────────────────────────────
-  function startReading(chapter) {
+  function startReading(chapter, startVerse = 1) {
+    const startPage = Math.ceil(Math.max(startVerse, 1) / BATCH_SIZE);
+
     selectedChapterRef.current = chapter;
-    currentPageRef.current = 1;
+    currentPageRef.current = startPage;
     hasMoreRef.current = true;
     isLoadingRef.current = false;
+
+    targetVerseRef.current = startVerse > 1 ? `${chapter.id}:${startVerse}` : null;
 
     setSelectedChapter(chapter);
     setVerses([]);

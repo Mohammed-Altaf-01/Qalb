@@ -1,43 +1,34 @@
-/**
- * @fileoverview /api/user/bookmark
- *
- * Handles bookmark CRUD operations:
- *  GET    — list all bookmarks
- *  POST   — add a bookmark  { verseKey: "2:255" }
- *  DELETE — remove a bookmark { verseKey: "2:255" }
- */
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
+import { authOptions } from "@/lib/auth";
 import { UserRepository } from "@/lib/user-api";
 
-/**
- * Extracts the Bearer token from the Authorization header.
- * @param {Request} request
- * @returns {string|null}
- */
-function extractBearerToken(request) {
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  return authHeader.slice(7);
+async function getToken(request) {
+  // Prefer session token (logged-in user)
+  const session = await getServerSession(authOptions);
+  if (session?.accessToken) return session.accessToken;
+  // Fallback: legacy Bearer header (for backwards compat)
+  const auth = request.headers.get("Authorization");
+  if (auth?.startsWith("Bearer ")) return auth.slice(7);
+  return null;
 }
 
-/** GET — list all bookmarks for the user */
 export async function GET(request) {
-  const token = extractBearerToken(request);
+  const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   try {
     const data = await UserRepository.getBookmarks(token);
     return NextResponse.json(data ?? { bookmarks: [] });
   } catch (error) {
-    console.error("[/api/user/bookmark GET] Error:", error);
+    console.error("[/api/user/bookmark GET]", error);
     return NextResponse.json({ error: "Failed to fetch bookmarks" }, { status: 500 });
   }
 }
 
-/** POST — add a bookmark */
 export async function POST(request) {
-  const token = extractBearerToken(request);
+  const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const { verseKey } = await request.json().catch(() => ({}));
@@ -47,14 +38,13 @@ export async function POST(request) {
     const data = await UserRepository.addBookmark(token, verseKey);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/user/bookmark POST] Error:", error);
+    console.error("[/api/user/bookmark POST]", error);
     return NextResponse.json({ error: "Failed to add bookmark" }, { status: 500 });
   }
 }
 
-/** DELETE — remove a bookmark */
 export async function DELETE(request) {
-  const token = extractBearerToken(request);
+  const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const { verseKey } = await request.json().catch(() => ({}));
@@ -64,7 +54,7 @@ export async function DELETE(request) {
     await UserRepository.removeBookmark(token, verseKey);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/user/bookmark DELETE] Error:", error);
+    console.error("[/api/user/bookmark DELETE]", error);
     return NextResponse.json({ error: "Failed to remove bookmark" }, { status: 500 });
   }
 }

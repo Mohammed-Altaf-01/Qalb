@@ -24,21 +24,10 @@ import { useState } from "react";
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * @param {{ dateIso?: string }} props
- */
-export default function BismillahHeader({ dateIso }) {
+export default function BismillahHeader() {
   const [hovered, setHovered] = useState(false);
   /** Increment on each mouse-enter to force ring elements to remount. */
   const [ringKey, setRingKey] = useState(0);
-
-  const date = dateIso ? new Date(dateIso) : new Date();
-  const formatted = date.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 
   function handleEnter() {
     setHovered(true);
@@ -95,9 +84,6 @@ export default function BismillahHeader({ dateIso }) {
       <p className="text-[11px] text-muted-foreground/60 mt-2.5 tracking-widest uppercase bismillah-translation-animate">
         In the name of Allah, the Most Gracious, the Most Merciful
       </p>
-
-      {/* Date */}
-      <p className="text-xs text-muted-foreground/50 mt-1.5 tracking-wide bismillah-date-animate">{formatted}</p>
     </div>
   );
 }

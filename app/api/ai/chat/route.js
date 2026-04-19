@@ -18,6 +18,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { buildVersechatSystemPrompt } from "@/lib/prompts";
 
+export const maxDuration = 60;
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ─────────────────────────────────────────────────────────────────────────────

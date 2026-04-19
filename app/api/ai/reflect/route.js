@@ -12,6 +12,8 @@ import { NextResponse } from "next/server";
 
 import { aiService } from "@/lib/claude";
 
+export const maxDuration = 30;
+
 /**
  * POST handler — returns AI-generated reflection questions.
  *

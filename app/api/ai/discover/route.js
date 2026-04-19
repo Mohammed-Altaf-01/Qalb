@@ -18,6 +18,8 @@ import { NextResponse } from "next/server";
 import { aiService } from "@/lib/claude";
 import { QuranRepository } from "@/lib/quran-api";
 
+export const maxDuration = 60;
+
 /** Maximum allowed input length to prevent prompt injection and abuse */
 const MAX_INPUT_LENGTH = 500;
 

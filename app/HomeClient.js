@@ -12,22 +12,24 @@ import { cn } from "@/lib/utils";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const JUZ_DATA = [
-  { number: 1, arabicName: "الم", name: "Alif Lam Mim", startSurah: 1, surahs: "Al-Fatiha – Al-Baqarah 141" },
-  { number: 2, arabicName: "سَيَقُولُ", name: "Sayaqul", startSurah: 2, surahs: "Al-Baqarah 142–252" },
+  { number: 1, arabicName: "الم", name: "Alif Lam Mim", startSurah: 1, startVerse: 1, surahs: "Al-Fatiha – Al-Baqarah 141" },
+  { number: 2, arabicName: "سَيَقُولُ", name: "Sayaqul", startSurah: 2, startVerse: 142, surahs: "Al-Baqarah 142–252" },
   {
     number: 3,
     arabicName: "تِلْكَ الرُّسُلُ",
     name: "Tilkar Rusul",
     startSurah: 2,
+    startVerse: 253,
     surahs: "Al-Baqarah 253 – Ali 'Imran 92",
   },
-  { number: 4, arabicName: "لَنْ تَنَالُوا", name: "Lan Tana Lu", startSurah: 3, surahs: "Ali 'Imran 93 – An-Nisa 23" },
-  { number: 5, arabicName: "وَالْمُحْصَنَاتُ", name: "Wal Muhsanat", startSurah: 4, surahs: "An-Nisa 24–147" },
+  { number: 4, arabicName: "لَنْ تَنَالُوا", name: "Lan Tana Lu", startSurah: 3, startVerse: 93, surahs: "Ali 'Imran 93 – An-Nisa 23" },
+  { number: 5, arabicName: "وَالْمُحْصَنَاتُ", name: "Wal Muhsanat", startSurah: 4, startVerse: 24, surahs: "An-Nisa 24–147" },
   {
     number: 6,
     arabicName: "لَا يُحِبُّ",
     name: "La Yuhibbullah",
     startSurah: 4,
+    startVerse: 148,
     surahs: "An-Nisa 148 – Al-Ma'idah 82",
   },
   {
@@ -35,6 +37,7 @@ const JUZ_DATA = [
     arabicName: "وَإِذَا سَمِعُوا",
     name: "Wa Idha Sami'u",
     startSurah: 5,
+    startVerse: 83,
     surahs: "Al-Ma'idah 83 – Al-An'am 110",
   },
   {
@@ -42,16 +45,18 @@ const JUZ_DATA = [
     arabicName: "وَلَوْ أَنَّنَا",
     name: "Wa Law Annana",
     startSurah: 6,
+    startVerse: 111,
     surahs: "Al-An'am 111 – Al-A'raf 87",
   },
-  { number: 9, arabicName: "قَالَ الْمَلَأُ", name: "Qalalmal'a", startSurah: 7, surahs: "Al-A'raf 88 – Al-Anfal 40" },
-  { number: 10, arabicName: "وَاعْلَمُوا", name: "Wa A'lamu", startSurah: 8, surahs: "Al-Anfal 41 – At-Tawbah 92" },
-  { number: 11, arabicName: "يَعْتَذِرُونَ", name: "Ya'tadhirun", startSurah: 9, surahs: "At-Tawbah 93 – Hud 5" },
+  { number: 9, arabicName: "قَالَ الْمَلَأُ", name: "Qalalmal'a", startSurah: 7, startVerse: 88, surahs: "Al-A'raf 88 – Al-Anfal 40" },
+  { number: 10, arabicName: "وَاعْلَمُوا", name: "Wa A'lamu", startSurah: 8, startVerse: 41, surahs: "Al-Anfal 41 – At-Tawbah 92" },
+  { number: 11, arabicName: "يَعْتَذِرُونَ", name: "Ya'tadhirun", startSurah: 9, startVerse: 93, surahs: "At-Tawbah 93 – Hud 5" },
   {
     number: 12,
     arabicName: "وَمَا مِنْ دَابَّةٍ",
     name: "Wa Ma Min Dabbah",
     startSurah: 11,
+    startVerse: 6,
     surahs: "Hud 6 – Yusuf 52",
   },
   {
@@ -59,24 +64,27 @@ const JUZ_DATA = [
     arabicName: "وَمَا أُبَرِّئُ",
     name: "Wa Ma Ubarri'u",
     startSurah: 12,
+    startVerse: 53,
     surahs: "Yusuf 53 – Ibrahim 52",
   },
-  { number: 14, arabicName: "رُبَمَا", name: "Rubama", startSurah: 15, surahs: "Al-Hijr – An-Nahl 128" },
+  { number: 14, arabicName: "رُبَمَا", name: "Rubama", startSurah: 15, startVerse: 1, surahs: "Al-Hijr – An-Nahl 128" },
   {
     number: 15,
     arabicName: "سُبْحَانَ الَّذِي",
     name: "Subhanalladhi",
     startSurah: 17,
+    startVerse: 1,
     surahs: "Al-Isra – Al-Kahf 74",
   },
-  { number: 16, arabicName: "قَالَ أَلَمْ", name: "Qal Alam", startSurah: 18, surahs: "Al-Kahf 75 – Ta-Ha 135" },
-  { number: 17, arabicName: "اقْتَرَبَ", name: "Iqtaraba", startSurah: 21, surahs: "Al-Anbya – Al-Hajj 78" },
-  { number: 18, arabicName: "قَدْ أَفْلَحَ", name: "Qad Aflaha", startSurah: 23, surahs: "Al-Mu'minun – Al-Furqan 20" },
+  { number: 16, arabicName: "قَالَ أَلَمْ", name: "Qal Alam", startSurah: 18, startVerse: 75, surahs: "Al-Kahf 75 – Ta-Ha 135" },
+  { number: 17, arabicName: "اقْتَرَبَ", name: "Iqtaraba", startSurah: 21, startVerse: 1, surahs: "Al-Anbya – Al-Hajj 78" },
+  { number: 18, arabicName: "قَدْ أَفْلَحَ", name: "Qad Aflaha", startSurah: 23, startVerse: 1, surahs: "Al-Mu'minun – Al-Furqan 20" },
   {
     number: 19,
     arabicName: "وَقَالَ الَّذِينَ",
     name: "Wa Qalalladhina",
     startSurah: 25,
+    startVerse: 21,
     surahs: "Al-Furqan 21 – An-Naml 55",
   },
   {
@@ -84,6 +92,7 @@ const JUZ_DATA = [
     arabicName: "أَمَّنْ خَلَقَ",
     name: "Amman Khalaqa",
     startSurah: 27,
+    startVerse: 56,
     surahs: "An-Naml 56 – Al-'Ankabut 45",
   },
   {
@@ -91,6 +100,7 @@ const JUZ_DATA = [
     arabicName: "اتْلُ مَا أُوحِيَ",
     name: "Utlu Ma Uhiya",
     startSurah: 29,
+    startVerse: 46,
     surahs: "Al-'Ankabut 46 – Al-Ahzab 30",
   },
   {
@@ -98,14 +108,16 @@ const JUZ_DATA = [
     arabicName: "وَمَنْ يَقْنُتْ",
     name: "Wa Man Yaqnut",
     startSurah: 33,
+    startVerse: 31,
     surahs: "Al-Ahzab 31 – Ya-Sin 27",
   },
-  { number: 23, arabicName: "وَمَا لِيَ", name: "Wa Mali", startSurah: 36, surahs: "Ya-Sin 28 – Az-Zumar 31" },
+  { number: 23, arabicName: "وَمَا لِيَ", name: "Wa Mali", startSurah: 36, startVerse: 28, surahs: "Ya-Sin 28 – Az-Zumar 31" },
   {
     number: 24,
     arabicName: "فَمَنْ أَظْلَمُ",
     name: "Faman Azlamu",
     startSurah: 39,
+    startVerse: 32,
     surahs: "Az-Zumar 32 – Fussilat 46",
   },
   {
@@ -113,35 +125,93 @@ const JUZ_DATA = [
     arabicName: "إِلَيْهِ يُرَدُّ",
     name: "Ilayhi Yuraddu",
     startSurah: 41,
+    startVerse: 47,
     surahs: "Fussilat 47 – Al-Jathiyah 37",
   },
-  { number: 26, arabicName: "حم", name: "Ha Mim", startSurah: 46, surahs: "Al-Ahqaf – Adh-Dhariyat 30" },
+  { number: 26, arabicName: "حم", name: "Ha Mim", startSurah: 46, startVerse: 1, surahs: "Al-Ahqaf – Adh-Dhariyat 30" },
   {
     number: 27,
     arabicName: "قَالَ فَمَا خَطْبُكُمْ",
     name: "Qala Fama Khatbukum",
     startSurah: 51,
+    startVerse: 31,
     surahs: "Adh-Dhariyat 31 – Al-Hadid 29",
   },
-  { number: 28, arabicName: "قَدْ سَمِعَ", name: "Qad Sami'a", startSurah: 58, surahs: "Al-Mujadila – At-Tahrim 12" },
+  { number: 28, arabicName: "قَدْ سَمِعَ", name: "Qad Sami'a", startSurah: 58, startVerse: 1, surahs: "Al-Mujadila – At-Tahrim 12" },
   {
     number: 29,
     arabicName: "تَبَارَكَ الَّذِي",
     name: "Tabarakalladhi",
     startSurah: 67,
+    startVerse: 1,
     surahs: "Al-Mulk – Al-Mursalat 50",
   },
-  { number: 30, arabicName: "عَمَّ", name: "Amma", startSurah: 78, surahs: "An-Naba – An-Nas" },
+  { number: 30, arabicName: "عَمَّ", name: "Amma", startSurah: 78, startVerse: 1, surahs: "An-Naba – An-Nas" },
 ];
 
-// 60 hizbs — each pair belongs to one juz
-// Approximate surah starts derived from juz boundaries
-const HIZB_DATA = Array.from({ length: 60 }, (_, i) => {
-  const hizbNum = i + 1;
-  const juzNum = Math.ceil(hizbNum / 2);
-  const juz = JUZ_DATA[juzNum - 1];
-  return { number: hizbNum, juzNum, startSurah: juz?.startSurah ?? 1 };
-});
+// 60 hizbs with exact start positions
+const HIZB_DATA = [
+  { number: 1, juzNum: 1, startSurah: 1, startVerse: 1 },
+  { number: 2, juzNum: 1, startSurah: 2, startVerse: 75 },
+  { number: 3, juzNum: 2, startSurah: 2, startVerse: 142 },
+  { number: 4, juzNum: 2, startSurah: 2, startVerse: 204 },
+  { number: 5, juzNum: 3, startSurah: 2, startVerse: 253 },
+  { number: 6, juzNum: 3, startSurah: 3, startVerse: 15 },
+  { number: 7, juzNum: 4, startSurah: 3, startVerse: 93 },
+  { number: 8, juzNum: 4, startSurah: 3, startVerse: 171 },
+  { number: 9, juzNum: 5, startSurah: 4, startVerse: 24 },
+  { number: 10, juzNum: 5, startSurah: 4, startVerse: 88 },
+  { number: 11, juzNum: 6, startSurah: 4, startVerse: 148 },
+  { number: 12, juzNum: 6, startSurah: 5, startVerse: 1 },
+  { number: 13, juzNum: 7, startSurah: 5, startVerse: 83 },
+  { number: 14, juzNum: 7, startSurah: 6, startVerse: 1 },
+  { number: 15, juzNum: 8, startSurah: 6, startVerse: 111 },
+  { number: 16, juzNum: 8, startSurah: 7, startVerse: 1 },
+  { number: 17, juzNum: 9, startSurah: 7, startVerse: 88 },
+  { number: 18, juzNum: 9, startSurah: 7, startVerse: 171 },
+  { number: 19, juzNum: 10, startSurah: 8, startVerse: 41 },
+  { number: 20, juzNum: 10, startSurah: 9, startVerse: 33 },
+  { number: 21, juzNum: 11, startSurah: 9, startVerse: 93 },
+  { number: 22, juzNum: 11, startSurah: 10, startVerse: 26 },
+  { number: 23, juzNum: 12, startSurah: 11, startVerse: 6 },
+  { number: 24, juzNum: 12, startSurah: 11, startVerse: 84 },
+  { number: 25, juzNum: 13, startSurah: 12, startVerse: 53 },
+  { number: 26, juzNum: 13, startSurah: 13, startVerse: 18 },
+  { number: 27, juzNum: 14, startSurah: 15, startVerse: 1 },
+  { number: 28, juzNum: 14, startSurah: 16, startVerse: 50 },
+  { number: 29, juzNum: 15, startSurah: 17, startVerse: 1 },
+  { number: 30, juzNum: 15, startSurah: 17, startVerse: 99 },
+  { number: 31, juzNum: 16, startSurah: 18, startVerse: 75 },
+  { number: 32, juzNum: 16, startSurah: 19, startVerse: 58 },
+  { number: 33, juzNum: 17, startSurah: 21, startVerse: 1 },
+  { number: 34, juzNum: 17, startSurah: 22, startVerse: 1 },
+  { number: 35, juzNum: 18, startSurah: 23, startVerse: 1 },
+  { number: 36, juzNum: 18, startSurah: 24, startVerse: 21 },
+  { number: 37, juzNum: 19, startSurah: 25, startVerse: 21 },
+  { number: 38, juzNum: 19, startSurah: 26, startVerse: 111 },
+  { number: 39, juzNum: 20, startSurah: 27, startVerse: 56 },
+  { number: 40, juzNum: 20, startSurah: 28, startVerse: 51 },
+  { number: 41, juzNum: 21, startSurah: 29, startVerse: 46 },
+  { number: 42, juzNum: 21, startSurah: 31, startVerse: 22 },
+  { number: 43, juzNum: 22, startSurah: 33, startVerse: 31 },
+  { number: 44, juzNum: 22, startSurah: 34, startVerse: 24 },
+  { number: 45, juzNum: 23, startSurah: 36, startVerse: 28 },
+  { number: 46, juzNum: 23, startSurah: 37, startVerse: 145 },
+  { number: 47, juzNum: 24, startSurah: 39, startVerse: 32 },
+  { number: 48, juzNum: 24, startSurah: 40, startVerse: 41 },
+  { number: 49, juzNum: 25, startSurah: 41, startVerse: 47 },
+  { number: 50, juzNum: 25, startSurah: 43, startVerse: 24 },
+  { number: 51, juzNum: 26, startSurah: 46, startVerse: 1 },
+  { number: 52, juzNum: 26, startSurah: 48, startVerse: 17 },
+  { number: 53, juzNum: 27, startSurah: 51, startVerse: 31 },
+  { number: 54, juzNum: 27, startSurah: 54, startVerse: 1 },
+  { number: 55, juzNum: 28, startSurah: 58, startVerse: 1 },
+  { number: 56, juzNum: 28, startSurah: 61, startVerse: 1 },
+  { number: 57, juzNum: 29, startSurah: 67, startVerse: 1 },
+  { number: 58, juzNum: 29, startSurah: 71, startVerse: 1 },
+  { number: 59, juzNum: 30, startSurah: 78, startVerse: 1 },
+  { number: 60, juzNum: 30, startSurah: 91, startVerse: 1 },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
@@ -194,7 +264,7 @@ function SurahRow({ chapter }) {
 function JuzCard({ juz }) {
   return (
     <Link
-      href={`/read?surah=${juz.startSurah}`}
+      href={`/read?surah=${juz.startSurah}&startVerse=${juz.startVerse}`}
       className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/30 bg-card
         hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
     >
@@ -222,7 +292,7 @@ function JuzCard({ juz }) {
 function HizbCard({ hizb }) {
   return (
     <Link
-      href={`/read?surah=${hizb.startSurah}`}
+      href={`/read?surah=${hizb.startSurah}&startVerse=${hizb.startVerse}`}
       className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border/30 bg-card
         hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
     >

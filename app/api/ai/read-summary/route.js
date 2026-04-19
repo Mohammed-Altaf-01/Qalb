@@ -16,6 +16,8 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { buildReadSummaryPrompt } from "@/lib/prompts";
 
+export const maxDuration = 60;
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request) {

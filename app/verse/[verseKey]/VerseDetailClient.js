@@ -22,6 +22,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { TRANSLATIONS } from "@/app/read/ReadClient";
+import { stripVerseEndMarker } from "@/lib/arabic-utils";
 import AudioPlayer from "@/components/AudioPlayer";
 import VerseChat from "@/components/VerseChat";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
   const tafsir = initialData?.tafsir;
   const chapter = initialData?.chapter;
 
-  const arabicText = verse?.text_uthmani ?? "";
+  const arabicText = stripVerseEndMarker(verse?.text_uthmani ?? "");
   const translation = verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
   const tafsirHtml = tafsir?.text ?? "";
   const chapterName = chapter?.name_simple ?? verseKey.split(":")[0];

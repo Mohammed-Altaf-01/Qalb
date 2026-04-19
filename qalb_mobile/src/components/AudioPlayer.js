@@ -1,18 +1,5 @@
-/**
- * AudioPlayer — React Native / expo-av version.
- *
- * Adapted from web AudioPlayer.js:
- *  - HTML5 <audio> → expo-av Audio.Sound
- *  - localStorage → AsyncStorage (via storage.js)
- *  - CSS → StyleSheet
- *  - Reciter picker shown as tappable chips (same 6 reciters as web)
- *
- * Audio URL is fetched directly from Quran Foundation API via QuranRepository.
- * Falls back through reciter IDs [7, 2, 1] if primary reciter has no audio.
- */
-
-import { Audio } from 'expo-av';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -36,18 +23,16 @@ const RECITERS = [
 
 const FALLBACK_IDS = [7, 2, 1];
 
-function fmtTime(ms) {
-  if (!ms || isNaN(ms)) return '0:00';
-  const s = Math.floor(ms / 1000);
+function fmtTime(secs) {
+  if (!secs || isNaN(secs)) return '0:00';
+  const s = Math.floor(secs);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 export default function AudioPlayer({ verseKey }) {
-  const soundRef = useRef(null);
-  const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [positionMs, setPositionMs] = useState(0);
-  const [durationMs, setDurationMs] = useState(0);
+  const player = useAudioPlayer(null, { updateInterval: 500 });
+  const status = useAudioPlayerStatus(player);
+  const [loadStatus, setLoadStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [reciterId, setReciterId] = useState(CONFIG.DEFAULT_RECITER_ID);
   const [showPicker, setShowPicker] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -59,21 +44,14 @@ export default function AudioPlayer({ verseKey }) {
     });
   }, []);
 
-  // Load audio when verseKey or reciterId changes
+  // Fetch audio URL and load into player when verseKey or reciterId changes
   useEffect(() => {
     if (!verseKey) return;
     let cancelled = false;
 
     async function loadAudio() {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
-      setIsPlaying(false);
-      setPositionMs(0);
-      setDurationMs(0);
+      setLoadStatus('loading');
 
-      // Try primary reciter, then fallbacks
       const tryIds = [reciterId, ...FALLBACK_IDS.filter((id) => id !== reciterId)];
       let audioUrl = null;
 
@@ -90,124 +68,94 @@ export default function AudioPlayer({ verseKey }) {
 
       if (cancelled) return;
       if (!audioUrl) {
-        setStatus('error');
+        setLoadStatus('error');
         setIsSwapping(false);
         return;
       }
 
       try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: audioUrl },
-          { shouldPlay: false },
-          (s) => {
-            if (!cancelled) {
-              setIsPlaying(s.isPlaying);
-              setPositionMs(s.positionMillis ?? 0);
-              setDurationMs(s.durationMillis ?? 0);
-              if (s.didJustFinish) {
-                setIsPlaying(false);
-                setPositionMs(0);
-                sound.setPositionAsync(0).catch(() => {});
-              }
-            }
-          },
-        );
+        await setAudioModeAsync({ playsInSilentMode: true });
+        player.replace({ uri: audioUrl });
         if (!cancelled) {
-          soundRef.current = sound;
-          setStatus('ready');
+          setLoadStatus('ready');
           setIsSwapping(false);
-        } else {
-          await sound.unloadAsync().catch(() => {});
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) {
-          setStatus('error');
+          setLoadStatus('error');
           setIsSwapping(false);
         }
       }
     }
 
     loadAudio();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [verseKey, reciterId]);
 
-  // Cleanup on unmount
+  // Seek back to start when playback finishes
   useEffect(() => {
-    return () => {
-      soundRef.current?.unloadAsync().catch(() => {});
-    };
-  }, []);
-
-  const handlePlayPause = useCallback(async () => {
-    if (!soundRef.current || status !== 'ready') return;
-    try {
-      if (isPlaying) {
-        await soundRef.current.pauseAsync();
-      } else {
-        await soundRef.current.playAsync();
-      }
-    } catch (e) {
-      setStatus('error');
+    if (status.didJustFinish) {
+      player.seekTo(0);
     }
-  }, [isPlaying, status]);
+  }, [status.didJustFinish]);
+
+  const handlePlayPause = useCallback(() => {
+    if (loadStatus !== 'ready') return;
+    if (status.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  }, [status.playing, loadStatus]);
 
   const handleReciterChange = useCallback(async (id) => {
     setIsSwapping(true);
-    setStatus('loading');
     setShowPicker(false);
     await storage.set(STORAGE_KEYS.RECITER_ID, id);
     setReciterId(id);
   }, []);
 
-  const progress = durationMs > 0 ? positionMs / durationMs : 0;
+  const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
   const currentReciter = RECITERS.find((r) => r.id === reciterId);
 
   return (
     <View style={styles.container}>
-      {status === 'loading' && (
+      {loadStatus === 'loading' && (
         <View style={styles.row}>
           <ActivityIndicator size="small" color={COLORS.accent} />
           <Text style={styles.loadingText}>Loading recitation…</Text>
         </View>
       )}
 
-      {status === 'error' && (
+      {loadStatus === 'error' && (
         <Text style={styles.errorText}>Audio unavailable for this verse.</Text>
       )}
 
-      {(status === 'ready' || isSwapping) && (
+      {(loadStatus === 'ready' || isSwapping) && (
         <>
-          {/* Controls row */}
           <View style={styles.controls}>
-            {/* Play/Pause */}
             <TouchableOpacity
               style={styles.playBtn}
               onPress={handlePlayPause}
-              disabled={isSwapping || status !== 'ready'}
+              disabled={isSwapping || loadStatus !== 'ready'}
             >
               {isSwapping ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
-                <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+                <Text style={styles.playIcon}>{status.playing ? '⏸' : '▶'}</Text>
               )}
             </TouchableOpacity>
 
-            {/* Progress bar */}
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { flex: progress }]} />
               <View style={{ flex: 1 - progress }} />
             </View>
 
-            {/* Time */}
             <Text style={styles.time}>
-              {fmtTime(positionMs)} / {fmtTime(durationMs)}
+              {fmtTime(status.currentTime)} / {fmtTime(status.duration)}
             </Text>
           </View>
 
-          {/* Reciter selector */}
           <TouchableOpacity
             style={styles.reciterRow}
             onPress={() => setShowPicker((v) => !v)}
@@ -222,18 +170,10 @@ export default function AudioPlayer({ verseKey }) {
               {RECITERS.map((r) => (
                 <TouchableOpacity
                   key={r.id}
-                  style={[
-                    styles.reciterChip,
-                    r.id === reciterId && styles.reciterChipActive,
-                  ]}
+                  style={[styles.reciterChip, r.id === reciterId && styles.reciterChipActive]}
                   onPress={() => handleReciterChange(r.id)}
                 >
-                  <Text
-                    style={[
-                      styles.reciterChipText,
-                      r.id === reciterId && styles.reciterChipTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.reciterChipText, r.id === reciterId && styles.reciterChipTextActive]}>
                     {r.name}
                   </Text>
                 </TouchableOpacity>
@@ -326,8 +266,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.xs,
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: `${COLORS.border}`,
-    backgroundColor: `${COLORS.muted}`,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.muted,
   },
   reciterChipActive: {
     borderColor: `${COLORS.accent}60`,

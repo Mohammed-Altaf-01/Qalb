@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+qalb_mobile/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -44,4 +45,5 @@ next-env.d.ts
 altaf_notes
 AGENTS.md
 CLAUDE.md
+**/CLAUDE.md
 PROJECT_REFERENCE.md

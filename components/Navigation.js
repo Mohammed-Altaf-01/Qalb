@@ -1,13 +1,14 @@
 "use client";
 
-import { BookMarked, BookOpen, Compass, Home, LogIn, Target, User } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { useSession, signIn } from "next-auth/react";
 
-import { cn } from "@/lib/utils";
+import { BookMarked, BookOpen, Compass, Home, LogIn, Target, User } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import { getLevelInfo, loadState } from "@/lib/gamification";
+import { cn } from "@/lib/utils";
 
 import ThemeToggle from "./ThemeToggle";
 
@@ -27,10 +28,15 @@ function LiveClock() {
   if (!now) return null;
 
   const timeStr = now.toLocaleTimeString(undefined, {
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
   });
   const dateStr = now.toLocaleDateString(undefined, {
-    weekday: "short", month: "short", day: "numeric",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
   });
 
   return (
@@ -47,7 +53,16 @@ function LiveClock() {
 
 function KaabaIcon({ size = 22, className = "" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <defs>
         <linearGradient id="kaaba-gold" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#c8a951" />
@@ -57,7 +72,11 @@ function KaabaIcon({ size = 22, className = "" }) {
       </defs>
       <rect x="3" y="7" width="18" height="14" rx="1.2" stroke="url(#kaaba-gold)" strokeWidth="1.6" />
       <line x1="3" y1="12" x2="21" y2="12" stroke="url(#kaaba-gold)" strokeWidth="1.4" />
-      <path d="M10.5 21 L10.5 16.5 Q10.5 14 12 14 Q13.5 14 13.5 16.5 L13.5 21" stroke="url(#kaaba-gold)" strokeWidth="1.4" />
+      <path
+        d="M10.5 21 L10.5 16.5 Q10.5 14 12 14 Q13.5 14 13.5 16.5 L13.5 21"
+        stroke="url(#kaaba-gold)"
+        strokeWidth="1.4"
+      />
       <path d="M3 7 L12 3.5 L21 7" stroke="url(#kaaba-gold)" strokeWidth="1.4" />
     </svg>
   );
@@ -106,9 +125,7 @@ function UserButton() {
       </div>
       {/* XP mini pill */}
       <div className={cn("hidden sm:flex flex-col items-start leading-none gap-0.5")}>
-        <span className={cn("text-[10px] font-semibold", levelInfo.current.color)}>
-          {levelInfo.current.title}
-        </span>
+        <span className={cn("text-[10px] font-semibold", levelInfo.current.color)}>{levelInfo.current.title}</span>
         <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
@@ -125,12 +142,12 @@ function UserButton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { label: "Home",    href: "/",        icon: Home      },
-  { label: "Read",    href: "/read",    icon: BookOpen  },
-  { label: "Discover",href: "/discover",icon: Compass   },
-  { label: "Goals",   href: "/goals",   icon: Target    },
-  { label: "Library", href: "/library", icon: BookMarked},
-  { label: "Profile", href: "/profile", icon: User      },
+  { label: "Home", href: "/", icon: Home },
+  { label: "Read", href: "/read", icon: BookOpen },
+  { label: "Discover", href: "/discover", icon: Compass },
+  { label: "Goals", href: "/goals", icon: Target },
+  { label: "Library", href: "/library", icon: BookMarked },
+  { label: "Profile", href: "/profile", icon: User },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +164,11 @@ export default function Navigation() {
         <div className="mx-auto max-w-5xl flex items-center justify-between px-4 md:px-8 h-14">
           {/* Logo + clock */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5 group transition-opacity duration-200 hover:opacity-70" aria-label="Qalb — home">
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 group transition-opacity duration-200 hover:opacity-70"
+              aria-label="Qalb — home"
+            >
               <KaabaIcon size={22} className="shrink-0 transition-transform duration-200 group-hover:scale-95" />
               <span className="font-semibold text-lg tracking-tight text-gradient-gold">Qalb</span>
             </Link>
@@ -201,7 +222,11 @@ export default function Navigation() {
                 )}
                 aria-current={isActive ? "page" : undefined}
               >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} className={cn("transition-transform duration-200", isActive && "scale-110")} />
+                <Icon
+                  size={20}
+                  strokeWidth={isActive ? 2.5 : 1.75}
+                  className={cn("transition-transform duration-200", isActive && "scale-110")}
+                />
                 <span className="text-[9px] font-medium truncate">{label}</span>
               </Link>
             );

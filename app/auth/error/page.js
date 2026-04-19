@@ -1,15 +1,16 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 
 const ERROR_MESSAGES = {
-  Configuration:  "There is a problem with the server configuration.",
-  AccessDenied:   "You do not have permission to sign in.",
-  Verification:   "The sign-in link is no longer valid.",
-  OAuthCallback:  "There was a problem during sign-in. Please try again.",
-  Default:        "An unexpected error occurred during sign-in.",
+  Configuration: "There is a problem with the server configuration.",
+  AccessDenied: "You do not have permission to sign in.",
+  Verification: "The sign-in link is no longer valid.",
+  OAuthCallback: "There was a problem during sign-in. Please try again.",
+  Default: "An unexpected error occurred during sign-in.",
 };
 
 export default function AuthErrorPage() {

@@ -1,6 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import VerseCard from "../VerseCard";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }) => (
@@ -18,9 +21,6 @@ vi.mock("../AudioPlayer", () => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
-
-import { toast } from "sonner";
-import VerseCard from "../VerseCard";
 
 const mockVerse = {
   verse_key: "2:255",
@@ -171,7 +171,9 @@ describe("VerseCard", () => {
 
     await user.click(screen.getByLabelText("Remove bookmark"));
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/user/bookmark", expect.objectContaining({ method: "DELETE" })));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith("/api/user/bookmark", expect.objectContaining({ method: "DELETE" })),
+    );
     expect(toast.success).toHaveBeenCalledWith("Bookmark removed");
   });
 

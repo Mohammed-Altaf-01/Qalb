@@ -30,8 +30,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import AudioPlayer from "@/components/AudioPlayer";
-import { filterVerseWords } from "@/lib/arabic-utils";
 import { Badge } from "@/components/ui/badge";
+import { filterVerseWords } from "@/lib/arabic-utils";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +65,9 @@ function WordHighlightPlayer({ verseKey, words }) {
     if (!audioUrl) {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}&segments=true`);
+        const res = await fetch(
+          `/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}&segments=true`,
+        );
         if (!res.ok) throw new Error("audio failed");
         const data = await res.json();
         setAudioUrl(data.audioUrl);
@@ -98,9 +100,7 @@ function WordHighlightPlayer({ verseKey, words }) {
             key={i}
             className={cn(
               "inline px-0.5 mx-0.5 rounded transition-all duration-100",
-              activeWordIdx === (word.position ?? i + 1) - 1
-                ? "bg-accent/30 text-accent"
-                : "hover:text-accent/80",
+              activeWordIdx === (word.position ?? i + 1) - 1 ? "bg-accent/30 text-accent" : "hover:text-accent/80",
             )}
           >
             {word.text_uthmani}
@@ -127,7 +127,10 @@ function WordHighlightPlayer({ verseKey, words }) {
           if (!audioRef.current || !segments) return;
           setActiveWordIdx(findActiveWord(audioRef.current.currentTime * 1000, segments));
         }}
-        onEnded={() => { setIsPlaying(false); setActiveWordIdx(-1); }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setActiveWordIdx(-1);
+        }}
       />
     </div>
   );

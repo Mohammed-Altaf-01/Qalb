@@ -5,6 +5,7 @@
  * Layout: Bismillah header → Surah / Juz / Hizb tab browser (HomeClient).
  */
 import BismillahHeader from "@/components/BismillahHeader";
+import RotatingVerse from "@/components/RotatingVerse";
 import { QuranRepository } from "@/lib/quran-api";
 
 import HomeClient from "./HomeClient";
@@ -31,9 +32,10 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* Bismillah greeting + date */}
       <div className="mx-auto max-w-3xl px-4 md:px-8 pt-6">
         <BismillahHeader />
+        {/* Rotating ayah / hadith — desktop only, cycles every 5s */}
+        <RotatingVerse />
       </div>
 
       {/* Quran browser — Surah / Juz / Hizb tabs */}

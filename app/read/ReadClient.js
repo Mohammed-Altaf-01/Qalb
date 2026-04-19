@@ -54,25 +54,100 @@ const LS_KEY = "qalb_reading_progress";
 
 // Juz start positions — key: "surahId:verseNum" → juz number
 const JUZ_STARTS = new Map([
-  ["1:1",1],["2:142",2],["2:253",3],["3:93",4],["4:24",5],["4:148",6],["5:83",7],
-  ["6:111",8],["7:88",9],["8:41",10],["9:93",11],["11:6",12],["12:53",13],
-  ["15:1",14],["17:1",15],["18:75",16],["21:1",17],["23:1",18],["25:21",19],
-  ["27:56",20],["29:46",21],["33:31",22],["36:28",23],["39:32",24],["41:47",25],
-  ["46:1",26],["51:31",27],["58:1",28],["67:1",29],["78:1",30],
+  ["1:1", 1],
+  ["2:142", 2],
+  ["2:253", 3],
+  ["3:93", 4],
+  ["4:24", 5],
+  ["4:148", 6],
+  ["5:83", 7],
+  ["6:111", 8],
+  ["7:88", 9],
+  ["8:41", 10],
+  ["9:93", 11],
+  ["11:6", 12],
+  ["12:53", 13],
+  ["15:1", 14],
+  ["17:1", 15],
+  ["18:75", 16],
+  ["21:1", 17],
+  ["23:1", 18],
+  ["25:21", 19],
+  ["27:56", 20],
+  ["29:46", 21],
+  ["33:31", 22],
+  ["36:28", 23],
+  ["39:32", 24],
+  ["41:47", 25],
+  ["46:1", 26],
+  ["51:31", 27],
+  ["58:1", 28],
+  ["67:1", 29],
+  ["78:1", 30],
 ]);
 
 // Hizb start positions — key: "surahId:verseNum" → hizb number
 const HIZB_STARTS = new Map([
-  ["1:1",1],["2:75",2],["2:142",3],["2:204",4],["2:253",5],["3:15",6],
-  ["3:93",7],["3:171",8],["4:24",9],["4:88",10],["4:148",11],["5:1",12],
-  ["5:83",13],["6:1",14],["6:111",15],["7:1",16],["7:88",17],["7:171",18],
-  ["8:41",19],["9:33",20],["9:93",21],["10:26",22],["11:6",23],["11:84",24],
-  ["12:53",25],["13:18",26],["15:1",27],["16:50",28],["17:1",29],["17:99",30],
-  ["18:75",31],["19:58",32],["21:1",33],["22:1",34],["23:1",35],["24:21",36],
-  ["25:21",37],["26:111",38],["27:56",39],["28:51",40],["29:46",41],["31:22",42],
-  ["33:31",43],["34:24",44],["36:28",45],["37:145",46],["39:32",47],["40:41",48],
-  ["41:47",49],["43:24",50],["46:1",51],["48:17",52],["51:31",53],["54:1",54],
-  ["58:1",55],["61:1",56],["67:1",57],["71:1",58],["78:1",59],["91:1",60],
+  ["1:1", 1],
+  ["2:75", 2],
+  ["2:142", 3],
+  ["2:204", 4],
+  ["2:253", 5],
+  ["3:15", 6],
+  ["3:93", 7],
+  ["3:171", 8],
+  ["4:24", 9],
+  ["4:88", 10],
+  ["4:148", 11],
+  ["5:1", 12],
+  ["5:83", 13],
+  ["6:1", 14],
+  ["6:111", 15],
+  ["7:1", 16],
+  ["7:88", 17],
+  ["7:171", 18],
+  ["8:41", 19],
+  ["9:33", 20],
+  ["9:93", 21],
+  ["10:26", 22],
+  ["11:6", 23],
+  ["11:84", 24],
+  ["12:53", 25],
+  ["13:18", 26],
+  ["15:1", 27],
+  ["16:50", 28],
+  ["17:1", 29],
+  ["17:99", 30],
+  ["18:75", 31],
+  ["19:58", 32],
+  ["21:1", 33],
+  ["22:1", 34],
+  ["23:1", 35],
+  ["24:21", 36],
+  ["25:21", 37],
+  ["26:111", 38],
+  ["27:56", 39],
+  ["28:51", 40],
+  ["29:46", 41],
+  ["31:22", 42],
+  ["33:31", 43],
+  ["34:24", 44],
+  ["36:28", 45],
+  ["37:145", 46],
+  ["39:32", 47],
+  ["40:41", 48],
+  ["41:47", 49],
+  ["43:24", 50],
+  ["46:1", 51],
+  ["48:17", 52],
+  ["51:31", 53],
+  ["54:1", 54],
+  ["58:1", 55],
+  ["61:1", 56],
+  ["67:1", 57],
+  ["71:1", 58],
+  ["78:1", 59],
+  ["91:1", 60],
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -518,7 +593,9 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     if (!selectedChapter) return;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ surahId: selectedChapter.id, translationId }));
-    } catch { /* quota exceeded */ }
+    } catch {
+      /* quota exceeded */
+    }
   }, [selectedChapter, translationId]);
 
   useEffect(() => {
@@ -537,7 +614,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       for (const el of verseEls) {
         const top = el.getBoundingClientRect().top + window.scrollY;
         const dist = Math.abs(top + el.offsetHeight / 2 - viewportMid);
-        if (dist < closestDist) { closestDist = dist; closest = el; }
+        if (dist < closestDist) {
+          closestDist = dist;
+          closest = el;
+        }
       }
 
       if (!closest) return;
@@ -550,24 +630,29 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
       // Persist last-read verse so the picker can restore it
       try {
-        localStorage.setItem(LS_KEY, JSON.stringify({
-          surahId: selectedChapter.id,
-          verseNum,
-          translationId,
-        }));
-      } catch { /* ignore */ }
+        localStorage.setItem(
+          LS_KEY,
+          JSON.stringify({
+            surahId: selectedChapter.id,
+            verseNum,
+            translationId,
+          }),
+        );
+      } catch {
+        /* ignore */
+      }
 
       // Update qalb_last_reads so "Continue Reading" resumes from here
       try {
         const reads = JSON.parse(localStorage.getItem("qalb_last_reads") ?? "[]");
         const newHref = `/read?surah=${selectedChapter.id}&startVerse=${verseNum}`;
         const updated = reads.map((r) =>
-          r.href.includes(`surah=${selectedChapter.id}`)
-            ? { ...r, href: newHref, timestamp: Date.now() }
-            : r,
+          r.href.includes(`surah=${selectedChapter.id}`) ? { ...r, href: newHref, timestamp: Date.now() } : r,
         );
         localStorage.setItem("qalb_last_reads", JSON.stringify(updated));
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     let timer;
@@ -577,7 +662,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     }
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { clearTimeout(timer); window.removeEventListener("scroll", onScroll); };
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [view, selectedChapter, translationId]);
 
   // ── Scroll to target verse (centered) + brief highlight ──────────────────
@@ -718,8 +806,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-6">
       {/* ── Top bar — sticky below global nav ───────────────────────────── */}
-      <div className="sticky top-14 z-30 -mx-4 md:-mx-8 px-4 md:px-8 mb-6
-        bg-background/90 backdrop-blur-md border-b border-border/30 py-3 flex items-center justify-between gap-3">
+      <div
+        className="sticky top-14 z-30 -mx-4 md:-mx-8 px-4 md:px-8 mb-6
+        bg-background/90 backdrop-blur-md border-b border-border/30 py-3 flex items-center justify-between gap-3"
+      >
         {/* Back button */}
         <button
           onClick={() => router.back()}

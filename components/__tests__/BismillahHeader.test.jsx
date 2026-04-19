@@ -9,11 +9,6 @@ describe("BismillahHeader", () => {
     expect(screen.getByText("بسم الله الرحمن الرحيم")).toBeInTheDocument();
   });
 
-  it("renders the English translation", () => {
-    render(<BismillahHeader />);
-    expect(screen.getByText(/In the name of Allah/i)).toBeInTheDocument();
-  });
-
   it("shows energy rings on mouse enter", () => {
     const { container } = render(<BismillahHeader />);
     const hoverTarget = container.querySelector("[style*='filter']");

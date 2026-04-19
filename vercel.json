@@ -1,26 +1,24 @@
 {
   "functions": {
-    "app/api/ai/chat/route.js":         { "maxDuration": 60 },
-    "app/api/ai/discover/route.js":     { "maxDuration": 60 },
-    "app/api/ai/reflect/route.js":      { "maxDuration": 30 },
+    "app/api/ai/chat/route.js": { "maxDuration": 60 },
+    "app/api/ai/discover/route.js": { "maxDuration": 60 },
+    "app/api/ai/reflect/route.js": { "maxDuration": 30 },
     "app/api/ai/read-summary/route.js": { "maxDuration": 60 }
   },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options",    "value": "nosniff"          },
-        { "key": "X-Frame-Options",           "value": "DENY"             },
-        { "key": "X-XSS-Protection",          "value": "1; mode=block"    },
-        { "key": "Referrer-Policy",           "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy",        "value": "camera=(), microphone=(), geolocation=()" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
       ]
     },
     {
       "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
     }
   ]
 }

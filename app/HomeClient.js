@@ -25,7 +25,14 @@ function saveLastRead(entry) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const JUZ_DATA = [
-  { number: 1, arabicName: "الم", name: "Alif Lam Mim", startSurah: 1, startVerse: 1, surahs: "Al-Fatiha – Al-Baqarah 141" },
+  {
+    number: 1,
+    arabicName: "الم",
+    name: "Alif Lam Mim",
+    startSurah: 1,
+    startVerse: 1,
+    surahs: "Al-Fatiha – Al-Baqarah 141",
+  },
   { number: 2, arabicName: "سَيَقُولُ", name: "Sayaqul", startSurah: 2, startVerse: 142, surahs: "Al-Baqarah 142–252" },
   {
     number: 3,
@@ -35,8 +42,22 @@ const JUZ_DATA = [
     startVerse: 253,
     surahs: "Al-Baqarah 253 – Ali 'Imran 92",
   },
-  { number: 4, arabicName: "لَنْ تَنَالُوا", name: "Lan Tana Lu", startSurah: 3, startVerse: 93, surahs: "Ali 'Imran 93 – An-Nisa 23" },
-  { number: 5, arabicName: "وَالْمُحْصَنَاتُ", name: "Wal Muhsanat", startSurah: 4, startVerse: 24, surahs: "An-Nisa 24–147" },
+  {
+    number: 4,
+    arabicName: "لَنْ تَنَالُوا",
+    name: "Lan Tana Lu",
+    startSurah: 3,
+    startVerse: 93,
+    surahs: "Ali 'Imran 93 – An-Nisa 23",
+  },
+  {
+    number: 5,
+    arabicName: "وَالْمُحْصَنَاتُ",
+    name: "Wal Muhsanat",
+    startSurah: 4,
+    startVerse: 24,
+    surahs: "An-Nisa 24–147",
+  },
   {
     number: 6,
     arabicName: "لَا يُحِبُّ",
@@ -61,9 +82,30 @@ const JUZ_DATA = [
     startVerse: 111,
     surahs: "Al-An'am 111 – Al-A'raf 87",
   },
-  { number: 9, arabicName: "قَالَ الْمَلَأُ", name: "Qalalmal'a", startSurah: 7, startVerse: 88, surahs: "Al-A'raf 88 – Al-Anfal 40" },
-  { number: 10, arabicName: "وَاعْلَمُوا", name: "Wa A'lamu", startSurah: 8, startVerse: 41, surahs: "Al-Anfal 41 – At-Tawbah 92" },
-  { number: 11, arabicName: "يَعْتَذِرُونَ", name: "Ya'tadhirun", startSurah: 9, startVerse: 93, surahs: "At-Tawbah 93 – Hud 5" },
+  {
+    number: 9,
+    arabicName: "قَالَ الْمَلَأُ",
+    name: "Qalalmal'a",
+    startSurah: 7,
+    startVerse: 88,
+    surahs: "Al-A'raf 88 – Al-Anfal 40",
+  },
+  {
+    number: 10,
+    arabicName: "وَاعْلَمُوا",
+    name: "Wa A'lamu",
+    startSurah: 8,
+    startVerse: 41,
+    surahs: "Al-Anfal 41 – At-Tawbah 92",
+  },
+  {
+    number: 11,
+    arabicName: "يَعْتَذِرُونَ",
+    name: "Ya'tadhirun",
+    startSurah: 9,
+    startVerse: 93,
+    surahs: "At-Tawbah 93 – Hud 5",
+  },
   {
     number: 12,
     arabicName: "وَمَا مِنْ دَابَّةٍ",
@@ -89,9 +131,30 @@ const JUZ_DATA = [
     startVerse: 1,
     surahs: "Al-Isra – Al-Kahf 74",
   },
-  { number: 16, arabicName: "قَالَ أَلَمْ", name: "Qal Alam", startSurah: 18, startVerse: 75, surahs: "Al-Kahf 75 – Ta-Ha 135" },
-  { number: 17, arabicName: "اقْتَرَبَ", name: "Iqtaraba", startSurah: 21, startVerse: 1, surahs: "Al-Anbya – Al-Hajj 78" },
-  { number: 18, arabicName: "قَدْ أَفْلَحَ", name: "Qad Aflaha", startSurah: 23, startVerse: 1, surahs: "Al-Mu'minun – Al-Furqan 20" },
+  {
+    number: 16,
+    arabicName: "قَالَ أَلَمْ",
+    name: "Qal Alam",
+    startSurah: 18,
+    startVerse: 75,
+    surahs: "Al-Kahf 75 – Ta-Ha 135",
+  },
+  {
+    number: 17,
+    arabicName: "اقْتَرَبَ",
+    name: "Iqtaraba",
+    startSurah: 21,
+    startVerse: 1,
+    surahs: "Al-Anbya – Al-Hajj 78",
+  },
+  {
+    number: 18,
+    arabicName: "قَدْ أَفْلَحَ",
+    name: "Qad Aflaha",
+    startSurah: 23,
+    startVerse: 1,
+    surahs: "Al-Mu'minun – Al-Furqan 20",
+  },
   {
     number: 19,
     arabicName: "وَقَالَ الَّذِينَ",
@@ -124,7 +187,14 @@ const JUZ_DATA = [
     startVerse: 31,
     surahs: "Al-Ahzab 31 – Ya-Sin 27",
   },
-  { number: 23, arabicName: "وَمَا لِيَ", name: "Wa Mali", startSurah: 36, startVerse: 28, surahs: "Ya-Sin 28 – Az-Zumar 31" },
+  {
+    number: 23,
+    arabicName: "وَمَا لِيَ",
+    name: "Wa Mali",
+    startSurah: 36,
+    startVerse: 28,
+    surahs: "Ya-Sin 28 – Az-Zumar 31",
+  },
   {
     number: 24,
     arabicName: "فَمَنْ أَظْلَمُ",
@@ -150,7 +220,14 @@ const JUZ_DATA = [
     startVerse: 31,
     surahs: "Adh-Dhariyat 31 – Al-Hadid 29",
   },
-  { number: 28, arabicName: "قَدْ سَمِعَ", name: "Qad Sami'a", startSurah: 58, startVerse: 1, surahs: "Al-Mujadila – At-Tahrim 12" },
+  {
+    number: 28,
+    arabicName: "قَدْ سَمِعَ",
+    name: "Qad Sami'a",
+    startSurah: 58,
+    startVerse: 1,
+    surahs: "Al-Mujadila – At-Tahrim 12",
+  },
   {
     number: 29,
     arabicName: "تَبَارَكَ الَّذِي",
@@ -236,7 +313,9 @@ function SurahRow({ chapter }) {
   return (
     <Link
       href={href}
-      onClick={() => saveLastRead({ href, label: chapter.name_simple, sub: chapter.translated_name?.name ?? "", type: "surah" })}
+      onClick={() =>
+        saveLastRead({ href, label: chapter.name_simple, sub: chapter.translated_name?.name ?? "", type: "surah" })
+      }
       className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 rounded-xl border border-transparent
         hover:bg-card hover:border-border/40 transition-all duration-150 group"
     >

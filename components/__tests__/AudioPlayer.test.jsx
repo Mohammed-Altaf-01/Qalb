@@ -33,10 +33,7 @@ describe("AudioPlayer", () => {
 
   it("shows loading indicator while fetching audio URL", async () => {
     let resolveFetch;
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockReturnValue(new Promise((res) => (resolveFetch = res))),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise((res) => (resolveFetch = res))));
     render(<AudioPlayer verseKey="2:255" />);
     expect(screen.getByText(/Loading recitation/i)).toBeInTheDocument();
     // resolve to avoid async warning
@@ -54,20 +51,13 @@ describe("AudioPlayer", () => {
   it("shows error message when audio URL fetch fails", async () => {
     vi.stubGlobal("fetch", mockFetchError());
     await act(async () => render(<AudioPlayer verseKey="2:255" />));
-    await waitFor(() =>
-      expect(screen.getByText(/Audio unavailable for this verse/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/Audio unavailable for this verse/i)).toBeInTheDocument());
   });
 
   it("shows error when API returns no audioUrl in response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ audioUrl: null }) }),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ audioUrl: null }) }));
     await act(async () => render(<AudioPlayer verseKey="2:255" />));
-    await waitFor(() =>
-      expect(screen.getByText(/Audio unavailable for this verse/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/Audio unavailable for this verse/i)).toBeInTheDocument());
   });
 
   // ── Ready state — player controls ────────────────────────────────────────────

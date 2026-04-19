@@ -51,30 +51,30 @@ export default function RootLayout({ children }) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <AuthProvider>
-        {/* ── Gold progress bar — appears at top on every navigation ─── */}
-        <NavigationProgress />
+          {/* ── Gold progress bar — appears at top on every navigation ─── */}
+          <NavigationProgress />
 
-        {/* ── Bismillah splash — full-screen, shown once per session ──── */}
-        <SplashScreen />
+          {/* ── Bismillah splash — full-screen, shown once per session ──── */}
+          <SplashScreen />
 
-        {/* ── Top header + bottom mobile tab bar ───────────────────────── */}
-        <Navigation />
+          {/* ── Top header + bottom mobile tab bar ───────────────────────── */}
+          <Navigation />
 
-        {/* ── Route page content ────────────────────────────────────────── */}
-        {/* pb-20 reserves space for the fixed bottom mobile nav bar        */}
-        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          {/* ── Route page content ────────────────────────────────────────── */}
+          {/* pb-20 reserves space for the fixed bottom mobile nav bar        */}
+          <main className="flex-1 pb-20 md:pb-0">{children}</main>
 
-        {/* ── Toast notifications ───────────────────────────────────────── */}
-        <Toaster
-          theme="dark"
-          toastOptions={{
-            style: {
-              background: "oklch(0.16 0.03 155)",
-              border: "1px solid oklch(1 0 0 / 8%)",
-              color: "oklch(0.95 0.01 90)",
-            },
-          }}
-        />
+          {/* ── Toast notifications ───────────────────────────────────────── */}
+          <Toaster
+            theme="dark"
+            toastOptions={{
+              style: {
+                background: "oklch(0.16 0.03 155)",
+                border: "1px solid oklch(1 0 0 / 8%)",
+                color: "oklch(0.95 0.01 90)",
+              },
+            }}
+          />
         </AuthProvider>
       </body>
     </html>

@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+import { BookOpen, Flame, Sparkles, Star, Trophy } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, Flame, Sparkles, Star, Trophy } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 const FEATURES = [
-  { icon: Flame,    text: "Track your reading streak across all devices" },
-  { icon: BookOpen, text: "Sync bookmarks, notes & reflections"           },
-  { icon: Trophy,   text: "Earn XP, badges & level up your knowledge"     },
-  { icon: Sparkles, text: "Unlock exclusive daily challenges"             },
-  { icon: Star,     text: "Your Quran journey, always with you"           },
+  { icon: Flame, text: "Track your reading streak across all devices" },
+  { icon: BookOpen, text: "Sync bookmarks, notes & reflections" },
+  { icon: Trophy, text: "Earn XP, badges & level up your knowledge" },
+  { icon: Sparkles, text: "Unlock exclusive daily challenges" },
+  { icon: Star, text: "Your Quran journey, always with you" },
 ];
 
 export default function SignInPage() {
@@ -33,13 +35,13 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8">
-
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="text-5xl mb-4">🕌</div>
           <h1 className="text-3xl font-bold text-gradient-gold">Welcome to Qalb</h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Sign in with your Quran Foundation account to unlock your full<br />
+            Sign in with your Quran Foundation account to unlock your full
+            <br />
             Quran journey — across every device, every session.
           </p>
         </div>
@@ -90,12 +92,13 @@ export default function SignInPage() {
             className="text-accent underline underline-offset-2 hover:text-accent/80"
           >
             Register at Quran.com
-          </a>
-          {" "}— then come back and sign in.
+          </a>{" "}
+          — then come back and sign in.
         </p>
 
         <p className="text-center text-xs text-muted-foreground/40">
-          Continue without signing in to use Qalb in guest mode.<br />
+          Continue without signing in to use Qalb in guest mode.
+          <br />
           Your progress will be saved locally on this device.
         </p>
         <div className="text-center">

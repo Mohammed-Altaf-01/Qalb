@@ -1,5 +1,8 @@
 import { act, render, screen } from "@testing-library/react";
+import { usePathname } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
+
+import Navigation from "../Navigation";
 
 // Mock next/navigation before importing Navigation
 vi.mock("next/navigation", () => ({
@@ -18,9 +21,6 @@ vi.mock("next-auth/react", () => ({
   useSession: vi.fn(() => ({ data: null, status: "unauthenticated" })),
   signIn: vi.fn(),
 }));
-
-import { usePathname } from "next/navigation";
-import Navigation from "../Navigation";
 
 describe("Navigation", () => {
   it("renders the Qalb logo text", async () => {

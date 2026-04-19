@@ -22,11 +22,11 @@ import Link from "next/link";
 import { toast } from "sonner";
 
 import { TRANSLATIONS } from "@/app/read/ReadClient";
-import { stripVerseEndMarker } from "@/lib/arabic-utils";
 import AudioPlayer from "@/components/AudioPlayer";
 import VerseChat from "@/components/VerseChat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { stripVerseEndMarker } from "@/lib/arabic-utils";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────

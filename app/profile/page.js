@@ -1,24 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+import { Award, BookOpen, Flame, LogIn, LogOut, Star, Target, Trophy, User, Zap } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {
-  Award,
-  BookOpen,
-  Flame,
-  LogIn,
-  LogOut,
-  Star,
-  Target,
-  Trophy,
-  User,
-  Zap,
-} from "lucide-react";
 
-import { useGamification } from "@/lib/useGamification";
-import { BADGES, getDailyChallenge, getLevelInfo, LEVELS } from "@/lib/gamification";
 import { Button } from "@/components/ui/button";
+import { BADGES, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
+import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +67,9 @@ function LevelLadder({ currentXp }) {
                   : "border-border/20 bg-card/20 opacity-40",
             )}
           >
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", l.bg, l.color)}>
+            <div
+              className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", l.bg, l.color)}
+            >
               {l.level}
             </div>
             <div className="flex-1">
@@ -87,7 +79,11 @@ function LevelLadder({ currentXp }) {
               </p>
               <p className="text-xs text-muted-foreground">{l.minXp} XP required</p>
             </div>
-            {isCurrent && <span className="text-xs font-medium text-accent px-2 py-0.5 rounded-full border border-accent/30 bg-accent/10">Current</span>}
+            {isCurrent && (
+              <span className="text-xs font-medium text-accent px-2 py-0.5 rounded-full border border-accent/30 bg-accent/10">
+                Current
+              </span>
+            )}
             {isUnlocked && !isCurrent && <span className="text-xs text-primary">✓</span>}
           </div>
         );
@@ -113,16 +109,12 @@ function BadgesGrid({ earned }) {
             key={badge.id}
             className={cn(
               "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-all",
-              isEarned
-                ? "border-accent/30 bg-accent/5"
-                : "border-border/20 bg-card/20 opacity-30 grayscale",
+              isEarned ? "border-accent/30 bg-accent/5" : "border-border/20 bg-card/20 opacity-30 grayscale",
             )}
           >
             <span className="text-2xl">{badge.icon}</span>
             <p className="text-[10px] font-medium leading-tight text-foreground/80">{badge.title}</p>
-            {isEarned && badge.xp > 0 && (
-              <span className="text-[9px] text-accent">+{badge.xp} XP</span>
-            )}
+            {isEarned && badge.xp > 0 && <span className="text-[9px] text-accent">+{badge.xp} XP</span>}
           </div>
         );
       })}
@@ -139,21 +131,23 @@ function DailyChallenge({ state }) {
   const completed = state?.challenge_completed;
 
   return (
-    <div className={cn(
-      "rounded-2xl border p-5 space-y-3",
-      completed ? "border-primary/30 bg-primary/5" : "border-accent/30 bg-accent/5",
-    )}>
+    <div
+      className={cn(
+        "rounded-2xl border p-5 space-y-3",
+        completed ? "border-primary/30 bg-primary/5" : "border-accent/30 bg-accent/5",
+      )}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target size={18} className={completed ? "text-primary" : "text-accent"} />
           <span className="font-semibold text-sm">Daily Challenge</span>
         </div>
-        <span className={cn(
-          "text-xs font-medium px-2 py-0.5 rounded-full border",
-          completed
-            ? "text-primary border-primary/30 bg-primary/10"
-            : "text-accent border-accent/30 bg-accent/10",
-        )}>
+        <span
+          className={cn(
+            "text-xs font-medium px-2 py-0.5 rounded-full border",
+            completed ? "text-primary border-primary/30 bg-primary/10" : "text-accent border-accent/30 bg-accent/10",
+          )}
+        >
           {completed ? "✓ Completed" : `+${challenge.xp} XP`}
         </span>
       </div>
@@ -190,10 +184,10 @@ export default function ProfilePage() {
   const [tab, setTab] = useState("overview");
 
   const TABS = [
-    { id: "overview",  label: "Overview"  },
-    { id: "levels",    label: "Levels"    },
-    { id: "badges",    label: "Badges"    },
-    { id: "activity",  label: "Activity"  },
+    { id: "overview", label: "Overview" },
+    { id: "levels", label: "Levels" },
+    { id: "badges", label: "Badges" },
+    { id: "activity", label: "Activity" },
   ];
 
   if (status === "loading" || !state) {
@@ -209,7 +203,6 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
-
       {/* ── Profile header ──────────────────────────────────────────── */}
       <div className="flex items-start gap-4">
         {/* Avatar */}
@@ -223,34 +216,28 @@ export default function ProfilePage() {
 
         {/* Name + level */}
         <div className="flex-1 min-w-0 space-y-1">
-          <h1 className="font-bold text-xl text-foreground truncate">
-            {session?.user?.name ?? "Guest Reader"}
-          </h1>
-          {session?.user?.email && (
-            <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
-          )}
-          <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border", levelInfo.current.bg, levelInfo.current.color, "border-current/20")}>
+          <h1 className="font-bold text-xl text-foreground truncate">{session?.user?.name ?? "Guest Reader"}</h1>
+          {session?.user?.email && <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>}
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border",
+              levelInfo.current.bg,
+              levelInfo.current.color,
+              "border-current/20",
+            )}
+          >
             {levelInfo.current.title}
           </span>
         </div>
 
         {/* Sign in / out */}
         {status === "authenticated" ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="shrink-0"
-          >
+          <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/" })} className="shrink-0">
             <LogOut size={14} className="mr-1.5" />
             Sign Out
           </Button>
         ) : (
-          <Button
-            size="sm"
-            onClick={() => signIn("quranfoundation")}
-            className="shrink-0"
-          >
+          <Button size="sm" onClick={() => signIn("quranfoundation")} className="shrink-0">
             <LogIn size={14} className="mr-1.5" />
             Sign In
           </Button>
@@ -262,8 +249,13 @@ export default function ProfilePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard icon={Zap}     label="Total XP"    value={state.xp}          color="text-accent"   />
-        <StatCard icon={Award}   label="Badges"      value={`${earnedBadges}/${Object.keys(BADGES).length}`} color="text-primary"  />
+        <StatCard icon={Zap} label="Total XP" value={state.xp} color="text-accent" />
+        <StatCard
+          icon={Award}
+          label="Badges"
+          value={`${earnedBadges}/${Object.keys(BADGES).length}`}
+          color="text-primary"
+        />
         <StatCard icon={BookOpen} label="Surahs Read" value={state.surahs_read?.length ?? 0} color="text-sky-400" />
       </div>
 
@@ -278,9 +270,7 @@ export default function ProfilePage() {
             onClick={() => setTab(t.id)}
             className={cn(
               "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-              tab === t.id
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+              tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {t.label}
@@ -293,13 +283,14 @@ export default function ProfilePage() {
         <div className="space-y-4">
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Recent XP</h2>
           {(state.actionLog ?? []).slice(0, 10).length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">
-              Start reading to earn XP!
-            </p>
+            <p className="text-muted-foreground text-sm text-center py-8">Start reading to earn XP!</p>
           ) : (
             <div className="space-y-2">
               {(state.actionLog ?? []).slice(0, 10).map((entry, i) => (
-                <div key={i} className="flex items-center justify-between py-2 px-4 rounded-xl bg-card/40 border border-border/30">
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2 px-4 rounded-xl bg-card/40 border border-border/30"
+                >
                   <span className="text-sm text-foreground/80">{entry.label}</span>
                   <span className="text-sm font-semibold text-accent">+{entry.xp} XP</span>
                 </div>
@@ -323,10 +314,10 @@ export default function ProfilePage() {
       {tab === "activity" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <StatCard icon={Star}    label="Reflections"  value={state.reflections_count ?? 0} color="text-violet-400" />
-            <StatCard icon={BookOpen} label="Notes Written" value={state.notes_count ?? 0}     color="text-emerald-400" />
-            <StatCard icon={Flame}   label="Discovers"    value={state.discovers_count ?? 0}  color="text-orange-400" />
-            <StatCard icon={Trophy}  label="Challenges"   value={state.challenge_date ? 1 : 0} color="text-accent"   />
+            <StatCard icon={Star} label="Reflections" value={state.reflections_count ?? 0} color="text-violet-400" />
+            <StatCard icon={BookOpen} label="Notes Written" value={state.notes_count ?? 0} color="text-emerald-400" />
+            <StatCard icon={Flame} label="Discovers" value={state.discovers_count ?? 0} color="text-orange-400" />
+            <StatCard icon={Trophy} label="Challenges" value={state.challenge_date ? 1 : 0} color="text-accent" />
           </div>
         </div>
       )}

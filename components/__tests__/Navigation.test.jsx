@@ -28,19 +28,14 @@ describe("Navigation", () => {
     expect(screen.getByText("Qalb")).toBeInTheDocument();
   });
 
-  it("renders the tagline", async () => {
-    await act(async () => render(<Navigation />));
-    expect(screen.getByText(/Your Daily Quran Companion/i)).toBeInTheDocument();
-  });
-
   it("renders all nav tab labels", async () => {
     await act(async () => render(<Navigation />));
-    expect(screen.getByText("Home")).toBeInTheDocument();
-    expect(screen.getByText("Read")).toBeInTheDocument();
-    expect(screen.getByText("Discover")).toBeInTheDocument();
-    expect(screen.getByText("Goals")).toBeInTheDocument();
-    expect(screen.getByText("Library")).toBeInTheDocument();
-    expect(screen.getByText("Profile")).toBeInTheDocument();
+    expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Discover").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Goals").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Library").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
   });
 
   it("marks the Home tab as current when pathname is /", async () => {

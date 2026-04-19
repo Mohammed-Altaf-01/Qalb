@@ -155,11 +155,31 @@ export default function Navigation() {
             <LiveClock />
           </div>
 
-          {/* Right: tagline + theme + user */}
+          {/* Desktop Nav Links (hidden on mobile) */}
+          <nav className="hidden md:flex items-center gap-0.5">
+            {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+              const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all duration-200",
+                    isActive
+                      ? "text-accent bg-accent/10 font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5",
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon size={15} strokeWidth={isActive ? 2.5 : 1.75} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right: theme + user */}
           <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-xs text-muted-foreground/70 italic tracking-wide">
-              Your Daily Quran Companion
-            </span>
             <ThemeToggle />
             <UserButton />
           </div>

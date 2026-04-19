@@ -338,16 +338,24 @@ html.light .tafsir-content h2 {
 }
 
 .bismillah-animate {
-  /* 'both' applies the 0% keyframe before the animation starts */
-  animation: bismillah-in 3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bismillah-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .bismillah-translation-animate {
-  animation: bismillah-translation-in 4s ease both;
+  animation: bismillah-translation-in 1.6s ease both;
 }
 
 .bismillah-date-animate {
-  animation: bismillah-date-in 4.5s ease both;
+  animation: bismillah-date-in 1.8s ease both;
+}
+
+/* Applied when session already saw the animation — instant reveal, no motion */
+.bismillah-no-animate,
+.bismillah-no-animate ~ * {
+  animation: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
 }
 
 /* Ring 1 — expands immediately */

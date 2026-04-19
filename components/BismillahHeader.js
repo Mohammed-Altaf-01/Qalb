@@ -18,7 +18,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const SESSION_KEY = "qalb_bismillah_shown";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -26,8 +28,16 @@ import { useState } from "react";
 
 export default function BismillahHeader() {
   const [hovered, setHovered] = useState(false);
-  /** Increment on each mouse-enter to force ring elements to remount. */
   const [ringKey, setRingKey] = useState(0);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    const seen = sessionStorage.getItem(SESSION_KEY);
+    if (!seen) {
+      setAnimate(true);
+      sessionStorage.setItem(SESSION_KEY, "1");
+    }
+  }, []);
 
   function handleEnter() {
     setHovered(true);
@@ -74,14 +84,14 @@ export default function BismillahHeader() {
           </div>
         )}
 
-        {/* Arabic Bismillah — materializes on load */}
-        <h1 className="arabic-text text-gradient-gold text-2xl md:text-3xl font-bold bismillah-animate relative z-10">
+        {/* Arabic Bismillah */}
+        <h1 className={`arabic-text text-gradient-gold text-2xl md:text-3xl font-bold relative z-10 ${animate ? "bismillah-animate" : ""}`}>
           بسم الله الرحمن الرحيم
         </h1>
       </div>
 
-      {/* English translation — fades in after the Arabic */}
-      <p className="text-[11px] text-muted-foreground/60 mt-2.5 tracking-widest uppercase bismillah-translation-animate">
+      {/* English translation */}
+      <p className={`text-[11px] text-muted-foreground/60 mt-2.5 tracking-widest uppercase ${animate ? "bismillah-translation-animate" : ""}`}>
         In the name of Allah, the Most Gracious, the Most Merciful
       </p>
     </div>

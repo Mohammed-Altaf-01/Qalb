@@ -23,15 +23,115 @@
 
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Sparkles, Volume2 } from "lucide-react";
+import { Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Loader2, Pause, Play, Sparkles, Volume2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
 import AudioPlayer from "@/components/AudioPlayer";
+import { filterVerseWords } from "@/lib/arabic-utils";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WordHighlightPlayer — inline mini player with word-by-word highlighting
+// Used when verse.words is available (e.g. Discover page)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function findActiveWord(currentMs, segments) {
+  if (!segments?.length) return -1;
+  for (const seg of segments) {
+    if (currentMs >= seg[2] && currentMs < seg[3]) return seg[1] - 1;
+  }
+  return -1;
+}
+
+function WordHighlightPlayer({ verseKey, words }) {
+  const audioRef = useRef(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [segments, setSegments] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeWordIdx, setActiveWordIdx] = useState(-1);
+  const [reciterId] = useState(() => {
+    if (typeof window === "undefined") return 7;
+    const saved = parseInt(localStorage.getItem("qalb_reciter_id") ?? "0", 10);
+    return [1, 2, 3, 6, 7, 10].includes(saved) ? saved : 7;
+  });
+
+  async function handlePlay() {
+    if (isLoading) return;
+    if (!audioUrl) {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}&segments=true`);
+        if (!res.ok) throw new Error("audio failed");
+        const data = await res.json();
+        setAudioUrl(data.audioUrl);
+        setSegments(data.segments ?? null);
+        audioRef.current.src = data.audioUrl;
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch {
+        toast.error("Audio unavailable for this verse");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Word-by-word Arabic */}
+      <p className="arabic-text text-foreground/90 leading-loose" lang="ar" dir="rtl">
+        {words.map((word, i) => (
+          <span
+            key={i}
+            className={cn(
+              "inline px-0.5 mx-0.5 rounded transition-all duration-100",
+              activeWordIdx === (word.position ?? i + 1) - 1
+                ? "bg-accent/30 text-accent"
+                : "hover:text-accent/80",
+            )}
+          >
+            {word.text_uthmani}
+          </span>
+        ))}
+      </p>
+      {/* Mini play button */}
+      <button
+        onClick={handlePlay}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
+      >
+        {isLoading ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : isPlaying ? (
+          <Pause size={13} />
+        ) : (
+          <Play size={13} />
+        )}
+        <span>{isPlaying ? "Pause" : "Play recitation"}</span>
+      </button>
+      <audio
+        ref={audioRef}
+        onTimeUpdate={() => {
+          if (!audioRef.current || !segments) return;
+          setActiveWordIdx(findActiveWord(audioRef.current.currentTime * 1000, segments));
+        }}
+        onEnded={() => { setIsPlaying(false); setActiveWordIdx(-1); }}
+      />
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -76,6 +176,7 @@ export default function VerseCard({
   const arabicText = verse?.text_uthmani ?? "";
   const translation = verse?.translations?.[0]?.text ?? "";
   const verseNumber = verse?.verse_number ?? "";
+  const words = filterVerseWords(verse?.words);
 
   // Strip HTML tags that sometimes come from the API's translation field
   const cleanTranslation = translation.replace(/<[^>]*>/g, "");
@@ -183,18 +284,22 @@ export default function VerseCard({
         </div>
       </div>
 
-      {/* ── Arabic Text ────────────────────────────────────────────────── */}
+      {/* ── Arabic Text + Word Highlight Player ───────────────────────── */}
       <div className="px-4 py-3">
-        <p className="arabic-text text-foreground/90 mb-3" lang="ar" dir="rtl">
-          {arabicText}
-        </p>
+        {showAudio && words.length > 0 ? (
+          <WordHighlightPlayer verseKey={verseKey} words={words} />
+        ) : (
+          <p className="arabic-text text-foreground/90 mb-3" lang="ar" dir="rtl">
+            {arabicText}
+          </p>
+        )}
 
         {/* ── English Translation ──────────────────────────────────────── */}
-        <p className="text-sm leading-relaxed text-foreground/75">{cleanTranslation}</p>
+        <p className="text-sm leading-relaxed text-foreground/75 mt-3">{cleanTranslation}</p>
       </div>
 
-      {/* ── Audio Player (conditionally shown) ────────────────────────── */}
-      {showAudio && verseKey && (
+      {/* ── Audio Player fallback (no words available) ────────────────── */}
+      {showAudio && verseKey && words.length === 0 && (
         <div className="px-4 pb-3">
           <AudioPlayer verseKey={verseKey} />
         </div>
@@ -210,7 +315,7 @@ export default function VerseCard({
         </div>
       )}
 
-      {/* ── Tafsir Snippet (expandable) ───────────────────────────────── */}
+      {/* ── Tafsir Snippet (expandable with Read more link) ───────────── */}
       {tafsirText && (
         <div className="border-t border-border/40 px-4 py-2">
           <button
@@ -223,10 +328,17 @@ export default function VerseCard({
           </button>
 
           {tafsirExpanded && (
-            <p className="mt-2 text-xs leading-relaxed text-foreground/70 line-clamp-6">
-              {/* Strip HTML from tafsir API response */}
-              {tafsirText.replace(/<[^>]*>/g, " ").trim()}
-            </p>
+            <div className="mt-2">
+              <p className="text-xs leading-relaxed text-foreground/70 line-clamp-6">
+                {tafsirText.replace(/<[^>]*>/g, " ").trim()}
+              </p>
+              <Link
+                href={`/verse/${verseKey}?tab=tafsir`}
+                className="mt-1.5 inline-block text-[11px] text-accent hover:underline"
+              >
+                Read full tafsir →
+              </Link>
+            </div>
           )}
         </div>
       )}

@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,29 @@ const DEFAULT_TRANSLATION_ID = 20;
 const BATCH_SIZE = 20;
 const LS_KEY = "qalb_reading_progress";
 
+// Juz start positions — key: "surahId:verseNum" → juz number
+const JUZ_STARTS = new Map([
+  ["1:1",1],["2:142",2],["2:253",3],["3:93",4],["4:24",5],["4:148",6],["5:83",7],
+  ["6:111",8],["7:88",9],["8:41",10],["9:93",11],["11:6",12],["12:53",13],
+  ["15:1",14],["17:1",15],["18:75",16],["21:1",17],["23:1",18],["25:21",19],
+  ["27:56",20],["29:46",21],["33:31",22],["36:28",23],["39:32",24],["41:47",25],
+  ["46:1",26],["51:31",27],["58:1",28],["67:1",29],["78:1",30],
+]);
+
+// Hizb start positions — key: "surahId:verseNum" → hizb number
+const HIZB_STARTS = new Map([
+  ["1:1",1],["2:75",2],["2:142",3],["2:204",4],["2:253",5],["3:15",6],
+  ["3:93",7],["3:171",8],["4:24",9],["4:88",10],["4:148",11],["5:1",12],
+  ["5:83",13],["6:1",14],["6:111",15],["7:1",16],["7:88",17],["7:171",18],
+  ["8:41",19],["9:33",20],["9:93",21],["10:26",22],["11:6",23],["11:84",24],
+  ["12:53",25],["13:18",26],["15:1",27],["16:50",28],["17:1",29],["17:99",30],
+  ["18:75",31],["19:58",32],["21:1",33],["22:1",34],["23:1",35],["24:21",36],
+  ["25:21",37],["26:111",38],["27:56",39],["28:51",40],["29:46",41],["31:22",42],
+  ["33:31",43],["34:24",44],["36:28",45],["37:145",46],["39:32",47],["40:41",48],
+  ["41:47",49],["43:24",50],["46:1",51],["48:17",52],["51:31",53],["54:1",54],
+  ["58:1",55],["61:1",56],["67:1",57],["71:1",58],["78:1",59],["91:1",60],
+]);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VersePlayer — word-by-word audio with highlighting
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +94,7 @@ function findActiveWord(currentMs, segments) {
   return -1;
 }
 
-function VersePlayer({ verse, reciterId, playingKey, setPlayingKey }) {
+function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighted }) {
   const verseKey = verse.verse_key ?? "";
   const words = filterVerseWords(verse.words);
   const arabic = stripVerseEndMarker(verse.text_uthmani ?? "");
@@ -146,8 +170,38 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey }) {
     setActiveWordIdx(-1);
   }, [setPlayingKey]);
 
+  const juzNum = JUZ_STARTS.get(verseKey);
+  const hizbNum = HIZB_STARTS.get(verseKey);
+  const hasMarker = juzNum != null || hizbNum != null;
+
   return (
-    <div id={`verse-${verseKey}`} className="py-7 border-b border-border/20 last:border-0 group/verse">
+    <div
+      id={`verse-${verseKey}`}
+      className={cn(
+        "py-7 border-b border-border/20 last:border-0 group/verse transition-colors duration-700",
+        isHighlighted && "bg-accent/5 rounded-2xl border border-accent/20",
+      )}
+    >
+      {/* Juz / Hizb start marker */}
+      {hasMarker && (
+        <div className="flex items-center gap-2 mb-4 px-2">
+          <div className="flex-1 h-px bg-accent/20" />
+          <div className="flex items-center gap-1.5">
+            {juzNum != null && (
+              <span className="text-[10px] font-semibold text-accent bg-accent/12 border border-accent/25 rounded-full px-2.5 py-0.5">
+                Juz {juzNum}
+              </span>
+            )}
+            {hizbNum != null && (
+              <span className="text-[10px] font-semibold text-accent/70 bg-accent/8 border border-accent/15 rounded-full px-2.5 py-0.5">
+                Hizb {hizbNum}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 h-px bg-accent/20" />
+        </div>
+      )}
+
       {/* Verse number badge */}
       <div className="flex justify-center mb-5">
         <span className="text-[10px] text-accent/60 bg-accent/8 border border-accent/15 rounded-full px-3 py-0.5 font-medium">
@@ -329,6 +383,8 @@ function SummaryPanel({ verses, surahName, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReadClient({ chapters, initialSurahId, initialStartVerse = 1 }) {
+  const router = useRouter();
+
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState("picker");
 
@@ -357,6 +413,9 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const [playingKey, setPlayingKey] = useState(null);
+
+  // ── Highlight ────────────────────────────────────────────────────────────
+  const [highlightVerseKey, setHighlightVerseKey] = useState(null);
 
   // ── Summary ──────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
@@ -445,7 +504,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             translationIdRef.current = saved.translationId;
             setTranslationId(saved.translationId);
           }
-          startReading(chapter);
+          startReading(chapter, saved.verseNum ?? 1);
         }
       }
     } catch {
@@ -454,22 +513,82 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapters, initialSurahId]);
 
-  // ── Save progress ─────────────────────────────────────────────────────────
+  // ── Save progress + track last-read verse while scrolling ────────────────
   useEffect(() => {
     if (!selectedChapter) return;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({ surahId: selectedChapter.id, translationId }));
-    } catch {
-      /* quota exceeded */
-    }
+    } catch { /* quota exceeded */ }
   }, [selectedChapter, translationId]);
 
-  // ── Scroll to target verse after initial batch loads ─────────────────────
+  useEffect(() => {
+    if (view !== "reading" || !selectedChapter) return;
+
+    const lastSeenRef = { current: null };
+
+    function updateLastRead() {
+      const verseEls = document.querySelectorAll('[id^="verse-"]');
+      if (!verseEls.length) return;
+
+      const viewportMid = window.scrollY + window.innerHeight / 2;
+      let closest = null;
+      let closestDist = Infinity;
+
+      for (const el of verseEls) {
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        const dist = Math.abs(top + el.offsetHeight / 2 - viewportMid);
+        if (dist < closestDist) { closestDist = dist; closest = el; }
+      }
+
+      if (!closest) return;
+      const verseKey = closest.id.replace("verse-", "");
+      if (verseKey === lastSeenRef.current) return;
+      lastSeenRef.current = verseKey;
+
+      const verseNum = parseInt(verseKey.split(":")[1], 10);
+      if (!verseNum) return;
+
+      // Persist last-read verse so the picker can restore it
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          surahId: selectedChapter.id,
+          verseNum,
+          translationId,
+        }));
+      } catch { /* ignore */ }
+
+      // Update qalb_last_reads so "Continue Reading" resumes from here
+      try {
+        const reads = JSON.parse(localStorage.getItem("qalb_last_reads") ?? "[]");
+        const newHref = `/read?surah=${selectedChapter.id}&startVerse=${verseNum}`;
+        const updated = reads.map((r) =>
+          r.href.includes(`surah=${selectedChapter.id}`)
+            ? { ...r, href: newHref, timestamp: Date.now() }
+            : r,
+        );
+        localStorage.setItem("qalb_last_reads", JSON.stringify(updated));
+      } catch { /* ignore */ }
+    }
+
+    let timer;
+    function onScroll() {
+      clearTimeout(timer);
+      timer = setTimeout(updateLastRead, 250);
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { clearTimeout(timer); window.removeEventListener("scroll", onScroll); };
+  }, [view, selectedChapter, translationId]);
+
+  // ── Scroll to target verse (centered) + brief highlight ──────────────────
   useEffect(() => {
     if (!targetVerseRef.current || verses.length === 0) return;
-    const el = document.getElementById(`verse-${targetVerseRef.current}`);
+    const key = targetVerseRef.current;
+    const el = document.getElementById(`verse-${key}`);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightVerseKey(key);
+      setTimeout(() => setHighlightVerseKey(null), 2500);
       targetVerseRef.current = null;
     }
   }, [verses]);
@@ -598,15 +717,16 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   // ── Render: Reading View ──────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 py-6">
-      {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6 gap-3">
+      {/* ── Top bar — sticky below global nav ───────────────────────────── */}
+      <div className="sticky top-14 z-30 -mx-4 md:-mx-8 px-4 md:px-8 mb-6
+        bg-background/90 backdrop-blur-md border-b border-border/30 py-3 flex items-center justify-between gap-3">
         {/* Back button */}
         <button
-          onClick={() => setView("picker")}
+          onClick={() => router.back()}
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           <ChevronLeft size={14} />
-          Surahs
+          Back
         </button>
 
         {/* Title */}
@@ -701,6 +821,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
               reciterId={reciterId}
               playingKey={playingKey}
               setPlayingKey={setPlayingKey}
+              isHighlighted={highlightVerseKey === verse.verse_key}
             />
           ))
         )}

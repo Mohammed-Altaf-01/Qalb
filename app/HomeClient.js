@@ -1,11 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { BookOpen, ChevronRight, Search, X } from "lucide-react";
+import { BookOpen, ChevronRight, Clock, Search, X } from "lucide-react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
+
+const LS_LAST_READS = "qalb_last_reads";
+
+function saveLastRead(entry) {
+  try {
+    const existing = JSON.parse(localStorage.getItem(LS_LAST_READS) ?? "[]");
+    const filtered = existing.filter((r) => r.href !== entry.href);
+    const updated = [{ ...entry, timestamp: Date.now() }, ...filtered].slice(0, 3);
+    localStorage.setItem(LS_LAST_READS, JSON.stringify(updated));
+  } catch {
+    /* ignore */
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Static Data — Juz 1–30
@@ -219,9 +232,11 @@ const HIZB_DATA = [
 
 /** Single surah row (quran.com style) */
 function SurahRow({ chapter }) {
+  const href = `/read?surah=${chapter.id}`;
   return (
     <Link
-      href={`/read?surah=${chapter.id}`}
+      href={href}
+      onClick={() => saveLastRead({ href, label: chapter.name_simple, sub: chapter.translated_name?.name ?? "", type: "surah" })}
       className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 rounded-xl border border-transparent
         hover:bg-card hover:border-border/40 transition-all duration-150 group"
     >
@@ -262,9 +277,11 @@ function SurahRow({ chapter }) {
 
 /** Juz card */
 function JuzCard({ juz }) {
+  const href = `/read?surah=${juz.startSurah}&startVerse=${juz.startVerse}`;
   return (
     <Link
-      href={`/read?surah=${juz.startSurah}&startVerse=${juz.startVerse}`}
+      href={href}
+      onClick={() => saveLastRead({ href, label: `Juz ${juz.number}`, sub: juz.name, type: "juz" })}
       className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/30 bg-card
         hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
     >
@@ -290,9 +307,11 @@ function JuzCard({ juz }) {
 
 /** Hizb card */
 function HizbCard({ hizb }) {
+  const href = `/read?surah=${hizb.startSurah}&startVerse=${hizb.startVerse}`;
   return (
     <Link
-      href={`/read?surah=${hizb.startSurah}&startVerse=${hizb.startVerse}`}
+      href={href}
+      onClick={() => saveLastRead({ href, label: `Hizb ${hizb.number}`, sub: `Juz ${hizb.juzNum}`, type: "hizb" })}
       className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border/30 bg-card
         hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
     >
@@ -313,6 +332,16 @@ function HizbCard({ hizb }) {
 export default function HomeClient({ chapters }) {
   const [activeTab, setActiveTab] = useState("surah");
   const [search, setSearch] = useState("");
+  const [lastReads, setLastReads] = useState([]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_LAST_READS) ?? "[]");
+      setLastReads(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -334,6 +363,35 @@ export default function HomeClient({ chapters }) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 pb-24 md:pb-8">
+      {/* ── Continue Reading ───────────────────────────────────────────────── */}
+      {lastReads.length > 0 && (
+        <div className="mb-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock size={13} className="text-accent/70" />
+            <span className="text-xs font-medium text-muted-foreground">Continue Reading</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {lastReads.map((r) => (
+              <Link
+                key={r.href}
+                href={r.href}
+                onClick={() => saveLastRead(r)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card
+                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
+              >
+                <BookOpen size={13} className="text-accent/60 group-hover:text-accent transition-colors" />
+                <div>
+                  <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors leading-none">
+                    {r.label}
+                  </p>
+                  {r.sub && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{r.sub}</p>}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Search bar ─────────────────────────────────────────────────────── */}
       <div className="relative mb-5">
         <Search

@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
+import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,7 +288,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
       {/* Arabic — word-by-word spans if available, plain text fallback */}
       <div className="text-center mb-5 px-2 overflow-hidden">
         {words.length > 0 ? (
-          <p className="arabic-text text-foreground/90 leading-loose" lang="ar" dir="rtl">
+          <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
             {words.map((word, i) => (
               <span
                 key={word.id ?? i}
@@ -304,7 +305,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
             ))}
           </p>
         ) : (
-          <p className="arabic-text text-foreground/90 leading-loose" lang="ar" dir="rtl">
+          <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
             {arabic}
           </p>
         )}
@@ -312,7 +313,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
 
       {/* Translation */}
       {translation && (
-        <p className="text-sm leading-relaxed text-foreground/65 text-center max-w-2xl mx-auto px-4 mb-4">
+        <p className="text-sm md:text-base leading-relaxed text-foreground/65 text-center max-w-2xl mx-auto px-4 mb-4">
           {translation}
         </p>
       )}
@@ -459,6 +460,7 @@ function SummaryPanel({ verses, surahName, onClose }) {
 
 export default function ReadClient({ chapters, initialSurahId, initialStartVerse = 1 }) {
   const router = useRouter();
+  const { award } = useGamification();
 
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState("picker");
@@ -500,6 +502,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
   // ── Target verse to scroll to after initial load ─────────────────────────
   const targetVerseRef = useRef(null);
+  const lastAwardedReadRef = useRef(null);
 
   // ── Load more verses ──────────────────────────────────────────────────────
   const loadMore = useCallback(async () => {
@@ -699,6 +702,12 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     setPlayingKey(null);
     setShowSummary(false);
     setView("reading");
+
+    const awardKey = `${chapter.id}:${new Date().toISOString().split("T")[0]}`;
+    if (lastAwardedReadRef.current !== awardKey) {
+      award("read_verse_page", { surahNumber: chapter.id });
+      lastAwardedReadRef.current = awardKey;
+    }
 
     // Load first batch immediately (bypasses the observer on first render)
     loadMore();

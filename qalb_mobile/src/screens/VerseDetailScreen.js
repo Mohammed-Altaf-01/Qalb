@@ -27,13 +27,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { CONFIG, isVercelConfigured } from '../config';
 import { aiService } from '../lib/claude';
+import { getTextSizePreset } from '../lib/text-settings';
+import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
 import AudioPlayer from '../components/AudioPlayer';
 import VerseChat from '../components/VerseChat';
-import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
+import WordByWordArabic from '../components/WordByWordArabic';
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
 
 const TABS = ['Overview', 'Tafsir', 'Reflect', 'Chat'];
 
@@ -64,8 +68,9 @@ function stripHtml(html = '') {
 }
 
 // ── Tab: Overview ─────────────────────────────────────────────────────────────
-function OverviewTab({ verse, chapterName, onTranslationChange, translationId }) {
+function OverviewTab({ verse, chapterName, onTranslationChange, translationId, textPreset }) {
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
+  const [playback, setPlayback] = useState({ playing: false, progress: 0 });
   const arabicText = verse?.text_uthmani ?? '';
   const translation = verse?.translations?.[0]?.text
     ? stripHtml(verse.translations[0].text)
@@ -81,7 +86,18 @@ function OverviewTab({ verse, chapterName, onTranslationChange, translationId })
     >
       {/* Arabic */}
       <View style={styles.arabicCard}>
-        <Text style={styles.arabic}>{arabicText}</Text>
+        <WordByWordArabic
+          text={arabicText}
+          isPlaying={playback.playing}
+          progress={playback.progress}
+          textStyle={[
+            styles.arabic,
+            {
+              fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay * textPreset.arabic,
+              lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay * textPreset.arabic,
+            },
+          ]}
+        />
       </View>
 
       {/* Translation header */}
@@ -120,13 +136,20 @@ function OverviewTab({ verse, chapterName, onTranslationChange, translationId })
 
       {/* Translation text */}
       <View style={styles.translationCard}>
-        <Text style={styles.translationText}>{translation}</Text>
+        <Text
+          style={[
+            styles.translationText,
+            { fontSize: FONT_SIZE.md * textPreset.body, lineHeight: 26 * textPreset.body },
+          ]}
+        >
+          {translation}
+        </Text>
       </View>
 
       {/* Audio player */}
       {verse?.verse_key && (
         <View style={styles.audioWrapper}>
-          <AudioPlayer verseKey={verse.verse_key} />
+          <AudioPlayer verseKey={verse.verse_key} onPlaybackStatusChange={setPlayback} />
         </View>
       )}
     </ScrollView>
@@ -226,6 +249,7 @@ function TafsirTab({ verseKey }) {
 
 // ── Tab: Reflect ──────────────────────────────────────────────────────────────
 function ReflectTab({ verse, tafsirSnippet, verseKey }) {
+  const { award } = useGamification();
   const [questions, setQuestions] = useState([]);
   const [generatingQ, setGeneratingQ] = useState(false);
   const [note, setNote] = useState('');
@@ -267,6 +291,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
       setQuestions(q);
       const allQ = (await storage.get(STORAGE_KEYS.REFLECTIONS)) ?? {};
       await storage.set(STORAGE_KEYS.REFLECTIONS, { ...allQ, [verseKey]: q });
+      award('generate_reflection');
     } catch {
       Alert.alert('Error', 'Could not generate questions. Please try again.');
     } finally {
@@ -284,6 +309,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
         ...allNotes,
         [verseKey]: { text, savedAt: Date.now() },
       });
+      award('save_note');
       setNoteSaved(true);
     }, 800);
   }, [verseKey]);
@@ -364,6 +390,7 @@ export default function VerseDetailScreen({ route, navigation }) {
   const [translationId, setTranslationId] = useState(CONFIG.DEFAULT_TRANSLATION_ID);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [tafsirSnippet, setTafsirSnippet] = useState('');
+  const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
 
   useEffect(() => {
     loadVerse();
@@ -375,6 +402,12 @@ export default function VerseDetailScreen({ route, navigation }) {
       reloadTranslation();
     }
   }, [translationId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      getTextSizePreset().then((p) => setTextPreset({ arabic: p.arabic, body: p.body }));
+    }, []),
+  );
 
   const loadVerse = async () => {
     setLoading(true);
@@ -482,6 +515,7 @@ export default function VerseDetailScreen({ route, navigation }) {
             chapterName={chapterName}
             translationId={translationId}
             onTranslationChange={setTranslationId}
+            textPreset={textPreset}
           />
         )}
 
@@ -566,10 +600,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   arabic: {
-    fontSize: FONT_SIZE.arabicLg ?? 36,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay,
     color: COLORS.text,
     textAlign: 'right',
-    lineHeight: 58,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay,
     writingDirection: 'rtl',
     width: '100%',
   },

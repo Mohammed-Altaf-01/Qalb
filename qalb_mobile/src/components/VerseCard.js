@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
+import { getTextSizePreset } from '../lib/text-settings';
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
 
 /**
  * Reusable verse display card.
@@ -24,11 +26,16 @@ export default function VerseCard({
   theme,
   compact = false,
 }) {
+  const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
   const arabicText = verse?.text_uthmani ?? '';
   const translation =
     verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, '').trim() ?? '';
   const verseKey = verse?.verse_key ?? '';
   const verseNum = verse?.verse_number ?? '';
+
+  useEffect(() => {
+    getTextSizePreset().then((p) => setTextPreset({ arabic: p.arabic, body: p.body }));
+  }, []);
 
   return (
     <TouchableOpacity
@@ -61,7 +68,18 @@ export default function VerseCard({
 
       {/* Arabic text */}
       {arabicText ? (
-        <Text style={[styles.arabic, compact && styles.arabicCompact]}>{arabicText}</Text>
+        <Text
+          style={[
+            styles.arabic,
+            compact && styles.arabicCompact,
+            {
+              fontSize: (compact ? ARABIC_TYPOGRAPHY.fontSizeCompact : ARABIC_TYPOGRAPHY.fontSizeBody) * textPreset.arabic,
+              lineHeight: (compact ? ARABIC_TYPOGRAPHY.lineHeightCompact : ARABIC_TYPOGRAPHY.lineHeightBody) * textPreset.arabic,
+            },
+          ]}
+        >
+          {arabicText}
+        </Text>
       ) : null}
 
       {/* Divider */}
@@ -69,7 +87,17 @@ export default function VerseCard({
 
       {/* Translation */}
       {translation ? (
-        <Text style={[styles.translation, compact && styles.translationCompact]} numberOfLines={compact ? 3 : 6}>
+        <Text
+          style={[
+            styles.translation,
+            compact && styles.translationCompact,
+            {
+              fontSize: (compact ? FONT_SIZE.xs + 1 : FONT_SIZE.sm) * textPreset.body,
+              lineHeight: (compact ? 18 : 22) * textPreset.body,
+            },
+          ]}
+          numberOfLines={compact ? 3 : 6}
+        >
           {translation}
         </Text>
       ) : null}
@@ -139,16 +167,12 @@ const styles = StyleSheet.create({
   },
   arabic: {
     fontFamily: undefined, // system Arabic font (Geeza Pro on iOS, Noto Naskh on Android)
-    fontSize: FONT_SIZE.arabic,
     color: COLORS.text,
     textAlign: 'right',
-    lineHeight: 50,
     marginBottom: SPACING.sm,
     writingDirection: 'rtl',
   },
   arabicCompact: {
-    fontSize: FONT_SIZE.lg + 2,
-    lineHeight: 38,
   },
   divider: {
     height: 1,
@@ -157,12 +181,8 @@ const styles = StyleSheet.create({
   },
   translation: {
     color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 22,
   },
   translationCompact: {
-    fontSize: FONT_SIZE.xs + 1,
-    lineHeight: 18,
   },
   explanationBox: {
     marginTop: SPACING.sm,

@@ -31,8 +31,8 @@ export default async function HomePage() {
   const chapters = await fetchChapters();
 
   return (
-    <div>
-      <div className="mx-auto max-w-3xl px-4 md:px-8 pt-6">
+    <div className="pb-4">
+      <div className="mx-auto max-w-5xl px-4 md:px-8 pt-5">
         <BismillahHeader />
         {/* Rotating ayah / hadith — desktop only, cycles every 5s */}
         <RotatingVerse />

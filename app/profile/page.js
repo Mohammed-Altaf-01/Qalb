@@ -7,7 +7,8 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { BADGES, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
+import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
+import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +123,31 @@ function BadgesGrid({ earned }) {
   );
 }
 
+function DeedsGrid({ earned }) {
+  const allDeeds = Object.values(DEEDS);
+  const earnedSet = new Set(earned ?? []);
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {allDeeds.map((deed) => {
+        const isEarned = earnedSet.has(deed.id);
+        return (
+          <div
+            key={deed.id}
+            className={cn(
+              "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-all",
+              isEarned ? "border-primary/30 bg-primary/5" : "border-border/20 bg-card/20 opacity-35 grayscale",
+            )}
+          >
+            <span className="text-2xl">{deed.icon}</span>
+            <p className="text-[10px] font-medium leading-tight text-foreground/80">{deed.title}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Daily Challenge card
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,6 +213,7 @@ export default function ProfilePage() {
     { id: "overview", label: "Overview" },
     { id: "levels", label: "Levels" },
     { id: "badges", label: "Badges" },
+    { id: "deeds", label: "Deeds" },
     { id: "activity", label: "Activity" },
   ];
 
@@ -237,7 +264,7 @@ export default function ProfilePage() {
             Sign Out
           </Button>
         ) : (
-          <Button size="sm" onClick={() => signIn("quranfoundation")} className="shrink-0">
+          <Button size="sm" onClick={() => signIn(QURAN_FOUNDATION_PROVIDER_ID)} className="shrink-0">
             <LogIn size={14} className="mr-1.5" />
             Sign In
           </Button>
@@ -257,6 +284,10 @@ export default function ProfilePage() {
           color="text-primary"
         />
         <StatCard icon={BookOpen} label="Surahs Read" value={state.surahs_read?.length ?? 0} color="text-sky-400" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard icon={Flame} label="Deeds Earned" value={(state.deeds ?? []).length} color="text-primary" />
+        <StatCard icon={Target} label="Minutes Spent" value={state.total_minutes_spent ?? 0} color="text-accent" />
       </div>
 
       {/* Daily challenge */}
@@ -311,6 +342,15 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {tab === "deeds" && (
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            {(state.deeds ?? []).length} of {Object.keys(DEEDS).length} deeds earned
+          </p>
+          <DeedsGrid earned={state.deeds} />
+        </div>
+      )}
+
       {tab === "activity" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -328,7 +368,7 @@ export default function ProfilePage() {
           <p className="text-sm text-foreground/80">
             Sign in to sync your progress across devices and never lose your Quran journey.
           </p>
-          <Button onClick={() => signIn("quranfoundation")} className="w-full">
+          <Button onClick={() => signIn(QURAN_FOUNDATION_PROVIDER_ID)} className="w-full">
             Sign in with Quran Foundation
           </Button>
         </div>

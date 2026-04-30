@@ -21,12 +21,17 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Markdown from 'react-native-markdown-display';
 import { CONFIG, isVercelConfigured } from '../config';
 import { aiService } from '../lib/claude';
+import { getTextSizePreset } from '../lib/text-settings';
+import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import AudioPlayer from '../components/AudioPlayer';
+import WordByWordArabic from '../components/WordByWordArabic';
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
 
 const TRANSLATIONS = [
   { id: 20, name: 'Saheeh International', lang: 'EN' },
@@ -36,6 +41,15 @@ const TRANSLATIONS = [
   { id: 162, name: 'Turkish Diyanet', lang: 'TR' },
   { id: 31, name: 'French Hamidullah', lang: 'FR' },
 ];
+
+function stripHtml(text = '') {
+  return text
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+}
 
 // ── Surah picker ──────────────────────────────────────────────────────────────
 
@@ -114,7 +128,8 @@ function SurahGrid({ chapters, onSelect, searchQuery, onSearch, onBack, hasProgr
 
 // ── Verse reader ──────────────────────────────────────────────────────────────
 
-function VerseReader({ chapter, onBack, navigation }) {
+function VerseReader({ chapter, onBack, navigation, textPreset }) {
+  const { award } = useGamification();
   const [verses, setVerses] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
@@ -124,6 +139,15 @@ function VerseReader({ chapter, onBack, navigation }) {
   const [summary, setSummary] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [priorSummary, setPriorSummary] = useState('');
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [activePlayback, setActivePlayback] = useState({ verseKey: null, playing: false, progress: 0 });
+  const [autoPlayTarget, setAutoPlayTarget] = useState({ verseKey: null, token: 0 });
+
+  useEffect(() => {
+    storage.get(STORAGE_KEYS.READING_PROGRESS).then((progress) => {
+      if (progress?.translationId) setTranslationId(progress.translationId);
+    });
+  }, []);
 
   useEffect(() => {
     loadVerses();
@@ -137,7 +161,19 @@ function VerseReader({ chapter, onBack, navigation }) {
         page,
         perPage: CONFIG.VERSES_PER_PAGE,
       });
-      setVerses(data.verses ?? []);
+      const baseVerses = data.verses ?? [];
+      const enrichedVerses = await Promise.all(
+        baseVerses.map(async (verse) => {
+          if ((verse?.translations?.length ?? 0) > 0) return verse;
+          try {
+            const fallback = await QuranRepository.getVerseByKey(verse.verse_key, { translationId });
+            return { ...verse, translations: fallback?.verse?.translations ?? [] };
+          } catch {
+            return verse;
+          }
+        }),
+      );
+      setVerses(enrichedVerses);
       setPagination(data.pagination ?? null);
 
       // Save reading progress
@@ -148,6 +184,20 @@ function VerseReader({ chapter, onBack, navigation }) {
         translationId,
         lastRead: Date.now(),
       });
+      const history = (await storage.get(STORAGE_KEYS.READING_HISTORY)) ?? [];
+      const nextHistory = [
+        { chapterId: chapter.id, surahName: chapter.name_simple, chapterArabic: chapter.name_arabic, at: Date.now() },
+        ...history.filter((h) => h.chapterId !== chapter.id),
+      ].slice(0, 5);
+      await storage.set(STORAGE_KEYS.READING_HISTORY, nextHistory);
+      const todayKey = new Date().toISOString().split('T')[0];
+      const readTrack = (await storage.get('qalb_read_tracking')) ?? {};
+      const readId = `${chapter.id}:${todayKey}`;
+      if (!readTrack[readId]) {
+        readTrack[readId] = true;
+        await storage.set('qalb_read_tracking', readTrack);
+        award('read_verse_page');
+      }
     } catch {
     } finally {
       setLoading(false);
@@ -163,7 +213,7 @@ function VerseReader({ chapter, onBack, navigation }) {
     try {
       const versesText = verses
         .map((v) => {
-          const t = v.translations?.[0]?.text?.replace(/<[^>]*>/g, '').trim() ?? '';
+          const t = stripHtml(v.translations?.[0]?.text ?? '');
           return `[${v.verse_key}] ${t}`;
         })
         .join('\n');
@@ -230,7 +280,17 @@ function VerseReader({ chapter, onBack, navigation }) {
 
       {/* Basmala */}
       {chapter.id !== 1 && chapter.id !== 9 && page === 1 && (
-        <Text style={styles.basmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+        <Text
+          style={[
+            styles.basmala,
+            {
+              fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact * textPreset.arabic,
+              lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact * textPreset.arabic,
+            },
+          ]}
+        >
+          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+        </Text>
       )}
 
       {/* Verses */}
@@ -238,7 +298,7 @@ function VerseReader({ chapter, onBack, navigation }) {
         <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: SPACING.xl }} />
       ) : (
         verses.map((v) => {
-          const translation = v.translations?.[0]?.text?.replace(/<[^>]*>/g, '').trim() ?? '';
+          const translation = stripHtml(v.translations?.[0]?.text ?? '');
           return (
             <TouchableOpacity
               key={v.verse_key}
@@ -255,8 +315,80 @@ function VerseReader({ chapter, onBack, navigation }) {
                 </View>
                 <Text style={styles.verseKeyLabel}>{v.verse_key}</Text>
               </View>
-              <Text style={styles.verseArabic}>{v.text_uthmani}</Text>
-              <Text style={styles.verseTranslation}>{translation}</Text>
+              {!highlightEnabled ? (
+                <Text
+                  style={[
+                    styles.verseArabic,
+                    {
+                      fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay * textPreset.arabic,
+                      lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay * textPreset.arabic,
+                    },
+                  ]}
+                >
+                  {v.text_uthmani}
+                </Text>
+              ) : (
+                <WordByWordArabic
+                  text={v.text_uthmani}
+                  isPlaying={activePlayback.playing && activePlayback.verseKey === v.verse_key}
+                  progress={activePlayback.verseKey === v.verse_key ? activePlayback.progress : 0}
+                  progressLead={0.16}
+                  textStyle={[
+                    styles.verseArabic,
+                    {
+                      fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay * textPreset.arabic,
+                      lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay * textPreset.arabic,
+                    },
+                  ]}
+                />
+              )}
+              <Text
+                style={[
+                  styles.verseTranslation,
+                  { fontSize: FONT_SIZE.sm * textPreset.body, lineHeight: 22 * textPreset.body },
+                ]}
+              >
+                {translation || 'Translation unavailable for selected language.'}
+              </Text>
+              <View style={styles.audioInline}>
+                <AudioPlayer
+                  verseKey={v.verse_key}
+                  compact
+                  autoPlayToken={autoPlayTarget.verseKey === v.verse_key ? autoPlayTarget.token : 0}
+                  onPlaybackStatusChange={(status) => {
+                    if (status?.playing) {
+                      setActivePlayback({
+                        verseKey: v.verse_key,
+                        playing: true,
+                        progress: status?.progress ?? 0,
+                      });
+                    } else if (activePlayback.verseKey === v.verse_key) {
+                      setActivePlayback((prev) => ({
+                        ...prev,
+                        playing: false,
+                        progress: status?.progress ?? prev.progress,
+                      }));
+                    }
+
+                    if (status?.didJustFinish) {
+                      const currentIndex = verses.findIndex((item) => item.verse_key === v.verse_key);
+                      const nextVerse = currentIndex >= 0 ? verses[currentIndex + 1] : null;
+                      if (nextVerse?.verse_key) {
+                        const nextToken = Date.now();
+                        setAutoPlayTarget({ verseKey: nextVerse.verse_key, token: nextToken });
+                        setActivePlayback({
+                          verseKey: nextVerse.verse_key,
+                          playing: true,
+                          progress: 0,
+                        });
+                      } else {
+                        setAutoPlayTarget({ verseKey: null, token: 0 });
+                        setActivePlayback({ verseKey: null, playing: false, progress: 0 });
+                      }
+                    }
+                  }}
+                />
+              </View>
             </TouchableOpacity>
           );
         })
@@ -309,6 +441,17 @@ function VerseReader({ chapter, onBack, navigation }) {
         </View>
       )}
 
+      <View style={styles.readerOptions}>
+        <TouchableOpacity
+          style={[styles.highlightToggle, highlightEnabled && styles.highlightToggleActive]}
+          onPress={() => setHighlightEnabled((v) => !v)}
+        >
+          <Text style={[styles.highlightToggleText, highlightEnabled && styles.highlightToggleTextActive]}>
+            {highlightEnabled ? 'Word Highlight: ON' : 'Word Highlight: OFF'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={{ height: SPACING.xl }} />
     </ScrollView>
   );
@@ -316,13 +459,14 @@ function VerseReader({ chapter, onBack, navigation }) {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-export default function ReadScreen({ navigation }) {
+export default function ReadScreen({ navigation, route }) {
   const [view, setView] = useState('surahList');
   const [chapters, setChapters] = useState([]);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [progress, setProgress] = useState(null);
+  const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
 
   useEffect(() => {
     Promise.all([
@@ -333,6 +477,33 @@ export default function ReadScreen({ navigation }) {
       setProgress(prog);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      getTextSizePreset().then((p) => setTextPreset({ arabic: p.arabic, body: p.body }));
+    }, []),
+  );
+
+  const applyInitialChapter = useCallback(() => {
+    const requestedChapterId = route?.params?.initialChapterId;
+    if (!requestedChapterId || chapters.length === 0) return;
+    const chapter = chapters.find((c) => c.id === requestedChapterId);
+    if (chapter) {
+      setSelectedChapter(chapter);
+      setView('verseReader');
+      navigation.setParams?.({ initialChapterId: undefined });
+    }
+  }, [route?.params?.initialChapterId, chapters, navigation]);
+
+  useEffect(() => {
+    applyInitialChapter();
+  }, [applyInitialChapter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      applyInitialChapter();
+    }, [applyInitialChapter]),
+  );
 
   const handleResumeReading = useCallback(async () => {
     if (!progress?.chapterId) return;
@@ -366,9 +537,11 @@ export default function ReadScreen({ navigation }) {
         />
       ) : (
         <VerseReader
+          key={selectedChapter?.id ?? 'none'}
           chapter={selectedChapter}
           onBack={() => setView('surahList')}
           navigation={navigation}
+          textPreset={textPreset}
         />
       )}
     </SafeAreaView>
@@ -481,11 +654,11 @@ const styles = StyleSheet.create({
   translationOptionName: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
 
   basmala: {
-    fontSize: 22,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact,
     color: COLORS.accent,
     textAlign: 'center',
     writingDirection: 'rtl',
-    lineHeight: 40,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact,
     marginBottom: SPACING.md,
     paddingHorizontal: SPACING.md,
   },
@@ -513,13 +686,14 @@ const styles = StyleSheet.create({
   verseNumText: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700' },
   verseKeyLabel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs },
   verseArabic: {
-    fontSize: FONT_SIZE.arabic,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay,
     color: COLORS.text,
     textAlign: 'right',
-    lineHeight: 48,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay,
     writingDirection: 'rtl',
   },
   verseTranslation: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22 },
+  audioInline: { marginTop: SPACING.xs },
 
   summarySection: { marginTop: SPACING.sm, marginBottom: SPACING.md },
   summaryBtn: {
@@ -553,6 +727,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: SPACING.md,
   },
+  readerOptions: { marginTop: SPACING.sm, alignItems: 'flex-end' },
+  highlightToggle: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.muted,
+  },
+  highlightToggleActive: {
+    borderColor: `${COLORS.accent}40`,
+    backgroundColor: COLORS.accentDim,
+  },
+  highlightToggleText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: '600' },
+  highlightToggleTextActive: { color: COLORS.accent },
   pageBtn: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,

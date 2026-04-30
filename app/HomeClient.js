@@ -342,7 +342,7 @@ function SurahRow({ chapter }) {
 
       {/* Arabic name + verse count */}
       <div className="text-right shrink-0">
-        <p className="arabic-text text-lg text-foreground/80 leading-none mb-1">{chapter.name_arabic}</p>
+        <p className="arabic-text arabic-text-compact text-foreground/80 mb-1">{chapter.name_arabic}</p>
         <p className="text-[10px] text-muted-foreground/45">{chapter.verses_count} verses</p>
       </div>
 
@@ -375,7 +375,7 @@ function JuzCard({ juz }) {
           <span className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
             Juz {juz.number}
           </span>
-          <span className="arabic-text text-sm text-accent/70">{juz.arabicName}</span>
+          <span className="arabic-text arabic-text-compact text-accent/70">{juz.arabicName}</span>
         </div>
         <p className="text-[10px] text-muted-foreground/55 truncate">{juz.surahs}</p>
       </div>

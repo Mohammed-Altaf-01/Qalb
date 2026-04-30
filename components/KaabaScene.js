@@ -13,6 +13,7 @@ export default function KaabaScene() {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let animId,
       renderer,
+      resizeObserver,
       mounted = true;
 
     async function init() {
@@ -57,8 +58,17 @@ export default function KaabaScene() {
       renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0, 0);
-      const sz = canvas.parentElement?.clientWidth ?? 280;
-      renderer.setSize(sz, sz);
+      function updateSize() {
+        const parent = canvas.parentElement;
+        const width = parent?.clientWidth ?? 280;
+        const height = parent?.clientHeight ?? width;
+        camera.aspect = width / Math.max(height, 1);
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      }
+      updateSize();
+      resizeObserver = new ResizeObserver(updateSize);
+      if (canvas.parentElement) resizeObserver.observe(canvas.parentElement);
 
       // ── Lighting ────────────────────────────────────────────────────────────
       // Warm sunlight from upper-right (like Makkah midday)
@@ -331,6 +341,7 @@ export default function KaabaScene() {
     return () => {
       mounted = false;
       if (animId) cancelAnimationFrame(animId);
+      if (resizeObserver) resizeObserver.disconnect();
       if (renderer) renderer.dispose();
     };
   }, []);

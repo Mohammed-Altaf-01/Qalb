@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { isVercelConfigured } from '../config';
 import { aiService } from '../lib/claude';
+import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
 import VerseCard from '../components/VerseCard';
@@ -36,6 +37,7 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export default function DiscoverScreen({ navigation }) {
+  const { award } = useGamification();
   const [situation, setSituation] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -93,6 +95,7 @@ export default function DiscoverScreen({ navigation }) {
       );
 
       setResults(verseData.filter(Boolean));
+      award('discover_search');
       await loadBookmarks();
     } catch (e) {
       setError('Something went wrong. Please check your connection and try again.');

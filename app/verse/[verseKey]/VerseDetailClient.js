@@ -27,6 +27,7 @@ import VerseChat from "@/components/VerseChat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { stripVerseEndMarker } from "@/lib/arabic-utils";
+import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,6 +86,7 @@ const TABS = [
  * @param {object|null} props.initialData - Server-fetched { verse, tafsir, chapter }
  */
 export default function VerseDetailClient({ verseKey, initialData }) {
+  const { award } = useGamification();
   const verse = initialData?.verse;
   const tafsir = initialData?.tafsir;
   const chapter = initialData?.chapter;
@@ -269,6 +271,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       if (!res.ok) throw new Error("Failed");
       const { questions } = await res.json();
       setReflectionQuestions(questions);
+      award("generate_reflection");
       // Persist
       const stored = lsGet(LS_REFLECTIONS) ?? {};
       stored[verseKey] = questions;
@@ -305,6 +308,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       lsSet(LS_NOTES, stored);
       setSavedNote(note);
       toast.success("Reflection saved.");
+      award("save_note");
     } finally {
       setIsSavingNote(false);
     }
@@ -392,7 +396,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
         <div className="space-y-5 pt-5">
           {/* Arabic */}
           <div className="rounded-2xl border border-border/50 bg-card p-5 overflow-hidden">
-            <p className="arabic-text text-foreground/90 text-center" lang="ar" dir="rtl">
+            <p className="arabic-text arabic-text-display text-foreground/90 text-center" lang="ar" dir="rtl">
               {arabicText}
             </p>
           </div>
@@ -403,7 +407,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
               dir={isRtl ? "rtl" : "ltr"}
               lang={isRtl ? "ur" : undefined}
               className={cn(
-                "text-sm leading-relaxed text-foreground/80 transition-opacity duration-200",
+                "text-sm md:text-base leading-relaxed text-foreground/80 transition-opacity duration-200",
                 isFetchingTranslation && "opacity-40",
                 isRtl && "font-[system-ui] text-right",
               )}

@@ -1,5 +1,5 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -29,13 +29,24 @@ function fmtTime(secs) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function AudioPlayer({ verseKey }) {
-  const player = useAudioPlayer(null, { updateInterval: 500 });
+export default function AudioPlayer({
+  verseKey,
+  onPlaybackStatusChange,
+  compact = false,
+  autoPlayToken = 0,
+}) {
+  const player = useAudioPlayer(null, { updateInterval: 120 });
   const status = useAudioPlayerStatus(player);
   const [loadStatus, setLoadStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [reciterId, setReciterId] = useState(CONFIG.DEFAULT_RECITER_ID);
   const [showPicker, setShowPicker] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
+  const playbackCallbackRef = useRef(onPlaybackStatusChange);
+  const lastAutoPlayTokenRef = useRef(autoPlayToken);
+
+  useEffect(() => {
+    playbackCallbackRef.current = onPlaybackStatusChange;
+  }, [onPlaybackStatusChange]);
 
   // Load saved reciter on mount
   useEffect(() => {
@@ -118,8 +129,26 @@ export default function AudioPlayer({ verseKey }) {
   const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
   const currentReciter = RECITERS.find((r) => r.id === reciterId);
 
+  useEffect(() => {
+    playbackCallbackRef.current?.({
+      playing: status.playing,
+      currentTime: status.currentTime ?? 0,
+      duration: status.duration ?? 0,
+      progress,
+      didJustFinish: !!status.didJustFinish,
+    });
+  }, [status.playing, status.currentTime, status.duration, progress, status.didJustFinish]);
+
+  useEffect(() => {
+    if (!autoPlayToken || autoPlayToken === lastAutoPlayTokenRef.current) return;
+    lastAutoPlayTokenRef.current = autoPlayToken;
+    if (loadStatus !== 'ready') return;
+    player.seekTo(0);
+    player.play();
+  }, [autoPlayToken, loadStatus]);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       {loadStatus === 'loading' && (
         <View style={styles.row}>
           <ActivityIndicator size="small" color={COLORS.accent} />
@@ -133,16 +162,16 @@ export default function AudioPlayer({ verseKey }) {
 
       {(loadStatus === 'ready' || isSwapping) && (
         <>
-          <View style={styles.controls}>
+          <View style={[styles.controls, compact && styles.controlsCompact]}>
             <TouchableOpacity
-              style={styles.playBtn}
+              style={[styles.playBtn, compact && styles.playBtnCompact]}
               onPress={handlePlayPause}
               disabled={isSwapping || loadStatus !== 'ready'}
             >
               {isSwapping ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
-                <Text style={styles.playIcon}>{status.playing ? '⏸' : '▶'}</Text>
+                <Text style={[styles.playIcon, compact && styles.playIconCompact]}>{status.playing ? '⏸' : '▶'}</Text>
               )}
             </TouchableOpacity>
 
@@ -151,21 +180,23 @@ export default function AudioPlayer({ verseKey }) {
               <View style={{ flex: 1 - progress }} />
             </View>
 
-            <Text style={styles.time}>
+            <Text style={[styles.time, compact && styles.timeCompact]}>
               {fmtTime(status.currentTime)} / {fmtTime(status.duration)}
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.reciterRow}
-            onPress={() => setShowPicker((v) => !v)}
-          >
-            <Text style={styles.reciterName}>
-              {currentReciter?.name ?? 'Reciter'} {'▾'}
-            </Text>
-          </TouchableOpacity>
+          {!compact && (
+            <TouchableOpacity
+              style={styles.reciterRow}
+              onPress={() => setShowPicker((v) => !v)}
+            >
+              <Text style={styles.reciterName}>
+                {currentReciter?.name ?? 'Reciter'} {'▾'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          {showPicker && (
+          {showPicker && !compact && (
             <View style={styles.pickerGrid}>
               {RECITERS.map((r) => (
                 <TouchableOpacity
@@ -195,6 +226,9 @@ const styles = StyleSheet.create({
     borderColor: `${COLORS.border}80`,
     gap: SPACING.xs,
   },
+  containerCompact: {
+    padding: SPACING.xs + 2,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -217,6 +251,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.sm,
   },
+  controlsCompact: {
+    gap: SPACING.xs,
+  },
   playBtn: {
     width: 34,
     height: 34,
@@ -225,10 +262,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  playBtnCompact: {
+    width: 28,
+    height: 28,
+  },
   playIcon: {
     color: COLORS.white,
     fontSize: 13,
     marginLeft: 1,
+  },
+  playIconCompact: {
+    fontSize: 11,
   },
   progressTrack: {
     flex: 1,
@@ -247,6 +291,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs - 1,
     minWidth: 70,
     textAlign: 'right',
+  },
+  timeCompact: {
+    minWidth: 58,
+    fontSize: FONT_SIZE.xs - 2,
   },
   reciterRow: {
     paddingTop: SPACING.xs,

@@ -31,6 +31,12 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.js"],
     globals: true,
+    include: [
+      "app/**/*.{test,spec}.{js,jsx,ts,tsx}",
+      "components/**/*.{test,spec}.{js,jsx,ts,tsx}",
+      "lib/**/*.{test,spec}.{js,jsx,ts,tsx}",
+    ],
+    exclude: ["qalb_mobile/**", "node_modules/**"],
   },
   resolve: {
     alias: {

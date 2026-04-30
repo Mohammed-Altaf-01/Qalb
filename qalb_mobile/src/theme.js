@@ -65,6 +65,15 @@ export const FONT_SIZE = {
   arabicLg: 36,
 };
 
+export const ARABIC_TYPOGRAPHY = {
+  fontSizeDisplay: 30,
+  lineHeightDisplay: 54,
+  fontSizeBody: 26,
+  lineHeightBody: 46,
+  fontSizeCompact: 20,
+  lineHeightCompact: 34,
+};
+
 /** Reusable shadow style for cards */
 export const SHADOW = {
   shadowColor: '#000',

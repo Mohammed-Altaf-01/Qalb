@@ -94,7 +94,7 @@ function WordHighlightPlayer({ verseKey, words }) {
   return (
     <div className="space-y-2">
       {/* Word-by-word Arabic */}
-      <p className="arabic-text text-foreground/90 leading-loose" lang="ar" dir="rtl">
+      <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
         {words.map((word, i) => (
           <span
             key={i}
@@ -292,13 +292,13 @@ export default function VerseCard({
         {showAudio && words.length > 0 ? (
           <WordHighlightPlayer verseKey={verseKey} words={words} />
         ) : (
-          <p className="arabic-text text-foreground/90 mb-3" lang="ar" dir="rtl">
+          <p className="arabic-text arabic-text-display text-foreground/90 mb-3" lang="ar" dir="rtl">
             {arabicText}
           </p>
         )}
 
         {/* ── English Translation ──────────────────────────────────────── */}
-        <p className="text-sm leading-relaxed text-foreground/75 mt-3">{cleanTranslation}</p>
+        <p className="text-sm md:text-base leading-relaxed text-foreground/75 mt-3">{cleanTranslation}</p>
       </div>
 
       {/* ── Audio Player fallback (no words available) ────────────────── */}

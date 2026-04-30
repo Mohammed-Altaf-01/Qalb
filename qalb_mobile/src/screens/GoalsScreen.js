@@ -20,8 +20,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { DEEDS } from '../lib/gamification';
 import storage, { STORAGE_KEYS } from '../lib/storage';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import useGamification from '../lib/useGamification';
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
 
 const GOAL_TEMPLATES = [
   { title: 'Daily Verse', target: 1, unit: 'verse/day', icon: '📖', color: COLORS.primary },
@@ -72,6 +74,7 @@ function GoalCard({ goal, onDelete, onToggleDay }) {
 }
 
 export default function GoalsScreen() {
+  const { state: gamificationState, levelInfo } = useGamification();
   const [goals, setGoals] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
@@ -159,6 +162,24 @@ export default function GoalsScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Goals</Text>
           <Text style={styles.subtitle}>Build your Quran habit</Text>
+        </View>
+
+        <View style={styles.statsCard}>
+          <Text style={styles.statsTitle}>
+            {levelInfo.current.icon} {levelInfo.current.title} · {gamificationState?.xp ?? 0} XP
+          </Text>
+          <View style={styles.statsRow}>
+            <Text style={styles.statsItem}>Minutes: {gamificationState?.total_minutes_spent ?? 0}</Text>
+            <Text style={styles.statsItem}>Deeds: {gamificationState?.deeds?.length ?? 0}</Text>
+          </View>
+          {(gamificationState?.deeds?.length ?? 0) > 0 && (
+            <Text style={styles.deedsPreview}>
+              {gamificationState.deeds
+                .slice(-3)
+                .map((id) => `${DEEDS[id]?.icon ?? '✦'} ${DEEDS[id]?.title ?? id}`)
+                .join(' · ')}
+            </Text>
+          )}
         </View>
 
         {/* Active goals */}
@@ -270,6 +291,18 @@ const styles = StyleSheet.create({
   header: { marginBottom: SPACING.lg },
   title: { color: COLORS.text, fontSize: FONT_SIZE.xxl + 4, fontWeight: '800', letterSpacing: 1 },
   subtitle: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 4 },
+  statsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: `${COLORS.accent}30`,
+    marginBottom: SPACING.sm,
+  },
+  statsTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SPACING.xs },
+  statsItem: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
+  deedsPreview: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, marginTop: SPACING.xs },
 
   sectionLabel: {
     color: COLORS.textMuted,
@@ -358,11 +391,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   motivationArabic: {
-    fontSize: 22,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact,
     color: COLORS.accent,
     textAlign: 'center',
     writingDirection: 'rtl',
-    lineHeight: 38,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact,
   },
   motivationTranslation: {
     color: COLORS.textMuted,

@@ -161,6 +161,18 @@ class QuranRepository {
       `/content/api/v4/tafsirs/${tafsirId}/by_ayah/${verseKey}`,
     ).fetch();
   }
+
+  static async getJuzs(language = 'en') {
+    return new RequestBuilder('/content/api/v4/juzs')
+      .withParam('language', language)
+      .fetch();
+  }
+
+  static async getHizbs(language = 'en') {
+    return new RequestBuilder('/content/api/v4/hizbs')
+      .withParam('language', language)
+      .fetch();
+  }
 }
 
 export { QuranRepository, QuranTokenManager, RequestBuilder };

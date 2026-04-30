@@ -36,66 +36,84 @@ export default function BismillahHeader() {
     : "drop-shadow(0 0 0px transparent)";
 
   return (
-    <div className="select-none mb-5">
-      {/*
-        Desktop: [Kaaba 3D] | [Bismillah text]  — side by side
-        Mobile:  [Bismillah text] only            — Kaaba hidden to save resources
-      */}
-      <div className="flex items-center justify-center gap-6 md:gap-10">
-        {/* ── Kaaba 3D — desktop only ──────────────────────────────────── */}
-        {sceneReady && (
-          <div className="hidden md:block shrink-0" style={{ width: 260, height: 260 }} aria-hidden="true">
-            <KaabaScene />
-          </div>
-        )}
-
-        {/* ── Bismillah text ────────────────────────────────────────────── */}
+    <section className="select-none mb-4">
+      <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-card/40 backdrop-blur-sm px-3.5 py-4 md:px-5 md:py-5">
         <div
-          className="text-center md:text-left"
-          onMouseEnter={handleEnter}
-          onMouseLeave={() => setHovered(false)}
-          style={{ filter: glowFilter, transition: "filter 0.55s ease" }}
-        >
-          {/* Radial hover glow */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none rounded-[50%] transition-opacity duration-700 absolute"
-            style={{
-              inset: "-32px -56px",
-              background: "radial-gradient(ellipse at center, oklch(0.72 0.13 75 / 0.16) 0%, transparent 68%)",
-              opacity: hovered ? 1 : 0,
-            }}
-          />
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 20% 18%, oklch(0.72 0.13 75 / 0.11), transparent 42%), radial-gradient(circle at 86% 70%, oklch(0.68 0.13 155 / 0.14), transparent 44%)",
+          }}
+        />
 
-          {/* Energy rings on hover */}
-          {hovered && (
-            <div key={ringKey} aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        <div className="relative flex flex-col items-center gap-3.5 md:flex-row md:items-center md:justify-between md:gap-5">
+          {/* ── Kaaba visual block ───────────────────────────────────────── */}
+          <div className="w-full md:w-auto flex justify-center">
+            <div
+              className="relative rounded-2xl border border-accent/25 bg-background/65 shadow-xl shadow-black/25 p-1.5"
+              style={{ width: 168, height: 168 }}
+              aria-hidden="true"
+            >
               <div
-                className="absolute rounded-[50%] border border-accent/45 bismillah-ring-1"
-                style={{ inset: "-18px -36px" }}
+                className="absolute -inset-1 rounded-[1.15rem]"
+                style={{
+                  background:
+                    "radial-gradient(circle, oklch(0.72 0.13 75 / 0.2) 0%, oklch(0.72 0.13 75 / 0.03) 45%, transparent 72%)",
+                }}
               />
-              <div
-                className="absolute rounded-[50%] border border-accent/25 bismillah-ring-2"
-                style={{ inset: "-18px -36px" }}
-              />
+              <div className="relative w-full h-full rounded-xl overflow-hidden bg-background/60">
+                {/* Fallback only before the rotating scene is mounted */}
+                {!sceneReady && <div className="absolute inset-0 grid place-items-center text-5xl opacity-45 pointer-events-none">🕋</div>}
+                {sceneReady ? (
+                  <KaabaScene />
+                ) : (
+                  <div className="w-full h-full" />
+                )}
+              </div>
             </div>
-          )}
+          </div>
 
-          <h1
-            className={cn(
-              "arabic-text text-gradient-gold font-bold relative",
-              "text-3xl md:text-4xl",
-              animate ? "bismillah-animate" : "",
-            )}
+          {/* ── Headline + Bismillah ────────────────────────────────────── */}
+          <div
+            className="relative text-center md:text-left"
+            onMouseEnter={handleEnter}
+            onMouseLeave={() => setHovered(false)}
+            style={{ filter: glowFilter, transition: "filter 0.55s ease" }}
           >
-            بسم الله الرحمن الرحيم
-          </h1>
+            <div key={ringKey} aria-hidden="true" className="absolute inset-0 pointer-events-none">
+              {hovered && (
+                <>
+                  <div
+                    className="absolute rounded-[50%] border border-accent/45 bismillah-ring-1"
+                    style={{ inset: "-18px -36px" }}
+                  />
+                  <div
+                    className="absolute rounded-[50%] border border-accent/25 bismillah-ring-2"
+                    style={{ inset: "-18px -36px" }}
+                  />
+                </>
+              )}
+            </div>
 
-          {/* Subtle separator line — desktop only, under the Arabic */}
-          <div className="hidden md:block mt-4 w-16 h-px bg-accent/30" />
+            <p className="text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-accent/80 mb-1.5">Begin with remembrance</p>
+            <h1
+              className={cn(
+                "arabic-text arabic-text-display text-gradient-gold font-bold relative text-center md:text-left",
+                animate ? "bismillah-animate" : "",
+              )}
+            >
+              بسم الله الرحمن الرحيم
+            </h1>
+            <p className="mt-3 text-sm md:text-base text-foreground/78 max-w-xl leading-relaxed">
+              Quran for your daily moments. Read, reflect, and reconnect one verse at a time.
+            </p>
+
+            <div className="mt-2.5 w-20 h-px bg-accent/30 mx-auto md:mx-0" />
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import VerseCard from "@/components/VerseCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useGamification } from "@/lib/useGamification";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -68,6 +69,7 @@ export default function DiscoverPage() {
 
   /** Tracks if we have shown results at least once (controls empty state) */
   const [hasSearched, setHasSearched] = useState(false);
+  const { award } = useGamification();
 
   const resultsRef = useRef(null);
 
@@ -125,6 +127,7 @@ export default function DiscoverPage() {
 
       const resolved = (await Promise.all(verseDataPromises)).filter(Boolean);
       setResults(resolved);
+      if (resolved.length > 0) award("discover_search");
 
       // Smooth scroll to results
       setTimeout(() => {

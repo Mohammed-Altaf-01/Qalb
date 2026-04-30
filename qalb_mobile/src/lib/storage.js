@@ -8,9 +8,12 @@ export const STORAGE_KEYS = {
   CHAT: 'qalb_chat',
   RECITER_ID: 'qalb_reciter_id',
   READING_PROGRESS: 'qalb_reading_progress',
+  READING_HISTORY: 'qalb_reading_history',
   GOALS: 'qalb_goals',
   COLLECTIONS: 'qalb_collections',
   SPLASH_SHOWN: 'qalb_splash_shown_session',
+  GAMIFICATION: 'qalb_gamification',
+  TEXT_SIZE: 'qalb_text_size',
 };
 
 /** Drop-in AsyncStorage wrapper that always returns parsed JSON */

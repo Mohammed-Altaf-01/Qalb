@@ -10,28 +10,25 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { CONFIG, isVercelConfigured } from '../config';
 import storage, { STORAGE_KEYS } from '../lib/storage';
+import { getTextSizePreset } from '../lib/text-settings';
 import { QuranRepository } from '../lib/quran-api';
+import useGamification from '../lib/useGamification';
 import AudioPlayer from '../components/AudioPlayer';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
-
-const QUICK_ACTIONS = [
-  { label: 'Discover', icon: '◎', desc: "What's on your mind?", screen: 'Discover', color: COLORS.primary },
-  { label: 'Read', icon: '☰', desc: 'Read the Quran', screen: 'Read', color: '#5b8fd4' },
-  { label: 'Library', icon: '★', desc: 'Your bookmarks', screen: 'Library', color: COLORS.accent },
-  { label: 'Goals', icon: '◆', desc: 'Track your goals', screen: 'Goals', color: '#b07cc6' },
-];
+import WordByWordArabic from '../components/WordByWordArabic';
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
 
 // 30 curated verse keys — same set as web app deterministic daily verse
 const DAILY_VERSES = [
@@ -48,7 +45,22 @@ function getTodayVerseKey() {
   return DAILY_VERSES[dayOfYear % DAILY_VERSES.length];
 }
 
+function dedupeByNumber(items = [], possibleKeys = []) {
+  const seen = new Set();
+  const result = [];
+  for (const item of items) {
+    const key = possibleKeys.map((k) => item?.[k]).find((v) => v !== undefined && v !== null);
+    if (key === undefined || key === null) continue;
+    const normalized = String(key);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(item);
+  }
+  return result;
+}
+
 export default function HomeScreen({ navigation }) {
+  const { state: gamificationState, levelInfo } = useGamification();
   const [verse, setVerse] = useState(null);
   const [chapterName, setChapterName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -56,6 +68,18 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [streak, setStreak] = useState(0);
+  const [chapters, setChapters] = useState([]);
+  const [juzs, setJuzs] = useState([]);
+  const [hizbs, setHizbs] = useState([]);
+  const [lastReadSurahs, setLastReadSurahs] = useState([]);
+  const [listTab, setListTab] = useState('Surahs');
+  const [listQuery, setListQuery] = useState('');
+  const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
+  const [playback, setPlayback] = useState({ playing: false, progress: 0 });
+
+  useEffect(() => {
+    setListQuery('');
+  }, [listTab]);
 
   const loadDailyVerse = useCallback(async () => {
     try {
@@ -99,17 +123,43 @@ export default function HomeScreen({ navigation }) {
     setStreak(progress.streak ?? 0);
   }, []);
 
+  const loadChapters = useCallback(async () => {
+    const data = await QuranRepository.getChapters();
+    setChapters(data?.chapters ?? []);
+  }, []);
+
+  const loadJuzsAndHizbs = useCallback(async () => {
+    const [juzData, hizbData] = await Promise.all([
+      QuranRepository.getJuzs().catch(() => ({ juzs: [] })),
+      QuranRepository.getHizbs().catch(() => ({ hizbs: [] })),
+    ]);
+    setJuzs(dedupeByNumber(juzData?.juzs ?? [], ['juz_number', 'id']));
+    setHizbs(dedupeByNumber(hizbData?.hizbs ?? [], ['hizb_number', 'id']));
+  }, []);
+
+  const loadLastReadSurahs = useCallback(async () => {
+    const history = (await storage.get(STORAGE_KEYS.READING_HISTORY)) ?? [];
+    setLastReadSurahs(history.slice(0, 5));
+  }, []);
+
   useEffect(() => {
-    Promise.all([loadDailyVerse(), loadBookmarks(), loadStreak()]).finally(() =>
+    Promise.all([loadDailyVerse(), loadBookmarks(), loadStreak(), loadChapters(), loadJuzsAndHizbs(), loadLastReadSurahs()]).finally(() =>
       setLoading(false),
     );
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      getTextSizePreset().then((p) => setTextPreset({ arabic: p.arabic, body: p.body }));
+      loadLastReadSurahs();
+    }, [loadLastReadSurahs]),
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadDailyVerse(), loadBookmarks(), loadStreak()]);
+    await Promise.all([loadDailyVerse(), loadBookmarks(), loadStreak(), loadChapters(), loadJuzsAndHizbs(), loadLastReadSurahs()]);
     setRefreshing(false);
-  }, [loadDailyVerse, loadBookmarks]);
+  }, [loadDailyVerse, loadBookmarks, loadChapters, loadJuzsAndHizbs, loadLastReadSurahs]);
 
   const toggleBookmark = useCallback(async () => {
     if (!verse) return;
@@ -131,6 +181,22 @@ export default function HomeScreen({ navigation }) {
   const translation =
     verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, '').trim() ?? '';
 
+  const normalizedQuery = listQuery.trim().toLowerCase();
+  const filteredSurahs = normalizedQuery
+    ? chapters.filter(
+        (c) =>
+          c.name_simple?.toLowerCase().includes(normalizedQuery) ||
+          c.name_arabic?.includes(normalizedQuery) ||
+          String(c.id).includes(normalizedQuery),
+      )
+    : chapters;
+  const filteredJuzs = normalizedQuery
+    ? juzs.filter((j) => String(j.juz_number ?? j.id ?? '').includes(normalizedQuery))
+    : juzs;
+  const filteredHizbs = normalizedQuery
+    ? hizbs.filter((h) => String(h.hizb_number ?? h.id ?? '').includes(normalizedQuery))
+    : hizbs;
+
   if (loading) return <LoadingSpinner message="Loading daily verse…" />;
 
   return (
@@ -147,14 +213,23 @@ export default function HomeScreen({ navigation }) {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>السَّلَامُ عَلَيْكُمْ</Text>
-            <Text style={styles.appTitle}>Qalb</Text>
+        {/* Hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroRow}>
+            <View style={styles.kaabaFrame}>
+              <Text style={styles.kaabaIcon}>🕋</Text>
+            </View>
+            <View style={styles.heroTextWrap}>
+              <Text style={styles.heroLabel}>Begin with remembrance</Text>
+              <Text style={styles.heroBismillah}>بسم الله الرحمن الرحيم</Text>
+              <Text style={styles.heroSubtitle}>Quran for your daily moments.</Text>
+              <Text style={styles.heroLevel}>
+                {levelInfo.current.icon} {levelInfo.current.title} · {gamificationState?.xp ?? 0} XP
+              </Text>
+            </View>
           </View>
           {streak > 0 && (
-            <View style={styles.streakBadge}>
+            <View style={[styles.streakBadge, styles.streakBadgeInHero]}>
               <Text style={styles.streakIcon}>🔥</Text>
               <Text style={styles.streakText}>{streak} day{streak !== 1 ? 's' : ''}</Text>
             </View>
@@ -190,17 +265,35 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             {/* Arabic */}
-            <Text style={styles.arabic}>{verse.text_uthmani}</Text>
+            <WordByWordArabic
+              text={verse.text_uthmani}
+              isPlaying={playback.playing}
+              progress={playback.progress}
+              textStyle={[
+                styles.arabic,
+                {
+                  fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay * textPreset.arabic,
+                  lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay * textPreset.arabic,
+                },
+              ]}
+            />
 
             {/* Divider */}
             <View style={styles.divider} />
 
             {/* Translation */}
-            <Text style={styles.translation}>{translation}</Text>
+            <Text
+              style={[
+                styles.translation,
+                { fontSize: FONT_SIZE.sm * textPreset.body, lineHeight: 22 * textPreset.body },
+              ]}
+            >
+              {translation}
+            </Text>
 
             {/* Audio player */}
             <View style={styles.audioWrapper}>
-              <AudioPlayer verseKey={verse.verse_key} />
+              <AudioPlayer verseKey={verse.verse_key} onPlaybackStatusChange={setPlayback} />
             </View>
 
             {/* Explore verse detail */}
@@ -218,25 +311,134 @@ export default function HomeScreen({ navigation }) {
           </View>
         ) : null}
 
-        {/* Quick actions */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionDot} />
-          <Text style={styles.sectionLabel}>Quick Actions</Text>
-        </View>
-        <View style={styles.actionsGrid}>
-          {QUICK_ACTIONS.map((action) => (
-            <TouchableOpacity
-              key={action.label}
-              style={[styles.actionCard, SHADOW, { borderColor: `${action.color}30` }]}
-              onPress={() => navigation.navigate(action.screen)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.actionIcon, { color: action.color }]}>{action.icon}</Text>
-              <Text style={styles.actionLabel}>{action.label}</Text>
-              <Text style={styles.actionDesc}>{action.desc}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Quran sections */}
+        {(chapters.length > 0 || juzs.length > 0 || hizbs.length > 0) && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionLabel}>
+                {listTab === 'Surahs'
+                  ? `Quran Sections · ${chapters.length} Surahs`
+                  : listTab === 'Juz'
+                    ? `Quran Sections · ${juzs.length} Juz`
+                    : `Quran Sections · ${hizbs.length} Hizb`}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Read')}>
+                <Text style={styles.seeAll}>See all →</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.switcher}>
+              {['Surahs', 'Juz', 'Hizb'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.switcherBtn, listTab === tab && styles.switcherBtnActive]}
+                  onPress={() => setListTab(tab)}
+                >
+                  <Text style={[styles.switcherText, listTab === tab && styles.switcherTextActive]}>{tab}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.listSearchWrap}>
+              <TextInput
+                style={styles.listSearchInput}
+                value={listQuery}
+                onChangeText={setListQuery}
+                placeholder={listTab === 'Surahs' ? 'Search Surah by name or number' : `Search ${listTab} by number`}
+                placeholderTextColor={COLORS.textFaint}
+              />
+            </View>
+
+            <ScrollView style={styles.verticalListScrollable} nestedScrollEnabled>
+              <View style={styles.verticalList}>
+              {listTab === 'Surahs' &&
+                filteredSurahs.map((chapter) => (
+                  <TouchableOpacity
+                    key={`surah-${chapter.id}`}
+                    style={styles.surahRow}
+                    onPress={() => navigation.navigate('Read', { initialChapterId: chapter.id })}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.surahChipId}>{chapter.id}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.surahChipName}>{chapter.name_simple}</Text>
+                      <Text style={styles.surahChipArabic} numberOfLines={1}>{chapter.name_arabic}</Text>
+                    </View>
+                    <Text style={styles.rowArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+
+              {listTab === 'Juz' &&
+                filteredJuzs.map((juz, idx) => (
+                  <TouchableOpacity
+                    key={`juz-${juz.id ?? idx}`}
+                    style={styles.surahRow}
+                    onPress={() => {
+                      const startChapter = Number(Object.keys(juz.verse_mapping ?? {})[0]);
+                      if (startChapter) navigation.navigate('Read', { initialChapterId: startChapter });
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.surahChipId}>{juz.juz_number ?? juz.id ?? idx + 1}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.surahChipName}>Juz {juz.juz_number ?? juz.id ?? idx + 1}</Text>
+                      <Text style={styles.surahChipArabic} numberOfLines={1}>
+                        {juz.verse_mapping ? Object.keys(juz.verse_mapping)[0] : 'Section'}
+                      </Text>
+                    </View>
+                    <Text style={styles.rowArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+
+              {listTab === 'Hizb' &&
+                filteredHizbs.map((hizb, idx) => (
+                  <TouchableOpacity
+                    key={`hizb-${hizb.id ?? idx}`}
+                    style={styles.surahRow}
+                    onPress={() => {
+                      const startChapter = Number(Object.keys(hizb.verse_mapping ?? {})[0]);
+                      if (startChapter) navigation.navigate('Read', { initialChapterId: startChapter });
+                    }}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Text style={styles.surahChipId}>{hizb.hizb_number ?? hizb.id ?? idx + 1}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.surahChipName}>Hizb {hizb.hizb_number ?? hizb.id ?? idx + 1}</Text>
+                      <Text style={styles.surahChipArabic} numberOfLines={1}>
+                        {hizb.rub_el_hizb_number ? `Rub ${hizb.rub_el_hizb_number}` : 'Section'}
+                      </Text>
+                    </View>
+                    <Text style={styles.rowArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </>
+        )}
+
+        {lastReadSurahs.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionDot} />
+              <Text style={styles.sectionLabel}>Last 5 Read Surahs</Text>
+            </View>
+            <View style={styles.verticalList}>
+              {lastReadSurahs.map((item) => (
+                <TouchableOpacity
+                  key={`recent-${item.chapterId}-${item.at}`}
+                  style={styles.surahRow}
+                  onPress={() => navigation.navigate('Read', { initialChapterId: item.chapterId })}
+                >
+                  <Text style={styles.surahChipId}>{item.chapterId}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.surahChipName}>{item.surahName}</Text>
+                    <Text style={styles.surahChipArabic} numberOfLines={1}>{item.chapterArabic ?? ''}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Recent bookmarks */}
         {bookmarks.length > 0 && (
@@ -281,23 +483,37 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: SPACING.md },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.lg,
+  heroCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
   },
-  greeting: {
-    color: COLORS.textFaint,
-    fontSize: FONT_SIZE.sm,
-    marginBottom: 2,
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  kaabaFrame: {
+    width: 68,
+    height: 68,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.muted,
+    borderWidth: 1,
+    borderColor: `${COLORS.accent}40`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  appTitle: {
+  kaabaIcon: { fontSize: 34 },
+  heroTextWrap: { flex: 1 },
+  heroLabel: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700', textTransform: 'uppercase' },
+  heroBismillah: {
     color: COLORS.text,
-    fontSize: FONT_SIZE.xxl + 4,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
+  heroSubtitle: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 2 },
+  heroLevel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, marginTop: 2 },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -309,6 +525,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
   },
+  streakBadgeInHero: { alignSelf: 'flex-end', marginTop: SPACING.sm },
   streakIcon: { fontSize: 14 },
   streakText: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '600' },
 
@@ -375,10 +592,8 @@ const styles = StyleSheet.create({
   bookmarkActive: { color: COLORS.accent },
 
   arabic: {
-    fontSize: FONT_SIZE.arabic + 4,
     color: COLORS.text,
     textAlign: 'right',
-    lineHeight: 56,
     writingDirection: 'rtl',
     marginVertical: SPACING.xs,
   },
@@ -400,22 +615,58 @@ const styles = StyleSheet.create({
   },
   exploreBtnText: { color: COLORS.primary, fontSize: FONT_SIZE.xs, fontWeight: '600' },
 
-  actionsGrid: {
+  switcher: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    backgroundColor: COLORS.muted,
+    borderRadius: RADIUS.md,
+    padding: 3,
+    marginBottom: SPACING.sm,
+  },
+  switcherBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.xs + 2,
+    borderRadius: RADIUS.sm,
+  },
+  switcherBtnActive: { backgroundColor: COLORS.card },
+  switcherText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: '600' },
+  switcherTextActive: { color: COLORS.accent },
+  listSearchWrap: { marginBottom: SPACING.sm },
+  listSearchInput: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    color: COLORS.text,
+    fontSize: FONT_SIZE.sm,
+    height: 40,
+    paddingHorizontal: SPACING.sm,
+  },
+  verticalListScrollable: {
+    maxHeight: 360,
+  },
+  verticalList: { gap: SPACING.xs },
+  surahRow: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: SPACING.sm,
   },
-  actionCard: {
-    width: '47%',
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    gap: SPACING.xs,
+  surahChipId: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700' },
+  surahChipName: { color: COLORS.text, fontSize: FONT_SIZE.xs, marginTop: 2 },
+  surahChipArabic: {
+    color: COLORS.textMuted,
+    fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact - 4,
+    lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact - 10,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    marginTop: 2,
   },
-  actionIcon: { fontSize: 22 },
-  actionLabel: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '700' },
-  actionDesc: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs },
+  rowArrow: { color: COLORS.textFaint, fontSize: FONT_SIZE.sm, marginLeft: SPACING.xs },
 
   bookmarkScroll: { marginBottom: SPACING.sm },
   bookmarkChip: {

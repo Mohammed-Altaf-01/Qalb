@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 
 import { getLevelInfo, loadState } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
+import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
 import ThemeToggle from "./ThemeToggle";
 
@@ -104,7 +105,7 @@ function UserButton() {
   if (status !== "authenticated") {
     return (
       <button
-        onClick={() => signIn("quranfoundation")}
+        onClick={() => signIn(QURAN_FOUNDATION_PROVIDER_ID)}
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-lg px-2 py-1 border border-border/40 hover:border-border"
       >
         <LogIn size={13} />

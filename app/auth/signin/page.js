@@ -7,6 +7,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
 const FEATURES = [
   { icon: Flame, text: "Track your reading streak across all devices" },
@@ -29,7 +30,7 @@ export default function SignInPage() {
 
   async function handleSignIn() {
     setLoading(true);
-    await signIn("quranfoundation", { callbackUrl: "/" });
+    await signIn(QURAN_FOUNDATION_PROVIDER_ID, { callbackUrl: "/" });
   }
 
   return (

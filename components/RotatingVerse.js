@@ -120,7 +120,7 @@ export default function RotatingVerse() {
           {/* Content */}
           <div className="flex-1 min-w-0">
             {item.arabic && (
-              <p className="arabic-text text-foreground/88 text-lg leading-relaxed mb-1.5" lang="ar" dir="rtl">
+              <p className="arabic-text arabic-text-compact text-foreground/88 mb-1.5" lang="ar" dir="rtl">
                 {item.arabic}
               </p>
             )}

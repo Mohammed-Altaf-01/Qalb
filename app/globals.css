@@ -182,26 +182,45 @@ html.light .tafsir-content h2 {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Arabic Text — Quranic rendering using Amiri typeface
+   Arabic Text — Quranic rendering system (responsive + RTL safe)
 ───────────────────────────────────────────────────────────────────────────── */
 
-.arabic-text {
-  font-family: "Amiri", "Traditional Arabic", serif;
-  direction: rtl;
-  text-align: right;
-  line-height: 2; /* Generous line height for Arabic diacritics    */
-  font-size: 1.5rem; /* Arabic letters need more visual space         */
-  letter-spacing: 0.02em;
-  overflow-wrap: break-word;
-  max-width: 100%;
+:root {
+  --arabic-font-family: "Amiri", "Noto Naskh Arabic", "Scheherazade New", "Traditional Arabic", serif;
+  --arabic-size-body: clamp(1.25rem, 1.1rem + 0.5vw, 1.55rem);
+  --arabic-size-display: clamp(1.75rem, 1.35rem + 1.2vw, 2.4rem);
+  --arabic-size-compact: clamp(1.05rem, 0.95rem + 0.25vw, 1.2rem);
+  --arabic-line-body: 2.1;
+  --arabic-line-display: 2.2;
+  --arabic-line-compact: 1.9;
 }
 
-.arabic-text-sm {
-  font-family: "Amiri", "Traditional Arabic", serif;
+.arabic-text {
+  font-family: var(--arabic-font-family);
   direction: rtl;
+  unicode-bidi: plaintext;
   text-align: right;
-  line-height: 1.8;
-  font-size: 1.125rem;
+  text-wrap: pretty;
+  line-height: var(--arabic-line-body);
+  font-size: var(--arabic-size-body);
+  letter-spacing: 0;
+  word-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  font-kerning: normal;
+  font-variant-ligatures: contextual;
+  text-rendering: optimizeLegibility;
+}
+
+.arabic-text-display {
+  font-size: var(--arabic-size-display);
+  line-height: var(--arabic-line-display);
+}
+
+.arabic-text-compact,
+.arabic-text-sm {
+  font-size: var(--arabic-size-compact);
+  line-height: var(--arabic-line-compact);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

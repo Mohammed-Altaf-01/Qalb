@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { BookMarked, BookOpen, Compass, Home, LogIn, Target, User } from "lucide-react";
+import { BookMarked, BookOpen, Compass, Home, LogIn, ScrollText, Target, User } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -145,6 +145,7 @@ function UserButton() {
 const NAV_ITEMS = [
   { label: "Home", href: "/", icon: Home },
   { label: "Read", href: "/read", icon: BookOpen },
+  { label: "Ahadith", href: "/ahadith", icon: ScrollText },
   { label: "Discover", href: "/discover", icon: Compass },
   { label: "Goals", href: "/goals", icon: Target },
   { label: "Library", href: "/library", icon: BookMarked },

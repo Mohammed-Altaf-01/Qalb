@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import Navigation from "../Navigation";
 
-// Mock next/navigation before importing Navigation
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/"),
 }));
@@ -23,66 +22,56 @@ vi.mock("next-auth/react", () => ({
 }));
 
 describe("Navigation", () => {
-  it("renders the Qalb logo text", async () => {
+  it("renders home link with brand label", async () => {
     await act(async () => render(<Navigation />));
+    expect(screen.getByLabelText("Qalb — home")).toBeInTheDocument();
     expect(screen.getByText("Qalb")).toBeInTheDocument();
   });
 
-  it("renders all nav tab labels", async () => {
+  it("renders primary nav labels (desktop + mobile)", async () => {
     await act(async () => render(<Navigation />));
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Discover").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Goals").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Library").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ahadith").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Settings")).toHaveAttribute("href", "/settings");
   });
 
-  it("marks the Home tab as current when pathname is /", async () => {
+  it("marks Home as current when pathname is /", async () => {
     usePathname.mockReturnValue("/");
     await act(async () => render(<Navigation />));
-    const homeLink = screen.getAllByRole("link").find((l) => l.textContent?.includes("Home"));
+    const homeLink = screen.getAllByRole("link").find((l) => l.textContent === "Home");
     expect(homeLink).toHaveAttribute("aria-current", "page");
   });
 
-  it("marks the Discover tab as current when pathname is /discover", async () => {
+  it("marks Discover as current when pathname is /discover", async () => {
     usePathname.mockReturnValue("/discover");
     await act(async () => render(<Navigation />));
-    const discoverLink = screen.getAllByRole("link").find((l) => l.textContent?.includes("Discover"));
+    const discoverLink = screen.getAllByRole("link").find((l) => l.textContent === "Discover");
     expect(discoverLink).toHaveAttribute("aria-current", "page");
   });
 
-  it("does not mark Home as current when on /discover", async () => {
-    usePathname.mockReturnValue("/discover");
+  it("marks Settings as current on /settings", async () => {
+    usePathname.mockReturnValue("/settings");
     await act(async () => render(<Navigation />));
-    const homeLink = screen.getAllByRole("link").find((l) => l.textContent?.includes("Home"));
-    expect(homeLink).not.toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("Settings")).toHaveAttribute("aria-current", "page");
   });
 
-  it("marks the Library tab as current when pathname is /library", async () => {
-    usePathname.mockReturnValue("/library");
+  it("marks Ahadith as current on nested path", async () => {
+    usePathname.mockReturnValue("/ahadith/bukhari");
     await act(async () => render(<Navigation />));
-    const libraryLink = screen.getAllByRole("link").find((l) => l.textContent?.includes("Library"));
-    expect(libraryLink).toHaveAttribute("aria-current", "page");
+    const ahadithLink = screen.getAllByRole("link").find((l) => l.textContent === "Ahadith");
+    expect(ahadithLink).toHaveAttribute("aria-current", "page");
   });
 
   it("home link points to /", async () => {
     await act(async () => render(<Navigation />));
-    const logoLink = screen.getByLabelText("Qalb — home");
-    expect(logoLink).toHaveAttribute("href", "/");
+    expect(screen.getByLabelText("Qalb — home")).toHaveAttribute("href", "/");
   });
 
-  it("renders the ThemeToggle button", async () => {
+  it("renders Sign in when unauthenticated", async () => {
     await act(async () => render(<Navigation />));
-    // ThemeToggle renders a button; look for it via role
-    const buttons = screen.getAllByRole("button");
-    expect(buttons.length).toBeGreaterThan(0);
-  });
-
-  it("marks Goals as active on sub-path /goals/new", async () => {
-    usePathname.mockReturnValue("/goals/new");
-    await act(async () => render(<Navigation />));
-    const goalsLink = screen.getAllByRole("link").find((l) => l.textContent?.includes("Goals"));
-    expect(goalsLink).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
   });
 });

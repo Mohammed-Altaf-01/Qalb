@@ -19,6 +19,19 @@ const PRIMARY_NAV = [
   { label: "Discover", href: "/discover", icon: Compass },
 ];
 
+const NUDGE_SESSION_KEY = "qalb_signin_nudge_session_id";
+const NUDGE_DISMISSED_KEY = "qalb_signin_nudge_dismissed_session";
+const OAUTH_STARTED_KEY = "qalb_oauth_started_at";
+const OAUTH_RECOVERED_KEY = "qalb_oauth_recovered_once";
+
+function getSessionNudgeId() {
+  let sid = sessionStorage.getItem(NUDGE_SESSION_KEY);
+  if (sid) return sid;
+  sid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  sessionStorage.setItem(NUDGE_SESSION_KEY, sid);
+  return sid;
+}
+
 function LiveClock() {
   const [now, setNow] = useState(null);
 
@@ -95,6 +108,7 @@ function KaabaIcon({ size = 22, className = "" }) {
 function UserButton() {
   const { data: session, status } = useSession();
   const [xp, setXp] = useState(0);
+  const [spotlightActive, setSpotlightActive] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -105,17 +119,112 @@ function UserButton() {
 
   const levelInfo = getLevelInfo(xp);
 
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "authenticated" || session?.user?.id) {
+      setSpotlightActive(false);
+      localStorage.removeItem(NUDGE_DISMISSED_KEY);
+      sessionStorage.removeItem(OAUTH_STARTED_KEY);
+      sessionStorage.removeItem(OAUTH_RECOVERED_KEY);
+      return;
+    }
+
+    const sessionId = getSessionNudgeId();
+    if (localStorage.getItem(NUDGE_DISMISSED_KEY) === sessionId) return;
+
+    const triggerSpotlight = () => {
+      setSpotlightActive(true);
+      window.setTimeout(() => setSpotlightActive(false), 4200);
+    };
+
+    const timers = [
+      window.setTimeout(triggerSpotlight, 700),
+      window.setTimeout(triggerSpotlight, 5 * 60 * 1000),
+      window.setTimeout(triggerSpotlight, 20 * 60 * 1000),
+    ];
+
+    return () => {
+      for (const id of timers) window.clearTimeout(id);
+    };
+  }, [session?.user?.id, status]);
+
+  useEffect(() => {
+    if (status !== "loading") {
+      sessionStorage.removeItem(OAUTH_RECOVERED_KEY);
+      return;
+    }
+    const startedAtRaw = sessionStorage.getItem(OAUTH_STARTED_KEY);
+    if (!startedAtRaw || sessionStorage.getItem(OAUTH_RECOVERED_KEY) === "1") return;
+    const startedAt = Number(startedAtRaw);
+    if (!Number.isFinite(startedAt)) return;
+
+    const id = window.setTimeout(() => {
+      if (sessionStorage.getItem(OAUTH_RECOVERED_KEY) === "1") return;
+      sessionStorage.setItem(OAUTH_RECOVERED_KEY, "1");
+      window.location.reload();
+    }, Math.max(0, 4500 - (Date.now() - startedAt)));
+
+    return () => window.clearTimeout(id);
+  }, [status]);
+
   if (status === "loading") return <div className="w-9 h-9 rounded-full bg-muted animate-pulse shrink-0" />;
 
   if (status !== "authenticated") {
     return (
-      <button
-        onClick={() => signIn(QURAN_FOUNDATION_PROVIDER_ID)}
-        className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg px-2.5 py-2 border border-border/40 hover:bg-muted/30 transition-colors shrink-0"
-      >
-        <LogIn size={16} aria-hidden />
-        <span className="hidden sm:inline">Sign in</span>
-      </button>
+      <>
+        <div
+          aria-hidden
+          className={cn(
+            "fixed inset-0 z-40 bg-black/35 pointer-events-none transition-opacity duration-700",
+            spotlightActive ? "opacity-100" : "opacity-0",
+          )}
+        />
+        <button
+          onClick={() => {
+            const sessionId = getSessionNudgeId();
+            localStorage.setItem(NUDGE_DISMISSED_KEY, sessionId);
+            sessionStorage.setItem(OAUTH_STARTED_KEY, String(Date.now()));
+            sessionStorage.removeItem(OAUTH_RECOVERED_KEY);
+            signIn(QURAN_FOUNDATION_PROVIDER_ID);
+          }}
+          className={cn(
+            "relative z-50 overflow-hidden text-xs font-medium rounded-lg px-2.5 py-2 border transition-all duration-500 ease-out shrink-0",
+            spotlightActive
+              ? "text-foreground border-accent/40 bg-background shadow-[0_0_20px_rgba(200,169,81,0.25)] scale-[1.03]"
+              : "text-muted-foreground border-border/40 hover:text-foreground hover:bg-muted/30",
+          )}
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 100 40"
+            preserveAspectRatio="none"
+            className={cn(
+              "pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-700 ease-out",
+              spotlightActive ? "opacity-100" : "opacity-0",
+            )}
+          >
+            <rect
+              x="1.1"
+              y="1.1"
+              width="97.8"
+              height="37.8"
+              rx="8.8"
+              fill="none"
+              stroke="rgba(200,169,81,0.95)"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeDasharray="30 220"
+              filter="drop-shadow(0 0 5px rgba(224,194,117,0.85))"
+            >
+              <animate attributeName="stroke-dashoffset" from="0" to="-250" dur="1.2s" repeatCount="indefinite" />
+            </rect>
+          </svg>
+          <span className="relative z-10 flex items-center gap-2">
+            <LogIn size={16} aria-hidden />
+            <span className="hidden sm:inline">Sign in</span>
+          </span>
+        </button>
+      </>
     );
   }
 

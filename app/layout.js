@@ -17,6 +17,7 @@ import Navigation from "@/components/Navigation";
 import NavigationProgress from "@/components/NavigationProgress";
 import SplashScreen from "@/components/SplashScreen";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 
@@ -75,6 +76,7 @@ export default function RootLayout({ children }) {
               },
             }}
           />
+          <Analytics />
         </AuthProvider>
       </body>
     </html>

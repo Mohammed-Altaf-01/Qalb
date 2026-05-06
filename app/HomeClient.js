@@ -2,312 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { BookOpen, ChevronRight, Clock, Search, X } from "lucide-react";
+import { BookOpen, ChevronRight, Clock, ScrollText, Search, X } from "lucide-react";
 import Link from "next/link";
 
-import { cn } from "@/lib/utils";
-
-const LS_LAST_READS = "qalb_last_reads";
+import { dedupeLastHadithByHref, LS_LAST_HADITH_READS } from "@/lib/last-hadith-reads";
+import { dedupeLastReadsByHref, LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "@/lib/qalb-last-reads";
 
 function saveLastRead(entry) {
   try {
-    const existing = JSON.parse(localStorage.getItem(LS_LAST_READS) ?? "[]");
+    const existing = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
     const filtered = existing.filter((r) => r.href !== entry.href);
-    const updated = [{ ...entry, timestamp: Date.now() }, ...filtered].slice(0, 3);
-    localStorage.setItem(LS_LAST_READS, JSON.stringify(updated));
+    const updated = dedupeLastReadsByHref(
+      [{ ...entry, timestamp: Date.now() }, ...filtered],
+      MAX_QURAN_LAST_READS,
+    );
+    localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(updated));
   } catch {
     /* ignore */
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Static Data — Juz 1–30
-// ─────────────────────────────────────────────────────────────────────────────
-
-const JUZ_DATA = [
-  {
-    number: 1,
-    arabicName: "الم",
-    name: "Alif Lam Mim",
-    startSurah: 1,
-    startVerse: 1,
-    surahs: "Al-Fatiha – Al-Baqarah 141",
-  },
-  { number: 2, arabicName: "سَيَقُولُ", name: "Sayaqul", startSurah: 2, startVerse: 142, surahs: "Al-Baqarah 142–252" },
-  {
-    number: 3,
-    arabicName: "تِلْكَ الرُّسُلُ",
-    name: "Tilkar Rusul",
-    startSurah: 2,
-    startVerse: 253,
-    surahs: "Al-Baqarah 253 – Ali 'Imran 92",
-  },
-  {
-    number: 4,
-    arabicName: "لَنْ تَنَالُوا",
-    name: "Lan Tana Lu",
-    startSurah: 3,
-    startVerse: 93,
-    surahs: "Ali 'Imran 93 – An-Nisa 23",
-  },
-  {
-    number: 5,
-    arabicName: "وَالْمُحْصَنَاتُ",
-    name: "Wal Muhsanat",
-    startSurah: 4,
-    startVerse: 24,
-    surahs: "An-Nisa 24–147",
-  },
-  {
-    number: 6,
-    arabicName: "لَا يُحِبُّ",
-    name: "La Yuhibbullah",
-    startSurah: 4,
-    startVerse: 148,
-    surahs: "An-Nisa 148 – Al-Ma'idah 82",
-  },
-  {
-    number: 7,
-    arabicName: "وَإِذَا سَمِعُوا",
-    name: "Wa Idha Sami'u",
-    startSurah: 5,
-    startVerse: 83,
-    surahs: "Al-Ma'idah 83 – Al-An'am 110",
-  },
-  {
-    number: 8,
-    arabicName: "وَلَوْ أَنَّنَا",
-    name: "Wa Law Annana",
-    startSurah: 6,
-    startVerse: 111,
-    surahs: "Al-An'am 111 – Al-A'raf 87",
-  },
-  {
-    number: 9,
-    arabicName: "قَالَ الْمَلَأُ",
-    name: "Qalalmal'a",
-    startSurah: 7,
-    startVerse: 88,
-    surahs: "Al-A'raf 88 – Al-Anfal 40",
-  },
-  {
-    number: 10,
-    arabicName: "وَاعْلَمُوا",
-    name: "Wa A'lamu",
-    startSurah: 8,
-    startVerse: 41,
-    surahs: "Al-Anfal 41 – At-Tawbah 92",
-  },
-  {
-    number: 11,
-    arabicName: "يَعْتَذِرُونَ",
-    name: "Ya'tadhirun",
-    startSurah: 9,
-    startVerse: 93,
-    surahs: "At-Tawbah 93 – Hud 5",
-  },
-  {
-    number: 12,
-    arabicName: "وَمَا مِنْ دَابَّةٍ",
-    name: "Wa Ma Min Dabbah",
-    startSurah: 11,
-    startVerse: 6,
-    surahs: "Hud 6 – Yusuf 52",
-  },
-  {
-    number: 13,
-    arabicName: "وَمَا أُبَرِّئُ",
-    name: "Wa Ma Ubarri'u",
-    startSurah: 12,
-    startVerse: 53,
-    surahs: "Yusuf 53 – Ibrahim 52",
-  },
-  { number: 14, arabicName: "رُبَمَا", name: "Rubama", startSurah: 15, startVerse: 1, surahs: "Al-Hijr – An-Nahl 128" },
-  {
-    number: 15,
-    arabicName: "سُبْحَانَ الَّذِي",
-    name: "Subhanalladhi",
-    startSurah: 17,
-    startVerse: 1,
-    surahs: "Al-Isra – Al-Kahf 74",
-  },
-  {
-    number: 16,
-    arabicName: "قَالَ أَلَمْ",
-    name: "Qal Alam",
-    startSurah: 18,
-    startVerse: 75,
-    surahs: "Al-Kahf 75 – Ta-Ha 135",
-  },
-  {
-    number: 17,
-    arabicName: "اقْتَرَبَ",
-    name: "Iqtaraba",
-    startSurah: 21,
-    startVerse: 1,
-    surahs: "Al-Anbya – Al-Hajj 78",
-  },
-  {
-    number: 18,
-    arabicName: "قَدْ أَفْلَحَ",
-    name: "Qad Aflaha",
-    startSurah: 23,
-    startVerse: 1,
-    surahs: "Al-Mu'minun – Al-Furqan 20",
-  },
-  {
-    number: 19,
-    arabicName: "وَقَالَ الَّذِينَ",
-    name: "Wa Qalalladhina",
-    startSurah: 25,
-    startVerse: 21,
-    surahs: "Al-Furqan 21 – An-Naml 55",
-  },
-  {
-    number: 20,
-    arabicName: "أَمَّنْ خَلَقَ",
-    name: "Amman Khalaqa",
-    startSurah: 27,
-    startVerse: 56,
-    surahs: "An-Naml 56 – Al-'Ankabut 45",
-  },
-  {
-    number: 21,
-    arabicName: "اتْلُ مَا أُوحِيَ",
-    name: "Utlu Ma Uhiya",
-    startSurah: 29,
-    startVerse: 46,
-    surahs: "Al-'Ankabut 46 – Al-Ahzab 30",
-  },
-  {
-    number: 22,
-    arabicName: "وَمَنْ يَقْنُتْ",
-    name: "Wa Man Yaqnut",
-    startSurah: 33,
-    startVerse: 31,
-    surahs: "Al-Ahzab 31 – Ya-Sin 27",
-  },
-  {
-    number: 23,
-    arabicName: "وَمَا لِيَ",
-    name: "Wa Mali",
-    startSurah: 36,
-    startVerse: 28,
-    surahs: "Ya-Sin 28 – Az-Zumar 31",
-  },
-  {
-    number: 24,
-    arabicName: "فَمَنْ أَظْلَمُ",
-    name: "Faman Azlamu",
-    startSurah: 39,
-    startVerse: 32,
-    surahs: "Az-Zumar 32 – Fussilat 46",
-  },
-  {
-    number: 25,
-    arabicName: "إِلَيْهِ يُرَدُّ",
-    name: "Ilayhi Yuraddu",
-    startSurah: 41,
-    startVerse: 47,
-    surahs: "Fussilat 47 – Al-Jathiyah 37",
-  },
-  { number: 26, arabicName: "حم", name: "Ha Mim", startSurah: 46, startVerse: 1, surahs: "Al-Ahqaf – Adh-Dhariyat 30" },
-  {
-    number: 27,
-    arabicName: "قَالَ فَمَا خَطْبُكُمْ",
-    name: "Qala Fama Khatbukum",
-    startSurah: 51,
-    startVerse: 31,
-    surahs: "Adh-Dhariyat 31 – Al-Hadid 29",
-  },
-  {
-    number: 28,
-    arabicName: "قَدْ سَمِعَ",
-    name: "Qad Sami'a",
-    startSurah: 58,
-    startVerse: 1,
-    surahs: "Al-Mujadila – At-Tahrim 12",
-  },
-  {
-    number: 29,
-    arabicName: "تَبَارَكَ الَّذِي",
-    name: "Tabarakalladhi",
-    startSurah: 67,
-    startVerse: 1,
-    surahs: "Al-Mulk – Al-Mursalat 50",
-  },
-  { number: 30, arabicName: "عَمَّ", name: "Amma", startSurah: 78, startVerse: 1, surahs: "An-Naba – An-Nas" },
-];
-
-// 60 hizbs with exact start positions
-const HIZB_DATA = [
-  { number: 1, juzNum: 1, startSurah: 1, startVerse: 1 },
-  { number: 2, juzNum: 1, startSurah: 2, startVerse: 75 },
-  { number: 3, juzNum: 2, startSurah: 2, startVerse: 142 },
-  { number: 4, juzNum: 2, startSurah: 2, startVerse: 204 },
-  { number: 5, juzNum: 3, startSurah: 2, startVerse: 253 },
-  { number: 6, juzNum: 3, startSurah: 3, startVerse: 15 },
-  { number: 7, juzNum: 4, startSurah: 3, startVerse: 93 },
-  { number: 8, juzNum: 4, startSurah: 3, startVerse: 171 },
-  { number: 9, juzNum: 5, startSurah: 4, startVerse: 24 },
-  { number: 10, juzNum: 5, startSurah: 4, startVerse: 88 },
-  { number: 11, juzNum: 6, startSurah: 4, startVerse: 148 },
-  { number: 12, juzNum: 6, startSurah: 5, startVerse: 1 },
-  { number: 13, juzNum: 7, startSurah: 5, startVerse: 83 },
-  { number: 14, juzNum: 7, startSurah: 6, startVerse: 1 },
-  { number: 15, juzNum: 8, startSurah: 6, startVerse: 111 },
-  { number: 16, juzNum: 8, startSurah: 7, startVerse: 1 },
-  { number: 17, juzNum: 9, startSurah: 7, startVerse: 88 },
-  { number: 18, juzNum: 9, startSurah: 7, startVerse: 171 },
-  { number: 19, juzNum: 10, startSurah: 8, startVerse: 41 },
-  { number: 20, juzNum: 10, startSurah: 9, startVerse: 33 },
-  { number: 21, juzNum: 11, startSurah: 9, startVerse: 93 },
-  { number: 22, juzNum: 11, startSurah: 10, startVerse: 26 },
-  { number: 23, juzNum: 12, startSurah: 11, startVerse: 6 },
-  { number: 24, juzNum: 12, startSurah: 11, startVerse: 84 },
-  { number: 25, juzNum: 13, startSurah: 12, startVerse: 53 },
-  { number: 26, juzNum: 13, startSurah: 13, startVerse: 18 },
-  { number: 27, juzNum: 14, startSurah: 15, startVerse: 1 },
-  { number: 28, juzNum: 14, startSurah: 16, startVerse: 50 },
-  { number: 29, juzNum: 15, startSurah: 17, startVerse: 1 },
-  { number: 30, juzNum: 15, startSurah: 17, startVerse: 99 },
-  { number: 31, juzNum: 16, startSurah: 18, startVerse: 75 },
-  { number: 32, juzNum: 16, startSurah: 19, startVerse: 58 },
-  { number: 33, juzNum: 17, startSurah: 21, startVerse: 1 },
-  { number: 34, juzNum: 17, startSurah: 22, startVerse: 1 },
-  { number: 35, juzNum: 18, startSurah: 23, startVerse: 1 },
-  { number: 36, juzNum: 18, startSurah: 24, startVerse: 21 },
-  { number: 37, juzNum: 19, startSurah: 25, startVerse: 21 },
-  { number: 38, juzNum: 19, startSurah: 26, startVerse: 111 },
-  { number: 39, juzNum: 20, startSurah: 27, startVerse: 56 },
-  { number: 40, juzNum: 20, startSurah: 28, startVerse: 51 },
-  { number: 41, juzNum: 21, startSurah: 29, startVerse: 46 },
-  { number: 42, juzNum: 21, startSurah: 31, startVerse: 22 },
-  { number: 43, juzNum: 22, startSurah: 33, startVerse: 31 },
-  { number: 44, juzNum: 22, startSurah: 34, startVerse: 24 },
-  { number: 45, juzNum: 23, startSurah: 36, startVerse: 28 },
-  { number: 46, juzNum: 23, startSurah: 37, startVerse: 145 },
-  { number: 47, juzNum: 24, startSurah: 39, startVerse: 32 },
-  { number: 48, juzNum: 24, startSurah: 40, startVerse: 41 },
-  { number: 49, juzNum: 25, startSurah: 41, startVerse: 47 },
-  { number: 50, juzNum: 25, startSurah: 43, startVerse: 24 },
-  { number: 51, juzNum: 26, startSurah: 46, startVerse: 1 },
-  { number: 52, juzNum: 26, startSurah: 48, startVerse: 17 },
-  { number: 53, juzNum: 27, startSurah: 51, startVerse: 31 },
-  { number: 54, juzNum: 27, startSurah: 54, startVerse: 1 },
-  { number: 55, juzNum: 28, startSurah: 58, startVerse: 1 },
-  { number: 56, juzNum: 28, startSurah: 61, startVerse: 1 },
-  { number: 57, juzNum: 29, startSurah: 67, startVerse: 1 },
-  { number: 58, juzNum: 29, startSurah: 71, startVerse: 1 },
-  { number: 59, juzNum: 30, startSurah: 78, startVerse: 1 },
-  { number: 60, juzNum: 30, startSurah: 91, startVerse: 1 },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Single surah row (quran.com style) */
+/** Single surah row */
 function SurahRow({ chapter }) {
   const href = `/read?surah=${chapter.id}`;
   return (
@@ -319,7 +38,6 @@ function SurahRow({ chapter }) {
       className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 rounded-xl border border-transparent
         hover:bg-card hover:border-border/40 transition-all duration-150 group"
     >
-      {/* Number circle */}
       <div
         className="w-9 h-9 rounded-full border border-accent/30 bg-accent/8 flex items-center
           justify-center shrink-0"
@@ -327,7 +45,6 @@ function SurahRow({ chapter }) {
         <span className="text-xs font-semibold text-accent">{chapter.id}</span>
       </div>
 
-      {/* Name block */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-foreground group-hover:text-accent transition-colors">
@@ -340,9 +57,8 @@ function SurahRow({ chapter }) {
         <span className="text-xs text-muted-foreground/55">{chapter.translated_name?.name}</span>
       </div>
 
-      {/* Arabic name + verse count */}
       <div className="text-right shrink-0">
-        <p className="arabic-text arabic-text-compact text-foreground/80 mb-1">{chapter.name_arabic}</p>
+        <p className="arabic-text arabic-text-tight text-foreground/80 mb-1">{chapter.name_arabic}</p>
         <p className="text-[10px] text-muted-foreground/45">{chapter.verses_count} verses</p>
       </div>
 
@@ -354,50 +70,70 @@ function SurahRow({ chapter }) {
   );
 }
 
-/** Juz card */
-function JuzCard({ juz }) {
-  const href = `/read?surah=${juz.startSurah}&startVerse=${juz.startVerse}`;
-  return (
-    <Link
-      href={href}
-      onClick={() => saveLastRead({ href, label: `Juz ${juz.number}`, sub: juz.name, type: "juz" })}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border/30 bg-card
-        hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
-    >
-      <div
-        className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center
-          justify-center shrink-0"
-      >
-        <span className="text-sm font-bold text-accent">{juz.number}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors">
-            Juz {juz.number}
-          </span>
-          <span className="arabic-text arabic-text-compact text-accent/70">{juz.arabicName}</span>
-        </div>
-        <p className="text-[10px] text-muted-foreground/55 truncate">{juz.surahs}</p>
-      </div>
-      <BookOpen size={13} className="text-muted-foreground/25 group-hover:text-accent/50 transition-colors shrink-0" />
-    </Link>
-  );
-}
+/** Hadith + recent hadith chips + link to library */
+function HadithHomeStrip() {
+  const [items, setItems] = useState([]);
 
-/** Hizb card */
-function HizbCard({ hizb }) {
-  const href = `/read?surah=${hizb.startSurah}&startVerse=${hizb.startVerse}`;
+  useEffect(() => {
+    function load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(LS_LAST_HADITH_READS) ?? "[]");
+        const saved = Array.isArray(raw) ? raw : [];
+        const clean = dedupeLastHadithByHref(saved);
+        if (JSON.stringify(clean) !== JSON.stringify(saved)) {
+          localStorage.setItem(LS_LAST_HADITH_READS, JSON.stringify(clean));
+        }
+        setItems(clean);
+      } catch {
+        /* ignore */
+      }
+    }
+    load();
+    window.addEventListener("storage", load);
+    window.addEventListener("focus", load);
+    window.addEventListener("qalb-hadith-reads-changed", load);
+    return () => {
+      window.removeEventListener("storage", load);
+      window.removeEventListener("focus", load);
+      window.removeEventListener("qalb-hadith-reads-changed", load);
+    };
+  }, []);
+
   return (
-    <Link
-      href={href}
-      onClick={() => saveLastRead({ href, label: `Hizb ${hizb.number}`, sub: `Juz ${hizb.juzNum}`, type: "hizb" })}
-      className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border/30 bg-card
-        hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
-    >
-      <span className="text-base font-bold text-accent">{hizb.number}</span>
-      <span className="text-[10px] text-muted-foreground/55">Hizb {hizb.number}</span>
-      <span className="text-[9px] text-muted-foreground/35">Juz {hizb.juzNum}</span>
-    </Link>
+    <div className="mb-5 rounded-2xl border border-border/35 bg-card/20 px-4 py-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <ScrollText size={14} className="text-accent/70 shrink-0" aria-hidden />
+          <h2 className="text-xs font-semibold text-foreground tracking-wide uppercase">Hadith</h2>
+        </div>
+        <Link
+          href="/ahadith"
+          className="text-[11px] font-medium text-accent hover:text-accent/90 inline-flex items-center gap-0.5 shrink-0"
+        >
+          Browse
+          <ChevronRight size={12} aria-hidden />
+        </Link>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground/80">
+          Open any book under Ahadith — your last five sections will appear here.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {items.map((r, i) => (
+            <Link
+              key={`${r.href}#${r.timestamp ?? i}`}
+              href={r.href}
+              className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border/40 bg-background/30 px-2.5 py-1.5
+                text-left hover:border-accent/35 hover:bg-accent/5 transition-colors"
+            >
+              <span className="text-[11px] font-medium text-foreground truncate">{r.label}</span>
+              {r.sub && <span className="text-[10px] text-muted-foreground/60 truncate hidden sm:inline">{r.sub}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -409,14 +145,18 @@ function HizbCard({ hizb }) {
  * @param {{ chapters: Array }} props  — server-fetched list of all 114 surahs
  */
 export default function HomeClient({ chapters }) {
-  const [activeTab, setActiveTab] = useState("surah");
   const [search, setSearch] = useState("");
   const [lastReads, setLastReads] = useState([]);
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem(LS_LAST_READS) ?? "[]");
-      setLastReads(saved);
+      const raw = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
+      const saved = Array.isArray(raw) ? raw : [];
+      const clean = dedupeLastReadsByHref(saved, MAX_QURAN_LAST_READS);
+      if (JSON.stringify(clean) !== JSON.stringify(saved)) {
+        localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(clean));
+      }
+      setLastReads(clean);
     } catch {
       /* ignore */
     }
@@ -434,36 +174,31 @@ export default function HomeClient({ chapters }) {
     );
   }, [chapters, search]);
 
-  const TABS = [
-    { id: "surah", label: "Surah", count: 114 },
-    { id: "juz", label: "Juz", count: 30 },
-    { id: "hizb", label: "Hizb", count: 60 },
-  ];
-
   return (
-    <div className="mx-auto max-w-3xl px-4 md:px-8 pb-24 md:pb-8">
-      {/* ── Continue Reading ───────────────────────────────────────────────── */}
+    <div className="mx-auto max-w-3xl px-4 md:px-8 pb-24 md:pb-8 pt-4">
+      <HadithHomeStrip />
+
       {lastReads.length > 0 && (
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">
             <Clock size={13} className="text-accent/70" />
-            <span className="text-xs font-medium text-muted-foreground">Continue Reading</span>
+            <span className="text-xs font-medium text-muted-foreground">Recent reading</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {lastReads.map((r) => (
+            {lastReads.map((r, i) => (
               <Link
-                key={r.href}
+                key={`${r.href}#${r.type ?? "read"}#${r.timestamp ?? i}`}
                 href={r.href}
                 onClick={() => saveLastRead(r)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card
-                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group"
+                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group max-w-full"
               >
-                <BookOpen size={13} className="text-accent/60 group-hover:text-accent transition-colors" />
-                <div>
-                  <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors leading-none">
+                <BookOpen size={13} className="text-accent/60 group-hover:text-accent transition-colors shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-foreground group-hover:text-accent transition-colors leading-none truncate">
                     {r.label}
                   </p>
-                  {r.sub && <p className="text-[10px] text-muted-foreground/50 mt-0.5">{r.sub}</p>}
+                  {r.sub && <p className="text-[10px] text-muted-foreground/50 mt-0.5 truncate">{r.sub}</p>}
                 </div>
               </Link>
             ))}
@@ -471,8 +206,7 @@ export default function HomeClient({ chapters }) {
         </div>
       )}
 
-      {/* ── Search bar ─────────────────────────────────────────────────────── */}
-      <div className="relative mb-5">
+      <div className="relative mb-4">
         <Search
           size={15}
           className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/45 pointer-events-none"
@@ -480,7 +214,7 @@ export default function HomeClient({ chapters }) {
         <input
           type="text"
           inputMode="search"
-          placeholder="Search by name, number or meaning…"
+          placeholder="Search surahs by name or number…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-9 pr-8 py-2.5 bg-card border border-border/50 rounded-xl text-sm
@@ -497,66 +231,20 @@ export default function HomeClient({ chapters }) {
         )}
       </div>
 
-      {/* ── Tabs ───────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 p-1 bg-muted/40 border border-border/30 rounded-xl mb-5 w-fit">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setSearch("");
-            }}
-            className={cn(
-              "px-4 sm:px-5 py-1.5 rounded-lg text-sm font-medium transition-all duration-150",
-              activeTab === tab.id
-                ? "bg-card text-accent shadow-sm border border-border/40"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.label}
-            <span
-              className={cn("ml-1.5 text-[10px]", activeTab === tab.id ? "text-accent/60" : "text-muted-foreground/40")}
-            >
-              {tab.count}
-            </span>
-          </button>
+      <p className="text-[11px] text-muted-foreground/70 mb-2">All surahs</p>
+      <div className="space-y-0.5">
+        {filtered.map((chapter) => (
+          <SurahRow key={chapter.id} chapter={chapter} />
         ))}
+        {filtered.length === 0 && (
+          <div className="text-center py-16">
+            <p className="text-sm text-muted-foreground">No surahs found for &ldquo;{search}&rdquo;</p>
+            <button onClick={() => setSearch("")} className="mt-2 text-xs text-accent hover:underline">
+              Clear search
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* ── Surah Tab ──────────────────────────────────────────────────────── */}
-      {activeTab === "surah" && (
-        <div className="space-y-0.5">
-          {filtered.map((chapter) => (
-            <SurahRow key={chapter.id} chapter={chapter} />
-          ))}
-          {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-sm text-muted-foreground">No surahs found for &ldquo;{search}&rdquo;</p>
-              <button onClick={() => setSearch("")} className="mt-2 text-xs text-accent hover:underline">
-                Clear search
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Juz Tab ────────────────────────────────────────────────────────── */}
-      {activeTab === "juz" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {JUZ_DATA.map((juz) => (
-            <JuzCard key={juz.number} juz={juz} />
-          ))}
-        </div>
-      )}
-
-      {/* ── Hizb Tab ───────────────────────────────────────────────────────── */}
-      {activeTab === "hizb" && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-          {HIZB_DATA.map((hizb) => (
-            <HizbCard key={hizb.number} hizb={hizb} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

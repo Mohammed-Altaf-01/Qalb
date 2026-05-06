@@ -11,6 +11,7 @@ import { getLevelInfo, loadState } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
+import ReadingScaleControl from "./ReadingScaleControl";
 import ThemeToggle from "./ThemeToggle";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -201,8 +202,9 @@ export default function Navigation() {
             })}
           </nav>
 
-          {/* Right: theme + user */}
-          <div className="flex items-center gap-3">
+          {/* Right: reading size + theme + user */}
+          <div className="flex items-center gap-2 md:gap-3">
+            <ReadingScaleControl />
             <ThemeToggle />
             <UserButton />
           </div>

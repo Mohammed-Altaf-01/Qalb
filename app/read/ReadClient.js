@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
+import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
+import { paginationHasNextPage } from "@/lib/read-pagination";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -194,18 +196,45 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId]);
 
-  // Sync audio element with playing state
+  // Sync audio element with playing state — retry after media is ready (avoids false Errors after async fetch kills the gesture chain).
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    if (isPlaying) {
-      audio.play().catch(() => setAudioError(true));
-    } else {
+    if (!isPlaying) {
       audio.pause();
       audio.currentTime = 0;
       setActiveWordIdx(-1);
+      return;
     }
+
+    let cancelled = false;
+
+    const tryPlay = () => {
+      if (cancelled || !audioRef.current) return;
+      audioRef.current.play().catch(() => {
+        if (cancelled) return;
+        const el = audioRef.current;
+        if (!el) return;
+        const once = () => {
+          el.removeEventListener("canplay", once);
+          el.removeEventListener("loadeddata", once);
+          if (cancelled) return;
+          el.play().catch(() => {
+            if (!cancelled) setAudioError(true);
+          });
+        };
+        el.addEventListener("canplay", once, { once: true });
+        el.addEventListener("loadeddata", once, { once: true });
+      });
+    };
+
+    if (audio.readyState >= 2) tryPlay();
+    else audio.addEventListener("canplay", tryPlay, { once: true });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isPlaying, audioUrl]);
 
   async function handlePlay() {
@@ -313,7 +342,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
 
       {/* Translation */}
       {translation && (
-        <p className="text-sm md:text-base leading-relaxed text-foreground/65 text-center max-w-2xl mx-auto px-4 mb-4">
+        <p className="reading-prose text-foreground/65 text-center max-w-2xl mx-auto px-4 mb-4">
           {translation}
         </p>
       )}
@@ -325,6 +354,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
           <audio
             ref={audioRef}
             src={audioUrl}
+            preload="auto"
             onTimeUpdate={handleTimeUpdate}
             onEnded={handleEnded}
             onError={() => {
@@ -485,6 +515,8 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   const currentPageRef = useRef(1);
   const hasMoreRef = useRef(true);
   const isLoadingRef = useRef(false);
+  /** Bumped on surah/translation change so stale fetches never block UI or drop loading state. */
+  const versesSessionRef = useRef(0);
   const selectedChapterRef = useRef(null);
   const translationIdRef = useRef(DEFAULT_TRANSLATION_ID);
 
@@ -508,6 +540,9 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   const loadMore = useCallback(async () => {
     if (isLoadingRef.current || !hasMoreRef.current || !selectedChapterRef.current) return;
 
+    const session = versesSessionRef.current;
+    const chapterId = selectedChapterRef.current.id;
+
     isLoadingRef.current = true;
     setIsLoadingMore(true);
 
@@ -521,7 +556,16 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+
+      if (session !== versesSessionRef.current || selectedChapterRef.current?.id !== chapterId) {
+        return;
+      }
+
       const newVerses = data.verses ?? [];
+      if (newVerses.length === 0) {
+        hasMoreRef.current = false;
+        setHasMore(false);
+      }
 
       setVerses((prev) => {
         const seen = new Set(prev.map((v) => v.verse_key));
@@ -529,17 +573,20 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       });
 
       const pagination = data.pagination ?? {};
-      if (!pagination.total_pages || page >= pagination.total_pages) {
+      const more = paginationHasNextPage(pagination, page, BATCH_SIZE, newVerses.length);
+      if (more) {
+        currentPageRef.current = page + 1;
+      } else {
         hasMoreRef.current = false;
         setHasMore(false);
-      } else {
-        currentPageRef.current = page + 1;
       }
     } catch (err) {
       console.error("[ReadClient] loadMore:", err);
     } finally {
-      isLoadingRef.current = false;
-      setIsLoadingMore(false);
+      if (session === versesSessionRef.current && selectedChapterRef.current?.id === chapterId) {
+        isLoadingRef.current = false;
+        setIsLoadingMore(false);
+      }
     }
   }, []);
 
@@ -645,14 +692,17 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
         /* ignore */
       }
 
-      // Update qalb_last_reads so "Continue Reading" resumes from here
+      // Home “Recent reading” strip — one entry per surah, newest-first (max 5)
       try {
-        const reads = JSON.parse(localStorage.getItem("qalb_last_reads") ?? "[]");
-        const newHref = `/read?surah=${selectedChapter.id}&startVerse=${verseNum}`;
-        const updated = reads.map((r) =>
-          r.href.includes(`surah=${selectedChapter.id}`) ? { ...r, href: newHref, timestamp: Date.now() } : r,
-        );
-        localStorage.setItem("qalb_last_reads", JSON.stringify(updated));
+        const reads = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
+        const list = Array.isArray(reads) ? reads : [];
+        const updated = touchReadingProgress(list, {
+          chapterId: selectedChapter.id,
+          verseNum,
+          chapterName: selectedChapter.name_simple,
+          subtitle: selectedChapter.translated_name?.name ?? "",
+        });
+        localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(updated));
       } catch {
         /* ignore */
       }
@@ -688,6 +738,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   function startReading(chapter, startVerse = 1) {
     const startPage = Math.ceil(Math.max(startVerse, 1) / BATCH_SIZE);
 
+    versesSessionRef.current += 1;
     selectedChapterRef.current = chapter;
     currentPageRef.current = startPage;
     hasMoreRef.current = true;
@@ -719,6 +770,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
     // Reload from scratch with new translation
     if (selectedChapter) {
+      versesSessionRef.current += 1;
       selectedChapterRef.current = selectedChapter;
       currentPageRef.current = 1;
       hasMoreRef.current = true;

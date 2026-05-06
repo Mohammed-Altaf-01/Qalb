@@ -407,7 +407,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
               dir={isRtl ? "rtl" : "ltr"}
               lang={isRtl ? "ur" : undefined}
               className={cn(
-                "text-sm md:text-base leading-relaxed text-foreground/80 transition-opacity duration-200",
+                "reading-prose text-foreground/80 transition-opacity duration-200",
                 isFetchingTranslation && "opacity-40",
                 isRtl && "font-[system-ui] text-right",
               )}

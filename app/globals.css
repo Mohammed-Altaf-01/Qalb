@@ -1,9 +1,7 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   Google Fonts — Arabic (Amiri) + Latin (Inter)
-   @import must come before all other rules (CSS spec requirement).
-   Amiri is a classical Naskh typeface designed for Quranic text rendering.
+   Google Fonts — Noto Naskh Arabic / Amiri / Inter (Naskh-first stack like quran.com)
 ───────────────────────────────────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap");
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -186,13 +184,17 @@ html.light .tafsir-content h2 {
 ───────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --arabic-font-family: "Amiri", "Noto Naskh Arabic", "Scheherazade New", "Traditional Arabic", serif;
+  /* User-controlled via header L / M / S (see lib/reading-scale.js) */
+  --reading-font-mult: 1;
+  --arabic-font-family: "Noto Naskh Arabic", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
   --arabic-size-body: clamp(1.25rem, 1.1rem + 0.5vw, 1.55rem);
   --arabic-size-display: clamp(1.75rem, 1.35rem + 1.2vw, 2.4rem);
   --arabic-size-compact: clamp(1.05rem, 0.95rem + 0.25vw, 1.2rem);
+  --arabic-size-tight: clamp(0.68rem, 0.62rem + 0.18vw, 0.8rem);
   --arabic-line-body: 2.1;
   --arabic-line-display: 2.2;
   --arabic-line-compact: 1.9;
+  --arabic-line-tight: 1.55;
 }
 
 .arabic-text {
@@ -202,7 +204,7 @@ html.light .tafsir-content h2 {
   text-align: right;
   text-wrap: pretty;
   line-height: var(--arabic-line-body);
-  font-size: var(--arabic-size-body);
+  font-size: calc(var(--arabic-size-body) * var(--reading-font-mult, 1));
   letter-spacing: 0;
   word-spacing: 0.08em;
   overflow-wrap: anywhere;
@@ -213,14 +215,33 @@ html.light .tafsir-content h2 {
 }
 
 .arabic-text-display {
-  font-size: var(--arabic-size-display);
+  font-size: calc(var(--arabic-size-display) * var(--reading-font-mult, 1));
   line-height: var(--arabic-line-display);
 }
 
 .arabic-text-compact,
 .arabic-text-sm {
-  font-size: var(--arabic-size-compact);
+  font-size: calc(var(--arabic-size-compact) * var(--reading-font-mult, 1));
   line-height: var(--arabic-line-compact);
+}
+
+/* Dense lists (e.g. home surah rows) */
+.arabic-text-tight {
+  font-size: calc(var(--arabic-size-tight) * var(--reading-font-mult, 1));
+  line-height: var(--arabic-line-tight);
+}
+
+/* Translations + hadith English — tied to same scale as Arabic */
+.reading-prose {
+  font-size: calc(0.9375rem * var(--reading-font-mult, 1));
+  line-height: 1.65;
+}
+
+@media (min-width: 768px) {
+  .reading-prose {
+    font-size: calc(1rem * var(--reading-font-mult, 1));
+    line-height: 1.7;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -404,13 +425,13 @@ html.light .tafsir-content h2 {
 ───────────────────────────────────────────────────────────────────────────── */
 
 .tafsir-content {
-  font-size: 0.875rem; /* text-sm */
+  font-size: calc(0.875rem * var(--reading-font-mult, 1));
   line-height: 1.75;
   color: oklch(0.78 0.02 155 / 0.75);
 }
 
 .tafsir-content h2 {
-  font-size: 0.8125rem; /* slightly smaller than body */
+  font-size: calc(0.8125rem * var(--reading-font-mult, 1));
   font-weight: 600;
   color: oklch(0.85 0.04 75 / 0.9); /* warm gold-tinted white */
   margin-top: 1.25rem;
@@ -437,8 +458,8 @@ html.light .tafsir-content h2 {
 .tafsir-content span[dir="rtl"] {
   direction: rtl;
   text-align: right;
-  font-family: var(--font-arabic, "Scheherazade New", "Noto Naskh Arabic", serif);
-  font-size: 1rem;
+  font-family: var(--arabic-font-family);
+  font-size: calc(1rem * var(--reading-font-mult, 1));
   color: oklch(0.82 0.08 75 / 0.85);
   display: block;
   margin: 0.5rem 0;

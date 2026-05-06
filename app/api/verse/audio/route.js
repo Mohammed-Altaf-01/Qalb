@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 
 import { QuranRepository } from "@/lib/quran-api";
+import { normalizeVerseAudioUrl } from "@/lib/verse-audio-url";
 
 /** CDN base that the Quran Foundation audio paths are relative to */
 const AUDIO_CDN_BASE = "https://verses.quran.com";
@@ -22,8 +23,27 @@ const AUDIO_CDN_BASE = "https://verses.quran.com";
 // 1=AbdulBaset Mujawwad, 2=AbdulBaset Murattal, 3=Al-Sudais, 6=Al-Husary, 7=Mishari Alafasy, 10=Al-Shuraym
 const SUPPORTED_RECITER_IDS = new Set([1, 2, 3, 6, 7, 10]);
 
-/** Fallback recitation IDs to try if the requested one has no audio file */
-const RECITATION_FALLBACK_IDS = [7, 2, 1];
+/** Prefer these reciters (in order) when the user's pick has no URL or segments fail upstream. */
+const RECITATION_FALLBACK_IDS = [7, 2, 1, 3, 6, 10];
+
+/**
+ * @param {unknown} data
+ */
+function extractAudioPayload(data, wantSegments, verseKey, recitationId) {
+  const audioFile = data?.audio_files?.[0] ?? data?.audio_file ?? null;
+  if (!audioFile) return null;
+  const relativePath = audioFile.url ?? audioFile.audio_url ?? "";
+  const audioUrl = normalizeVerseAudioUrl(relativePath, AUDIO_CDN_BASE);
+  if (!audioUrl) return null;
+  const payload = {
+    audioUrl,
+    verseKey,
+    recitationId,
+    segments:
+      wantSegments && Array.isArray(audioFile.segments) && audioFile.segments.length ? audioFile.segments : null,
+  };
+  return payload;
+}
 
 /**
  * GET handler — returns a playable audio URL for the given verse key.
@@ -45,25 +65,21 @@ export async function GET(request) {
     ? [reciterParam, ...RECITATION_FALLBACK_IDS.filter((id) => id !== reciterParam)]
     : RECITATION_FALLBACK_IDS;
 
+  /** When segments are requested but the segmented call fails empty, retry plain audio for the same reciter. */
+  const segmentPasses = withSegments ? [true, false] : [false];
+
   for (const recitationId of idsToTry) {
-    try {
-      const data = await QuranRepository.getVerseAudio(verseKey, recitationId, withSegments);
-      const audioFile = data?.audio_files?.[0] ?? data?.audio_file ?? null;
-
-      if (!audioFile) continue;
-
-      const relativePath = audioFile.url ?? audioFile.audio_url ?? "";
-      if (!relativePath) continue;
-
-      const audioUrl = relativePath.startsWith("http") ? relativePath : `${AUDIO_CDN_BASE}/${relativePath}`;
-
-      const response = { audioUrl, verseKey, recitationId };
-      // segments: [[word_idx, start_ms, end_ms], ...] — only present when requested
-      if (withSegments) response.segments = audioFile.segments ?? null;
-
-      return NextResponse.json(response);
-    } catch (err) {
-      console.warn(`[/api/verse/audio] Recitation ${recitationId} failed:`, err.message);
+    for (const wantSegments of segmentPasses) {
+      try {
+        const data = await QuranRepository.getVerseAudio(verseKey, recitationId, wantSegments);
+        const payload = extractAudioPayload(data, wantSegments, verseKey, recitationId);
+        if (payload) return NextResponse.json(payload);
+      } catch (err) {
+        console.warn(
+          `[/api/verse/audio] Recitation ${recitationId}, segments=${wantSegments}:`,
+          err.message ?? err,
+        );
+      }
     }
   }
 

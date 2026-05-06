@@ -70,8 +70,15 @@ export default function AudioPlayer({
         try {
           const data = await QuranRepository.getVerseAudio(verseKey, id);
           const file = data?.audio_files?.[0];
-          if (file?.url) {
-            audioUrl = `https://verses.quran.com/${file.url}`;
+          const raw = file?.url ?? file?.audio_url;
+          if (raw) {
+            const u = String(raw).trim();
+            audioUrl =
+              u.startsWith("http://") || u.startsWith("https://")
+                ? u
+                : u.startsWith("//")
+                  ? `https:${u}`
+                  : `https://verses.quran.com/${u.replace(/^\/+/, "")}`;
             break;
           }
         } catch {}

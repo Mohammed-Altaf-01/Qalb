@@ -121,6 +121,17 @@ export async function POST(request) {
     if (keywords) {
       const searchData = await QuranRepository.searchVerses(keywords, { size: 15 });
       searchResults = searchData?.search?.results ?? [];
+      if (searchResults.length < 5) {
+        const broadSearch = await QuranRepository.searchVerses(trimmed.slice(0, 90), { size: 20 });
+        const broad = broadSearch?.search?.results ?? [];
+        const seen = new Set(searchResults.map((r) => r?.verse?.verse_key).filter(Boolean));
+        for (const row of broad) {
+          const key = row?.verse?.verse_key;
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          searchResults.push(row);
+        }
+      }
     }
   } catch (err) {
     // Search failure is non-fatal — Claude can still find verses via MCP

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 
-import { BookOpen, Compass, Footprints, Headphones, Home, LogIn, RadioTower, ScrollText, Settings, User } from "lucide-react";
+import { BookOpen, ChevronDown, Compass, Headphones, Home, LogIn, RadioTower, Settings, User } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,18 +10,21 @@ import { usePathname } from "next/navigation";
 import ListenMiniPlayer from "@/components/ListenMiniPlayer";
 import RadioQuranButton from "@/components/RadioQuranButton";
 import { getLevelInfo, loadState } from "@/lib/gamification";
+import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
 import { cn } from "@/lib/utils";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
 /** Primary routes — keep the header readable; Library & Goals live under Settings. */
 const PRIMARY_NAV = [
   { label: "Home", href: "/", icon: Home },
-  { label: "Read", href: "/read", icon: BookOpen },
-  { label: "Ahadith", href: "/ahadith", icon: ScrollText },
   { label: "Discover", href: "/discover", icon: Compass },
-  { label: "Journey", href: "/journey", icon: Footprints },
   { label: "Listen", href: "/listen", icon: Headphones },
   { label: "Live", href: "/live", icon: RadioTower },
+];
+
+const READ_MENU_LINKS = [
+  { label: "Quran", href: "/read" },
+  { label: "Hadith", href: "/ahadith" },
 ];
 
 const NUDGE_SESSION_KEY = "qalb_signin_nudge_session_id";
@@ -271,6 +274,27 @@ function navIsActive(pathname, href) {
 
 export default function Navigation() {
   const pathname = usePathname();
+  const [readMenuOpen, setReadMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setReadMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (pathname.startsWith("/live")) return;
+    const run = () => warmMakkahLiveStream();
+    const ric = window.requestIdleCallback;
+    if (typeof ric === "function") {
+      const id = ric(run, { timeout: 15_000 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(run, 10_000);
+    return () => clearTimeout(t);
+  }, [pathname]);
+
+  function onLiveNavIntent() {
+    warmMakkahLiveStream();
+  }
 
   return (
     <>
@@ -292,6 +316,47 @@ export default function Navigation() {
           </div>
 
           <nav className="hidden md:flex flex-1 justify-center items-center gap-1 min-w-0" aria-label="Primary">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setReadMenuOpen((v) => !v)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap",
+                  navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")
+                    ? "text-accent bg-accent/10 font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+                )}
+                aria-expanded={readMenuOpen}
+                aria-haspopup="menu"
+              >
+                <BookOpen size={16} aria-hidden />
+                Read
+                <ChevronDown size={14} className={cn("transition-transform", readMenuOpen && "rotate-180")} aria-hidden />
+              </button>
+              {readMenuOpen ? (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 mt-1 min-w-36 rounded-xl border border-border/50 bg-card/95 shadow-xl p-1.5 z-50"
+                  role="menu"
+                >
+                  {READ_MENU_LINKS.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setReadMenuOpen(false)}
+                      role="menuitem"
+                      className={cn(
+                        "block rounded-lg px-3 py-2 text-xs transition-colors",
+                        navIsActive(pathname, link.href)
+                          ? "text-accent bg-accent/12"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
               const active = navIsActive(pathname, href);
               return (
@@ -299,6 +364,8 @@ export default function Navigation() {
                   key={href}
                   href={href}
                   aria-current={active ? "page" : undefined}
+                  onPointerEnter={href === "/live" ? onLiveNavIntent : undefined}
+                  onFocus={href === "/live" ? onLiveNavIntent : undefined}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap",
                     active
@@ -333,12 +400,29 @@ export default function Navigation() {
         </div>
       </header>
 
-      {/* Mobile tab bar — four flows + profile; settings in header */}
+      {/* Mobile tab bar — compact primary flows + profile; settings in header */}
           <nav
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-border/45 bg-background/92 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
         aria-label="Mobile primary"
       >
         <div className="flex items-stretch justify-start h-[3.375rem] max-w-full mx-auto px-1 gap-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Link
+            href="/read"
+            aria-label="Read"
+            aria-current={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
+              navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")
+                ? "text-accent"
+                : "text-muted-foreground active:opacity-80",
+            )}
+          >
+            <BookOpen size={21} strokeWidth={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? 2.35 : 1.75} aria-hidden />
+            <span className="text-[10px] font-medium">Read</span>
+            {(navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")) && (
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
+            )}
+          </Link>
           {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
             const active = navIsActive(pathname, href);
             return (
@@ -346,6 +430,8 @@ export default function Navigation() {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
+                onPointerEnter={href === "/live" ? onLiveNavIntent : undefined}
+                onFocus={href === "/live" ? onLiveNavIntent : undefined}
                 className={cn(
                   "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
                   active ? "text-accent" : "text-muted-foreground active:opacity-80",

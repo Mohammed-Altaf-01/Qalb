@@ -13,6 +13,7 @@
  * is encapsulated inside NavigationProgress and SplashScreen.
  */
 import AuthProvider from "@/components/AuthProvider";
+import LiveMediaHints from "@/components/LiveMediaHints";
 import Navigation from "@/components/Navigation";
 import NavigationProgress from "@/components/NavigationProgress";
 import SplashScreen from "@/components/SplashScreen";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <AuthProvider>
+          <LiveMediaHints />
           {/* ── Gold progress bar — appears at top on every navigation ─── */}
           <NavigationProgress />
 

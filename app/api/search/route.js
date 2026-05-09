@@ -17,15 +17,23 @@ import { QuranRepository } from "@/lib/quran-api";
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
-  const size = parseInt(searchParams.get("size") ?? "10", 10);
+  const sizeRaw = parseInt(searchParams.get("size") ?? "10", 10);
+  const pageRaw = parseInt(searchParams.get("page") ?? "0", 10);
+  const size = Number.isFinite(sizeRaw) ? Math.min(30, Math.max(1, sizeRaw)) : 10;
+  const page = Number.isFinite(pageRaw) ? Math.max(0, pageRaw) : 0;
 
   if (!query || query.length < 2) {
     return NextResponse.json({ error: "Query must be at least 2 characters" }, { status: 400 });
   }
 
   try {
-    const data = await QuranRepository.searchVerses(query, { size });
-    return NextResponse.json(data.search ?? { results: [], total_results: 0 });
+    const data = await QuranRepository.searchVerses(query, { size, page });
+    return NextResponse.json({
+      ...(data.search ?? { results: [], total_results: 0 }),
+      query,
+      page,
+      size,
+    });
   } catch (error) {
     console.error("[/api/search] Error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

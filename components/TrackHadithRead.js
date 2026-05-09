@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { LS_LAST_HADITH_READS, mergeHadithVisit } from "@/lib/last-hadith-reads";
+import { useGamification } from "@/lib/useGamification";
 import { schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
 
 /**
@@ -10,6 +11,10 @@ import { schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
  * @param {{ book: string; section: string; bookName: string; sectionTitle: string }} props
  */
 export default function TrackHadithRead({ book, section, bookName, sectionTitle }) {
+  const { award } = useGamification();
+  const awardRef = useRef(award);
+  awardRef.current = award;
+
   useEffect(() => {
     try {
       const href = `/ahadith/${book}/${section}`;
@@ -24,6 +29,7 @@ export default function TrackHadithRead({ book, section, bookName, sectionTitle 
       localStorage.setItem(LS_LAST_HADITH_READS, JSON.stringify(merged));
       schedulePushReadingHistory();
       window.dispatchEvent(new CustomEvent("qalb-hadith-reads-changed"));
+      awardRef.current("hadith_explore", { book, section: String(section) });
     } catch {
       /* ignore */
     }

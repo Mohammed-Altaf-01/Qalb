@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Headphones, Play } from "lucide-react";
+import { Headphones, Play, Search } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { getQuranAudioState, startExternalQuranAudio, subscribeQuranAudio } from "@/lib/quran-audio-player";
+import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 /**
  * @param {{ chapters: Array<{ id: number; name_simple: string; verses_count: number }>, reciters: Array<any> }} props
  */
 export default function ListenClient({ chapters, reciters }) {
+  const { award } = useGamification();
   const parsedReciters = useMemo(() => {
     const raw = Array.isArray(reciters) ? reciters : [];
     return raw
@@ -40,6 +42,7 @@ export default function ListenClient({ chapters, reciters }) {
   }, [reciters]);
 
   const [selectedReciterId, setSelectedReciterId] = useState(parsedReciters?.[0]?.id ?? null);
+  const [reciterQuery, setReciterQuery] = useState("");
   const [player, setPlayer] = useState(getQuranAudioState());
   useEffect(() => subscribeQuranAudio(setPlayer), []);
   useEffect(() => {
@@ -47,6 +50,11 @@ export default function ListenClient({ chapters, reciters }) {
   }, [parsedReciters, selectedReciterId]);
 
   const selectedReciter = parsedReciters.find((r) => r.id === selectedReciterId) ?? parsedReciters[0] ?? null;
+  const filteredReciters = useMemo(() => {
+    const q = reciterQuery.trim().toLowerCase();
+    if (!q) return parsedReciters;
+    return parsedReciters.filter((r) => r.name.toLowerCase().includes(q));
+  }, [parsedReciters, reciterQuery]);
   const playableSurahs = useMemo(() => {
     if (!selectedReciter) return [];
     const allowed = new Set(selectedReciter.surahIds);
@@ -63,6 +71,7 @@ export default function ListenClient({ chapters, reciters }) {
       label: `${chapter.name_simple} · ${selectedReciter.name}`,
       url: `${selectedReciter.server}${filename}.mp3`,
     });
+    award("play_audio", { surahNumber: chapter.id, reciterId: selectedReciter.id });
   }
 
   return (
@@ -99,8 +108,18 @@ export default function ListenClient({ chapters, reciters }) {
       <div className="rounded-2xl border border-border/40 bg-card/40 p-3 md:p-4 grid gap-3 md:grid-cols-[17rem_1fr] min-h-[28rem]">
         <section className="rounded-xl border border-border/30 bg-background/35 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Reciters (A–Z)</p>
+          <div className="relative mb-2">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
+            <input
+              type="search"
+              value={reciterQuery}
+              onChange={(e) => setReciterQuery(e.target.value)}
+              placeholder="Find reciter..."
+              className="w-full rounded-lg border border-border/45 bg-card/35 pl-8 pr-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-accent/45"
+            />
+          </div>
           <div className="space-y-1 max-h-[22rem] overflow-y-auto pr-1">
-            {parsedReciters.map((r) => (
+            {filteredReciters.map((r) => (
               <button
                 key={r.id}
                 type="button"
@@ -115,6 +134,9 @@ export default function ListenClient({ chapters, reciters }) {
                 {r.name}
               </button>
             ))}
+            {filteredReciters.length === 0 ? (
+              <p className="text-xs text-muted-foreground/70 px-2 py-2">No reciters match this search.</p>
+            ) : null}
           </div>
         </section>
 

@@ -1,3 +1,8 @@
+import {
+  LIVE_STREAM_FALLBACK_MADINAH,
+  LIVE_STREAM_FALLBACK_MAKKAH,
+} from "@/lib/live-stream-defaults";
+
 import LiveClient from "./LiveClient";
 
 export const metadata = {
@@ -18,8 +23,8 @@ export default async function LivePage() {
 
   if (channels.length === 0) {
     channels = [
-      { id: 3, name: "Quran channel (Makkah)", url: "https://win.holol.com/live/quran/playlist.m3u8" },
-      { id: 4, name: "Sunna channel (Madinah)", url: "https://win.holol.com/live/sunnah/playlist.m3u8" },
+      { id: 3, name: "Quran channel (Makkah)", url: LIVE_STREAM_FALLBACK_MAKKAH },
+      { id: 4, name: "Sunna channel (Madinah)", url: LIVE_STREAM_FALLBACK_MADINAH },
     ];
   }
 

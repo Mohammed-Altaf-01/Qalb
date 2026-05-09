@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { pickLatestReadingResume } from "@/lib/continue-reading";
 import { dedupeLastHadithByHref, LS_LAST_HADITH_READS } from "@/lib/last-hadith-reads";
 import { dedupeLastReadsByHref, LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "@/lib/qalb-last-reads";
+import { useGamification } from "@/lib/useGamification";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
 
 /** Idle time on home before gentle “continue reading” nudge (ms). */
@@ -20,6 +21,16 @@ const CONTINUE_READ_TOAST_STYLE = {
   border: "1px solid oklch(0.68 0.13 155 / 40%)",
   color: "oklch(0.9 0.08 155)",
 };
+
+function normalizeTerm(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\u0600-\u06ff\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function saveLastRead(entry) {
   try {
@@ -162,9 +173,13 @@ function HadithHomeStrip() {
  */
 export default function HomeClient({ chapters }) {
   const router = useRouter();
+  const { award } = useGamification();
   const [search, setSearch] = useState("");
   const [lastReads, setLastReads] = useState([]);
   const continueNudgeShownRef = useRef(false);
+  const lastAwardedSearchRef = useRef("");
+  const awardRef = useRef(award);
+  awardRef.current = award;
 
   useEffect(() => {
     function loadLastReads() {
@@ -252,16 +267,41 @@ export default function HomeClient({ chapters }) {
   }, [router]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = normalizeTerm(search);
     if (!q) return chapters;
-    return chapters.filter(
-      (ch) =>
-        ch.name_simple.toLowerCase().includes(q) ||
-        ch.name_arabic.includes(search.trim()) ||
-        (ch.translated_name?.name ?? "").toLowerCase().includes(q) ||
-        String(ch.id) === q,
-    );
+    const tokens = q.split(" ").filter(Boolean);
+    return [...chapters]
+      .map((ch) => {
+        const nameSimple = normalizeTerm(ch.name_simple);
+        const translated = normalizeTerm(ch.translated_name?.name ?? "");
+        const arabic = String(ch.name_arabic ?? "").trim();
+        const id = String(ch.id);
+        let score = 0;
+        if (id === q) score += 120;
+        if (nameSimple === q || translated === q || arabic === search.trim()) score += 90;
+        if (nameSimple.startsWith(q) || translated.startsWith(q)) score += 60;
+        if (nameSimple.includes(q) || translated.includes(q)) score += 35;
+        if (arabic.includes(search.trim())) score += 50;
+        for (const token of tokens) {
+          if (token.length < 2) continue;
+          if (nameSimple.includes(token)) score += 12;
+          if (translated.includes(token)) score += 9;
+          if (id.includes(token)) score += 8;
+        }
+        return { ch, score };
+      })
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score || a.ch.id - b.ch.id)
+      .map((row) => row.ch);
   }, [chapters, search]);
+
+  useEffect(() => {
+    const q = normalizeTerm(search);
+    if (q.length < 2 || filtered.length === 0) return;
+    if (lastAwardedSearchRef.current === q) return;
+    lastAwardedSearchRef.current = q;
+    awardRef.current("thematic_search", { query: q });
+  }, [search, filtered.length]);
 
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 pb-24 md:pb-8 pt-4">

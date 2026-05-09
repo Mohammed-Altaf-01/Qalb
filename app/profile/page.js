@@ -12,7 +12,7 @@ import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/ga
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 import { LS_APP_ACTIVE_DAY } from "@/lib/qalb-storage-keys";
 import { useGamification } from "@/lib/useGamification";
-import { ACCOUNT_STORAGE_SYNCED_EVENT } from "@/lib/user-app-sync-bridge";
+import { ACCOUNT_STORAGE_SYNCED_EVENT, LS_TIME_TRACKING } from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,13 +202,18 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
   );
 }
 
-function buildMinutesSeries(events) {
+function buildMinutesSeries(events, localByDay = new Map()) {
   const dailyMinutes = new Map();
   for (const event of events ?? []) {
     const key = dayKeyFromIso(event.created_at);
     const mins = event?.event_type === "time_spent" ? Number(event?.metadata?.minutes ?? 0) : 0;
     if (!Number.isFinite(mins) || mins <= 0) continue;
     dailyMinutes.set(key, (dailyMinutes.get(key) ?? 0) + mins);
+  }
+  for (const [key, mins] of localByDay.entries()) {
+    const n = Number(mins);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    dailyMinutes.set(key, Math.max(Number(dailyMinutes.get(key) ?? 0), n));
   }
   return dailyMinutes;
 }
@@ -219,7 +224,7 @@ function buildTrendData(dailyMinutes, mode) {
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86_400_000);
       const key = d.toISOString().split("T")[0];
-      out.push({ label: key.slice(5), hours: (dailyMinutes.get(key) ?? 0) / 60 });
+      out.push({ label: key.slice(5), minutes: dailyMinutes.get(key) ?? 0 });
     }
     return out;
   }
@@ -232,7 +237,7 @@ function buildTrendData(dailyMinutes, mode) {
         const key = new Date(end.getTime() - d * 86_400_000).toISOString().split("T")[0];
         mins += dailyMinutes.get(key) ?? 0;
       }
-      out.push({ label: `W${12 - i}`, hours: mins / 60 });
+      out.push({ label: `W${12 - i}`, minutes: mins });
     }
     return out;
   }
@@ -245,12 +250,12 @@ function buildTrendData(dailyMinutes, mode) {
     for (const [key, value] of dailyMinutes) {
       if (key.startsWith(monthPrefix)) mins += value;
     }
-    out.push({ label: d.toLocaleDateString(undefined, { month: "short" }), hours: mins / 60 });
+    out.push({ label: d.toLocaleDateString(undefined, { month: "short" }), minutes: mins });
   }
   return out;
 }
 
-function ActivityHeatmap({ events }) {
+function ActivityHeatmap({ events, localByDay }) {
   const [dayBump, setDayBump] = useState(0);
 
   useEffect(() => {
@@ -273,10 +278,14 @@ function ActivityHeatmap({ events }) {
     }
   }, [dayBump]);
 
-  const days = useMemo(
-    () => buildHeatmapDayCells(events, { todayClientTouched: todayTouch }),
-    [events, todayTouch],
-  );
+  const days = useMemo(() => {
+    const fallbackEvents = Array.from(localByDay.entries()).map(([key, minutes]) => ({
+      created_at: `${key}T12:00:00.000Z`,
+      event_type: "time_spent",
+      metadata: { minutes },
+    }));
+    return buildHeatmapDayCells([...(events ?? []), ...fallbackEvents], { todayClientTouched: todayTouch });
+  }, [events, localByDay, todayTouch]);
   const maxIntensity = Math.max(1, ...days.map((d) => d.intensity));
 
   return (
@@ -301,18 +310,18 @@ function ActivityHeatmap({ events }) {
   );
 }
 
-function HoursTrendChart({ events }) {
+function MinutesTrendChart({ events, localByDay }) {
   const [mode, setMode] = useState("daily");
   const data = useMemo(() => {
-    const dailyMinutes = buildMinutesSeries(events);
+    const dailyMinutes = buildMinutesSeries(events, localByDay);
     return buildTrendData(dailyMinutes, mode);
-  }, [events, mode]);
+  }, [events, localByDay, mode]);
 
-  const maxHours = Math.max(1, ...data.map((d) => d.hours));
+  const maxMinutes = Math.max(1, ...data.map((d) => d.minutes));
   const points = data
     .map((d, i) => {
       const x = (i / Math.max(1, data.length - 1)) * 100;
-      const y = 100 - (d.hours / maxHours) * 100;
+      const y = 100 - (d.minutes / maxMinutes) * 100;
       return `${x},${y}`;
     })
     .join(" ");
@@ -320,7 +329,7 @@ function HoursTrendChart({ events }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hours on app</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Engagement trend (minutes)</p>
         <div className="flex items-center gap-1 rounded-lg border border-border/35 bg-muted/25 p-0.5">
           {["daily", "weekly", "monthly"].map((m) => (
             <button
@@ -361,6 +370,7 @@ export default function ProfilePage() {
   const [tab, setTab] = useState("overview");
   const [activityEvents, setActivityEvents] = useState([]);
   const [activityEnabled, setActivityEnabled] = useState(false);
+  const [trackingBump, setTrackingBump] = useState(0);
 
   const TABS = [
     { id: "overview", label: "Overview" },
@@ -394,6 +404,28 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [status]);
+
+  useEffect(() => {
+    function bump() {
+      setTrackingBump((n) => n + 1);
+    }
+    window.addEventListener("storage", bump);
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+    return () => {
+      window.removeEventListener("storage", bump);
+      window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+    };
+  }, []);
+
+  const localTrackingByDay = useMemo(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LS_TIME_TRACKING) ?? "{}");
+      const byDay = raw?.byDay && typeof raw.byDay === "object" ? raw.byDay : {};
+      return new Map(Object.entries(byDay));
+    } catch {
+      return new Map();
+    }
+  }, [trackingBump]);
 
   if (status === "loading" || !state) {
     return (
@@ -515,11 +547,11 @@ export default function ProfilePage() {
 
           <div className="space-y-4 pt-2 border-t border-border/25">
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Your activity</h2>
-            <ActivityHeatmap events={activityEvents} />
-            <HoursTrendChart events={activityEvents} />
+            <ActivityHeatmap events={activityEvents} localByDay={localTrackingByDay} />
+            <MinutesTrendChart events={activityEvents} localByDay={localTrackingByDay} />
             {!activityEnabled && status === "authenticated" && (
               <p className="text-xs text-muted-foreground">
-                Cloud activity logging is currently unavailable, so this chart may appear empty.
+                Cloud activity logging is currently unavailable, so local tracked minutes are used as fallback.
               </p>
             )}
           </div>
@@ -564,8 +596,8 @@ export default function ProfilePage() {
             <StatCard icon={Trophy} label="Challenges" value={state.challenge_date ? 1 : 0} color="text-accent" />
           </div>
           <>
-            <ActivityHeatmap events={activityEvents} />
-            <HoursTrendChart events={activityEvents} />
+            <ActivityHeatmap events={activityEvents} localByDay={localTrackingByDay} />
+            <MinutesTrendChart events={activityEvents} localByDay={localTrackingByDay} />
           </>
           {!activityEnabled && status === "authenticated" && (
             <p className="text-xs text-muted-foreground">

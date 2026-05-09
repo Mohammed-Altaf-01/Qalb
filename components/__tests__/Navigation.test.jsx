@@ -33,7 +33,6 @@ describe("Navigation", () => {
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Discover").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Ahadith").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Settings")).toHaveAttribute("href", "/settings");
   });
@@ -58,11 +57,11 @@ describe("Navigation", () => {
     expect(screen.getByLabelText("Settings")).toHaveAttribute("aria-current", "page");
   });
 
-  it("marks Ahadith as current on nested path", async () => {
+  it("marks Read as current on ahadith nested path", async () => {
     usePathname.mockReturnValue("/ahadith/bukhari");
     await act(async () => render(<Navigation />));
-    const ahadithLink = screen.getAllByRole("link").find((l) => l.textContent === "Ahadith");
-    expect(ahadithLink).toHaveAttribute("aria-current", "page");
+    const readLink = screen.getAllByRole("link").find((l) => l.textContent === "Read");
+    expect(readLink).toHaveAttribute("aria-current", "page");
   });
 
   it("home link points to /", async () => {

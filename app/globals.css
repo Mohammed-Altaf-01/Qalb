@@ -637,6 +637,25 @@ html.light .ayah-end-badge {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Quran radio — playing indicator (thin arc only, slow rotation)
+───────────────────────────────────────────────────────────────────────────── */
+
+@keyframes radio-playing-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.radio-playing-ring-arc {
+  box-sizing: border-box;
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  border-top-color: currentColor;
+  opacity: 0.88;
+  animation: radio-playing-ring-spin 2.75s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Scrollbar — subtle, matches dark theme
 ───────────────────────────────────────────────────────────────────────────── */
 

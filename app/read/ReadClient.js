@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageCircle,
   Pause,
+  Play,
   Rows3,
   Sparkles,
   Volume2,
@@ -192,6 +193,8 @@ function findActiveWord(currentMs, segments) {
 
 function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighted, chapterName }) {
   const { award } = useGamification();
+  const awardRef = useRef(award);
+  awardRef.current = award;
   const verseKey = verse.verse_key ?? "";
   const words = filterVerseWords(verse.words);
   const body = stripVerseEndMarker(verse.text_uthmani ?? "");
@@ -324,12 +327,12 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
         };
         localStorage.setItem(LS_BOOKMARKS_READ, JSON.stringify(next));
         setIsBookmarked(true);
-        award("bookmark_verse");
+        awardRef.current("bookmark_verse");
       }
     } catch {
       /* ignore */
     }
-  }, [verseKey, chapterName, body, translation, award]);
+  }, [verseKey, chapterName, body, translation]);
 
   const juzNum = JUZ_STARTS.get(verseKey);
   const hizbNum = HIZB_STARTS.get(verseKey);
@@ -665,6 +668,11 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   const [mushafVerses, setMushafVerses] = useState([]);
   const [isLoadingMushaf, setIsLoadingMushaf] = useState(false);
   const [mushafHasNext, setMushafHasNext] = useState(false);
+  const mushafAudioRef = useRef(null);
+  const [mushafPlayingIndex, setMushafPlayingIndex] = useState(-1);
+  const [isMushafPagePlaying, setIsMushafPagePlaying] = useState(false);
+  const [mushafAudioUrl, setMushafAudioUrl] = useState(null);
+  const [isMushafAudioLoading, setIsMushafAudioLoading] = useState(false);
 
   // ── Sentinel for infinite scroll ─────────────────────────────────────────
   const sentinelRef = useRef(null);
@@ -755,6 +763,58 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       cancelled = true;
     };
   }, [view, readingLayout, mushafPage, translationId]);
+
+  useEffect(() => {
+    // Reset page playback when context changes.
+    setMushafPlayingIndex(-1);
+    setIsMushafPagePlaying(false);
+    setMushafAudioUrl(null);
+  }, [mushafPage, reciterId, readingLayout, view]);
+
+  useEffect(() => {
+    if (!isMushafPagePlaying) return;
+    if (mushafPlayingIndex < 0 || mushafPlayingIndex >= mushafVerses.length) return;
+    const current = mushafVerses[mushafPlayingIndex];
+    if (!current?.verse_key) return;
+    let cancelled = false;
+    async function loadCurrentAudio() {
+      setIsMushafAudioLoading(true);
+      try {
+        const res = await fetch(`/api/verse/audio?key=${encodeURIComponent(current.verse_key)}&reciter=${reciterId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        setMushafAudioUrl(data?.audioUrl ?? null);
+      } catch {
+        if (!cancelled) {
+          setMushafAudioUrl(null);
+          setIsMushafPagePlaying(false);
+        }
+      } finally {
+        if (!cancelled) setIsMushafAudioLoading(false);
+      }
+    }
+    loadCurrentAudio();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMushafPagePlaying, mushafPlayingIndex, mushafVerses, reciterId]);
+
+  useEffect(() => {
+    if (!isMushafPagePlaying || !mushafAudioUrl || !mushafAudioRef.current) return;
+    mushafAudioRef.current.play().catch(() => {});
+  }, [isMushafPagePlaying, mushafAudioUrl]);
+
+  const toggleMushafPagePlayback = useCallback(() => {
+    if (!mushafVerses.length) return;
+    if (isMushafPagePlaying) {
+      mushafAudioRef.current?.pause();
+      setIsMushafPagePlaying(false);
+      return;
+    }
+    setMushafPlayingIndex((idx) => (idx >= 0 ? idx : 0));
+    setIsMushafPagePlaying(true);
+  }, [isMushafPagePlaying, mushafVerses.length]);
 
   // ── Intersection Observer — triggers loadMore when sentinel enters view ──
   useEffect(() => {
@@ -1177,6 +1237,28 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           </div>
         ) : readingLayout === "mushaf" ? (
           <div className="py-8 md:py-10">
+            <div className="mb-4 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={toggleMushafPagePlayback}
+                disabled={isLoadingMushaf || mushafVerses.length === 0}
+                className={cn(
+                  "flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50",
+                  isMushafPagePlaying
+                    ? "border-accent/60 bg-accent/15 text-accent"
+                    : "border-border/40 bg-muted/35 text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {isMushafAudioLoading ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : isMushafPagePlaying ? (
+                  <Pause size={12} />
+                ) : (
+                  <Play size={12} />
+                )}
+                {isMushafPagePlaying ? "Pause page recitation" : "Play page recitation"}
+              </button>
+            </div>
             <div className="mb-6 flex items-center justify-center gap-2">
               <button
                 type="button"
@@ -1196,6 +1278,22 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
                 Next page
               </button>
             </div>
+            {mushafAudioUrl ? (
+              <audio
+                ref={mushafAudioRef}
+                src={mushafAudioUrl}
+                preload="auto"
+                onEnded={() => {
+                  if (!isMushafPagePlaying) return;
+                  if (mushafPlayingIndex >= mushafVerses.length - 1) {
+                    setIsMushafPagePlaying(false);
+                    award("audio_page_complete", { mushafPage });
+                    return;
+                  }
+                  setMushafPlayingIndex((idx) => idx + 1);
+                }}
+              />
+            ) : null}
             <div className="read-mushaf-flow text-foreground/90 max-w-4xl mx-auto" dir="rtl" lang="ar">
               {(isLoadingMushaf ? [] : mushafVerses).map((verse, idx) => {
                 const key = verse.verse_key ?? "";
@@ -1222,7 +1320,13 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
                         <span className="flex-1 min-w-[2rem] h-px bg-accent/20" />
                       </span>
                     ) : null}
-                    <span id={`verse-${key}`} className="read-mushaf-verse-inline">
+                    <span
+                      id={`verse-${key}`}
+                      className={cn(
+                        "read-mushaf-verse-inline rounded-sm transition-colors",
+                        isMushafPagePlaying && mushafPlayingIndex === idx && "bg-accent/20 text-accent",
+                      )}
+                    >
                       <span className="read-quran-arabic read-quran-arabic--mushaf">
                         {stripVerseEndMarker(verse.text_uthmani ?? "")}
                       </span>

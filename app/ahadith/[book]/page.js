@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import HadithChaptersList from "@/components/HadithChaptersList";
 
 import { getHadithChaptersForBook } from "@/lib/hadith-catalog";
 
@@ -44,33 +45,7 @@ export default async function AhadithBookPage({ params }) {
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">{data.name}</h1>
         <p className="text-sm text-muted-foreground mb-6">Select a chapter to read the ahadith in that section.</p>
 
-        <ol className="rounded-2xl border border-border/40 bg-card/30 divide-y divide-border/25 overflow-hidden">
-          {data.chapters.map((ch, i) => (
-            <li key={ch.id}>
-              <Link
-                href={`/ahadith/${p.book}/${ch.id}`}
-                className="flex items-start gap-3 px-4 py-3.5 md:px-5 hover:bg-primary/5 transition-colors group"
-              >
-                <span className="text-xs font-mono text-muted-foreground/70 tabular-nums w-7 shrink-0 pt-0.5">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className="font-medium text-foreground group-hover:text-accent transition-colors block">
-                    {ch.title}
-                  </span>
-                  <span className="text-xs text-muted-foreground mt-0.5">
-                    Hadith {ch.hadithFirst}
-                    {ch.hadithLast !== ch.hadithFirst ? `–${ch.hadithLast}` : ""}
-                  </span>
-                </div>
-                <ChevronRight
-                  className="h-4 w-4 text-muted-foreground shrink-0 mt-1 group-hover:text-accent transition-colors"
-                  aria-hidden
-                />
-              </Link>
-            </li>
-          ))}
-        </ol>
+        <HadithChaptersList bookSlug={p.book} chapters={data.chapters} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import TrackHadithRead from "@/components/TrackHadithRead";
-import { attachArabicToHadiths, fetchHadithSection, getHadithChaptersForBook } from "@/lib/hadith-catalog";
+import { attachArabicToHadiths, fetchHadithSection, getHadithChaptersForBook, splitHadithSanad } from "@/lib/hadith-catalog";
 
 export async function generateMetadata({ params }) {
   const p = await Promise.resolve(params);
@@ -76,27 +76,31 @@ export default async function AhadithSectionPage({ params }) {
         </p>
 
         <ol className="space-y-4">
-          {hadiths.map((h) => (
-            <li
-              key={`${h.hadithnumber}-${h.reference?.hadith ?? ""}`}
-              className="rounded-2xl border border-border/35 bg-card/25 px-4 py-4 md:px-5"
-            >
-              <p className="text-[11px] font-semibold text-accent/90 mb-2 tabular-nums">Hadith {h.hadithnumber}</p>
-              {h.textArabic ? (
-                <p
-                  className="arabic-text arabic-text-display text-foreground/90 mb-4 text-right"
-                  lang="ar"
-                  dir="rtl"
-                >
-                  {h.textArabic}
-                </p>
-              ) : null}
-              <p className="reading-prose text-foreground/95">{h.text}</p>
-              {h.grades?.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-2">Grade: {h.grades.join(", ")}</p>
-              )}
-            </li>
-          ))}
+          {hadiths.map((h) => {
+            const english = splitHadithSanad(h.text, "en");
+            const arabic = splitHadithSanad(h.textArabic, "ar");
+            return (
+              <li
+                key={`${h.hadithnumber}-${h.reference?.hadith ?? ""}`}
+                className="rounded-2xl border border-border/35 bg-card/25 px-4 py-4 md:px-5"
+              >
+                <p className="text-[11px] font-semibold text-accent/90 mb-2 tabular-nums">Hadith {h.hadithnumber}</p>
+                {arabic.sanad ? (
+                  <p className="arabic-text text-foreground/55 mb-2 text-right text-base" lang="ar" dir="rtl">
+                    {arabic.sanad}
+                  </p>
+                ) : null}
+                {h.textArabic ? (
+                  <p className="arabic-text arabic-text-display text-foreground/90 mb-4 text-right" lang="ar" dir="rtl">
+                    {arabic.body}
+                  </p>
+                ) : null}
+                {english.sanad ? <p className="text-sm text-foreground/55 mb-2 italic">{english.sanad}</p> : null}
+                <p className="reading-prose text-foreground/95">{english.body}</p>
+                {h.grades?.length > 0 && <p className="text-xs text-muted-foreground mt-2">Grade: {h.grades.join(", ")}</p>}
+              </li>
+            );
+          })}
         </ol>
       </div>
     </div>

@@ -25,12 +25,14 @@ export default function AuthErrorPage() {
         <h1 className="text-2xl font-bold text-foreground">Sign-in Error</h1>
         <p className="text-muted-foreground text-sm">{message}</p>
         <div className="flex flex-col gap-3">
-          <Button asChild className="w-full">
-            <Link href="/auth/signin">Try Again</Link>
-          </Button>
-          <Button asChild variant="ghost" className="w-full">
-            <Link href="/">Continue as Guest</Link>
-          </Button>
+          <Link href="/auth/signin">
+            <Button className="w-full">Try Again</Button>
+          </Link>
+          <Link href="/">
+            <Button variant="ghost" className="w-full">
+              Continue as Guest
+            </Button>
+          </Link>
         </div>
       </div>
     </div>

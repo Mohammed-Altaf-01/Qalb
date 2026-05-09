@@ -231,6 +231,77 @@ html.light .tafsir-content h2 {
   line-height: var(--arabic-line-tight);
 }
 
+/* Reader + mushaf — Naskh-first, high legibility (inspired by quran.com verse layout) */
+.read-quran-arabic {
+  font-family: var(--arabic-font-family);
+  font-size: calc(clamp(1.32rem, 0.9rem + 1.5vw, 1.95rem) * var(--reading-font-mult, 1));
+  line-height: 2.28;
+  letter-spacing: 0.01em;
+  word-spacing: 0.06em;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures contextual;
+  text-rendering: optimizeLegibility;
+  unicode-bidi: plaintext;
+  color: oklch(0.96 0.01 90 / 0.93);
+}
+
+.read-quran-arabic--mushaf {
+  font-size: calc(clamp(1.12rem, 0.85rem + 1.1vw, 1.48rem) * var(--reading-font-mult, 1));
+  line-height: 2.35;
+}
+
+/* Circular ayah marker — avoids broken ornate bracket glyphs when mixing fonts */
+.ayah-end-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.55em;
+  height: 1.55em;
+  margin-inline-start: 0.18em;
+  padding: 0 0.2em;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.72 0.13 75 / 0.42);
+  background: oklch(0.14 0.03 155 / 0.55);
+  font-size: 0.38em;
+  font-weight: 600;
+  vertical-align: middle;
+  line-height: 1;
+  font-family: var(--arabic-font-family);
+  color: oklch(0.82 0.11 75);
+  box-sizing: border-box;
+}
+
+.ayah-end-badge--compact {
+  min-width: 1.35em;
+  height: 1.35em;
+  font-size: 0.44em;
+  margin-inline-start: 0.12em;
+}
+
+.read-mushaf-flow {
+  font-family: var(--arabic-font-family);
+  line-height: 2.45;
+  text-align: justify;
+  text-justify: inter-word;
+  word-spacing: 0.04em;
+  hyphens: none;
+}
+
+.read-mushaf-verse-inline {
+  display: inline;
+  white-space: normal;
+}
+
+html.light .read-quran-arabic {
+  color: oklch(0.18 0.03 155 / 0.92);
+}
+
+html.light .ayah-end-badge {
+  background: oklch(0.97 0.01 80 / 0.9);
+  border-color: oklch(0.42 0.1 155 / 0.35);
+  color: oklch(0.38 0.1 155);
+}
+
 /* Translations + hadith English — tied to same scale as Arabic */
 .reading-prose {
   font-size: calc(0.9375rem * var(--reading-font-mult, 1));

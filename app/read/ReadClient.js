@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  Bookmark,
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  LayoutList,
   Loader2,
   MessageCircle,
   Pause,
-  Play,
+  Rows3,
   Sparkles,
   Volume2,
   X,
@@ -19,11 +21,13 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
+import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
 import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
 import { paginationHasNextPage } from "@/lib/read-pagination";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { LS_READ_KEY_THEMES, LS_READING_PROGRESS_KEY } from "@/lib/qalb-storage-keys";
+import { READ_RECITERS } from "@/lib/read-reciters";
+import { cleanTranslationText } from "@/lib/translation-utils";
 import {
   schedulePushPreferences,
   schedulePushReadKeyThemes,
@@ -50,15 +54,6 @@ export const TRANSLATIONS = [
   { id: 31, name: "Muhammad Hamidullah", language: "French" },
   { id: 52, name: "Elmalili Hamdi Yazir", language: "Turkish" },
   { id: 33, name: "Indonesian (Ministry)", language: "Indonesian" },
-];
-
-const RECITERS = [
-  { id: 7, name: "Mishari Alafasy" },
-  { id: 3, name: "Abdul Rahman Al-Sudais" },
-  { id: 2, name: "AbdulBaset (Murattal)" },
-  { id: 1, name: "AbdulBaset (Mujawwad)" },
-  { id: 6, name: "Mahmoud Al-Husary" },
-  { id: 10, name: "Saud Al-Shuraym" },
 ];
 
 const DEFAULT_TRANSLATION_ID = 20;
@@ -164,29 +159,43 @@ const HIZB_STARTS = new Map([
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VersePlayer — word-by-word audio with highlighting
+// Ayah marker + VersePlayer — full-line Arabic (legible joins) + verse audio
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Returns the 0-based word array index active at `currentMs`.
- * Real API segment format: [segment_idx, word_position_1based, start_ms, end_ms]
- */
+const LS_BOOKMARKS_READ = "qalb_bookmarks";
+
+function AyahEndBadge({ verseKey, compact }) {
+  const n = verseNumberFromKey(verseKey);
+  if (n == null) return null;
+  const digits = toArabicIndicDigits(n);
+  return (
+    <span
+      className={cn("ayah-end-badge", compact && "ayah-end-badge--compact")}
+      aria-label={`Ayah ${n}`}
+      title={`Ayah ${n}`}
+    >
+      {digits}
+    </span>
+  );
+}
+
 function findActiveWord(currentMs, segments) {
   if (!segments?.length) return -1;
   for (const seg of segments) {
-    const wordPos = seg[1]; // 1-based position within the verse
+    const wordPos = seg[1];
     const startMs = seg[2];
     const endMs = seg[3];
-    if (currentMs >= startMs && currentMs < endMs) return wordPos - 1; // convert to 0-based
+    if (currentMs >= startMs && currentMs < endMs) return wordPos - 1;
   }
   return -1;
 }
 
-function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighted }) {
+function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighted, chapterName }) {
+  const { award } = useGamification();
   const verseKey = verse.verse_key ?? "";
   const words = filterVerseWords(verse.words);
-  const arabic = stripVerseEndMarker(verse.text_uthmani ?? "");
-  const translation = verse.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
+  const body = stripVerseEndMarker(verse.text_uthmani ?? "");
+  const translation = cleanTranslationText(verse.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "");
 
   const audioRef = useRef(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -194,19 +203,30 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [activeWordIdx, setActiveWordIdx] = useState(-1);
   const [audioError, setAudioError] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const isPlaying = playingKey === verseKey;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_BOOKMARKS_READ);
+      const o = raw ? JSON.parse(raw) : {};
+      setIsBookmarked(!!(o && typeof o === "object" && o[verseKey]));
+    } catch {
+      setIsBookmarked(false);
+    }
+  }, [verseKey]);
 
   // Reset cached audio when reciter changes
   useEffect(() => {
     setAudioUrl(null);
     setSegments(null);
     setAudioError(false);
+    setActiveWordIdx(-1);
     if (playingKey === verseKey) setPlayingKey(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reciterId]);
 
-  // Sync audio element with playing state — retry after media is ready (avoids false Errors after async fetch kills the gesture chain).
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
@@ -274,16 +294,42 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
     setPlayingKey(isPlaying ? null : verseKey);
   }
 
-  const handleTimeUpdate = useCallback(() => {
-    if (!audioRef.current || !segments) return;
-    const ms = audioRef.current.currentTime * 1000;
-    setActiveWordIdx(findActiveWord(ms, segments));
-  }, [segments]);
-
   const handleEnded = useCallback(() => {
     setPlayingKey(null);
     setActiveWordIdx(-1);
   }, [setPlayingKey]);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (!audioRef.current || !segments?.length) return;
+    const ms = audioRef.current.currentTime * 1000;
+    setActiveWordIdx(findActiveWord(ms, segments));
+  }, [segments]);
+
+  const toggleBookmark = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(LS_BOOKMARKS_READ) ?? "{}";
+      const stored = JSON.parse(raw);
+      const next = typeof stored === "object" && stored && !Array.isArray(stored) ? { ...stored } : {};
+      if (next[verseKey]) {
+        delete next[verseKey];
+        localStorage.setItem(LS_BOOKMARKS_READ, JSON.stringify(next));
+        setIsBookmarked(false);
+      } else {
+        next[verseKey] = {
+          verseKey,
+          chapterName: chapterName || verseKey.split(":")[0],
+          arabicText: body,
+          translation: translation || "",
+          bookmarkedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(LS_BOOKMARKS_READ, JSON.stringify(next));
+        setIsBookmarked(true);
+        award("bookmark_verse");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [verseKey, chapterName, body, translation, award]);
 
   const juzNum = JUZ_STARTS.get(verseKey);
   const hizbNum = HIZB_STARTS.get(verseKey);
@@ -295,9 +341,9 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
       className={cn(
         "py-7 border-b border-border/20 last:border-0 group/verse transition-colors duration-700",
         isHighlighted && "bg-accent/5 rounded-2xl border border-accent/20",
+        isPlaying && "ring-1 ring-accent/15 ring-inset",
       )}
     >
-      {/* Juz / Hizb start marker */}
       {hasMarker && (
         <div className="flex items-center gap-2 mb-4 px-2">
           <div className="flex-1 h-px bg-accent/20" />
@@ -317,49 +363,44 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
         </div>
       )}
 
-      {/* Verse number badge */}
-      <div className="flex justify-center mb-5">
-        <span className="text-[10px] text-accent/60 bg-accent/8 border border-accent/15 rounded-full px-3 py-0.5 font-medium">
-          {verseKey}
-        </span>
+      <div className="flex justify-center mb-4">
+        <span className="text-[10px] text-muted-foreground/70 font-mono tabular-nums tracking-wide">{verseKey}</span>
       </div>
 
-      {/* Arabic — word-by-word spans if available, plain text fallback */}
-      <div className="text-center mb-5 px-2 overflow-hidden">
-        {words.length > 0 ? (
-          <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
-            {words.map((word, i) => (
-              <span
-                key={word.id ?? i}
-                className={cn(
-                  "inline px-0.5 mx-0.5 rounded transition-all duration-100",
-                  // word.position is 1-based; activeWordIdx is 0-based (position - 1)
-                  activeWordIdx === (word.position ?? i + 1) - 1
-                    ? "bg-accent/30 text-accent drop-shadow-sm"
-                    : "hover:text-accent/80",
-                )}
-              >
-                {word.text_uthmani}
-              </span>
-            ))}
-          </p>
-        ) : (
-          <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
-            {arabic}
-          </p>
-        )}
+      <div className="mb-5 px-1 md:px-3">
+        <div className="mx-auto max-w-[min(100%,42rem)]" dir="rtl" lang="ar">
+          {words.length > 0 ? (
+            <p className="read-quran-arabic text-start">
+              {words.map((word, i) => (
+                <span
+                  key={word.id ?? i}
+                  className={cn(
+                    "inline rounded px-[0.08em] transition-colors duration-100",
+                    activeWordIdx === (word.position ?? i + 1) - 1 && "bg-accent/20 text-accent",
+                  )}
+                >
+                  {word.text_uthmani}
+                  {i < words.length - 1 ? " " : ""}
+                </span>
+              ))}
+              <AyahEndBadge verseKey={verseKey} />
+            </p>
+          ) : (
+            <p className="read-quran-arabic text-start">
+              <span>{body}</span>
+              <AyahEndBadge verseKey={verseKey} />
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Translation */}
       {translation && (
-        <p className="reading-prose text-foreground/65 text-center max-w-2xl mx-auto px-4 mb-4">
+        <p className="reading-prose text-foreground/70 text-center max-w-2xl mx-auto px-4 mb-4 leading-relaxed">
           {translation}
         </p>
       )}
 
-      {/* Audio player + Reflect link */}
-      <div className="flex items-center justify-center gap-3 mt-1">
-        {/* Hidden audio element */}
+      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mt-2">
         {audioUrl && (
           <audio
             ref={audioRef}
@@ -374,11 +415,11 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
           />
         )}
 
-        {/* Play/Pause button */}
         {audioError ? (
           <span className="text-[10px] text-muted-foreground/40">Audio unavailable</span>
         ) : (
           <button
+            type="button"
             onClick={handlePlay}
             disabled={isLoadingAudio}
             aria-label={isPlaying ? "Pause" : "Play recitation"}
@@ -396,12 +437,26 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
             ) : (
               <Volume2 size={12} />
             )}
-            <span>{isPlaying ? "Pause" : words.length > 0 ? "Play word-by-word" : "Play"}</span>
+            <span>{isPlaying ? "Pause" : "Play"}</span>
           </button>
         )}
 
-        {/* Reflect & Chat link */}
-        {verseKey && (
+        <button
+          type="button"
+          onClick={toggleBookmark}
+          aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
+          className={cn(
+            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-150",
+            isBookmarked
+              ? "border-accent/50 bg-accent/12 text-accent"
+              : "border-border/40 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-accent",
+          )}
+        >
+          <Bookmark size={12} className={isBookmarked ? "fill-current" : ""} aria-hidden />
+          <span>{isBookmarked ? "Saved" : "Bookmark"}</span>
+        </button>
+
+        {verseKey ? (
           <Link
             href={`/verse/${verseKey}`}
             className="flex items-center gap-1.5 text-xs text-muted-foreground/45
@@ -410,7 +465,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
             <MessageCircle size={12} className="group-hover/reflect:text-accent transition-colors" />
             <span>Reflect &amp; Chat</span>
           </Link>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -576,7 +631,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   const [reciterId, setReciterId] = useState(() => {
     if (typeof window === "undefined") return 7;
     const saved = parseInt(localStorage.getItem("qalb_reciter_id") ?? "0", 10);
-    return RECITERS.some((r) => r.id === saved) ? saved : 7;
+    return READ_RECITERS.some((r) => r.id === saved) ? saved : 7;
   });
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
@@ -603,6 +658,13 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
   // ── Summary ──────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
+
+  /** `verses` — per-ayah layout + translation + audio. `mushaf` — continuous Arabic flow (quran.com-style). */
+  const [readingLayout, setReadingLayout] = useState("verses");
+  const [mushafPage, setMushafPage] = useState(1);
+  const [mushafVerses, setMushafVerses] = useState([]);
+  const [isLoadingMushaf, setIsLoadingMushaf] = useState(false);
+  const [mushafHasNext, setMushafHasNext] = useState(false);
 
   // ── Sentinel for infinite scroll ─────────────────────────────────────────
   const sentinelRef = useRef(null);
@@ -665,9 +727,38 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     }
   }, []);
 
+  useEffect(() => {
+    if (view !== "reading" || readingLayout !== "mushaf") return;
+    let cancelled = false;
+    async function loadMushafPage() {
+      setIsLoadingMushaf(true);
+      try {
+        const res = await fetch(`/api/verse/by-page?page=${mushafPage}&translation=${translationId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const nextVerses = Array.isArray(data?.verses) ? data.verses : [];
+        setMushafVerses(nextVerses);
+        setMushafHasNext(mushafPage < 604 && nextVerses.length > 0);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[ReadClient] loadMushafPage:", err);
+          setMushafVerses([]);
+          setMushafHasNext(false);
+        }
+      } finally {
+        if (!cancelled) setIsLoadingMushaf(false);
+      }
+    }
+    loadMushafPage();
+    return () => {
+      cancelled = true;
+    };
+  }, [view, readingLayout, mushafPage, translationId]);
+
   // ── Intersection Observer — triggers loadMore when sentinel enters view ──
   useEffect(() => {
-    if (view !== "reading") return;
+    if (view !== "reading" || readingLayout !== "verses") return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
@@ -681,7 +772,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [view, loadMore]);
+  }, [view, readingLayout, loadMore]);
 
   // ── Restore last position / handle initialSurahId ────────────────────────
   useEffect(() => {
@@ -831,6 +922,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     setIsLoadingMore(false);
     setPlayingKey(null);
     setShowSummary(false);
+    setReadingLayout("verses");
+    setMushafPage(startPage);
+    setMushafVerses([]);
+    setMushafHasNext(false);
     setView("reading");
 
     const awardKey = `${chapter.id}:${new Date().toISOString().split("T")[0]}`;
@@ -873,7 +968,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   }
 
   const currentTranslation = TRANSLATIONS.find((t) => t.id === translationId) ?? TRANSLATIONS[0];
-  const currentReciter = RECITERS.find((r) => r.id === reciterId) ?? RECITERS[0];
+  const currentReciter = READ_RECITERS.find((r) => r.id === reciterId) ?? READ_RECITERS[0];
 
   // ── Render: Surah Picker ──────────────────────────────────────────────────
   if (view === "picker") {
@@ -960,12 +1055,48 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           Back
         </button>
 
-        {/* Title */}
-        <div className="flex-1 text-center">
-          <p className="text-sm font-semibold text-foreground">{selectedChapter?.name_simple}</p>
+        {/* Title + layout toggle */}
+        <div className="flex-1 text-center min-w-0">
+          <p className="text-sm font-semibold text-foreground truncate">{selectedChapter?.name_simple}</p>
           <p className="text-[10px] text-muted-foreground">
-            {verses.length} / {selectedChapter?.verses_count} verses
+            {verses.length} / {selectedChapter?.verses_count} loaded
           </p>
+          <div
+            className="mt-2 inline-flex rounded-lg border border-border/40 bg-muted/20 p-0.5 gap-0.5"
+            role="group"
+            aria-label="Reading layout"
+          >
+            <button
+              type="button"
+              onClick={() => setReadingLayout("verses")}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
+                readingLayout === "verses"
+                  ? "bg-card text-accent shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <LayoutList size={11} aria-hidden />
+              Verses
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const firstLoadedPage = Number(verses?.[0]?.page_number);
+                setMushafPage(Number.isFinite(firstLoadedPage) && firstLoadedPage > 0 ? firstLoadedPage : 1);
+                setReadingLayout("mushaf");
+              }}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
+                readingLayout === "mushaf"
+                  ? "bg-card text-accent shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Rows3 size={11} aria-hidden />
+              Mushaf
+            </button>
+          </div>
         </div>
 
         {/* Settings row */}
@@ -1018,7 +1149,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             </button>
             {showReciterPicker && (
               <div className="absolute right-0 top-8 z-50 w-52 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
-                {RECITERS.map((r) => (
+                {READ_RECITERS.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => handleReciterChange(r.id)}
@@ -1038,11 +1169,75 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
         </div>
       </div>
 
-      {/* ── Verses ──────────────────────────────────────────────────────── */}
+      {/* ── Verses or mushaf flow ─────────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/40 bg-card px-4 md:px-8">
         {verses.length === 0 && isLoadingMore ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={20} className="animate-spin text-accent/60" />
+          </div>
+        ) : readingLayout === "mushaf" ? (
+          <div className="py-8 md:py-10">
+            <div className="mb-6 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMushafPage((p) => Math.max(1, p - 1))}
+                disabled={isLoadingMushaf || mushafPage <= 1}
+                className="text-xs px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground disabled:opacity-40"
+              >
+                Previous page
+              </button>
+              <span className="text-[11px] text-muted-foreground">Page {mushafPage}</span>
+              <button
+                type="button"
+                onClick={() => setMushafPage((p) => p + 1)}
+                disabled={isLoadingMushaf || !mushafHasNext}
+                className="text-xs px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground disabled:opacity-40"
+              >
+                Next page
+              </button>
+            </div>
+            <div className="read-mushaf-flow text-foreground/90 max-w-4xl mx-auto" dir="rtl" lang="ar">
+              {(isLoadingMushaf ? [] : mushafVerses).map((verse, idx) => {
+                const key = verse.verse_key ?? "";
+                const juzNum = JUZ_STARTS.get(key);
+                const hizbNum = HIZB_STARTS.get(key);
+                const hasMarker = juzNum != null || hizbNum != null;
+                return (
+                  <Fragment key={`${key}-${translationId}`}>
+                    {hasMarker ? (
+                      <span className="flex flex-wrap items-center justify-center gap-2 my-5 w-full" dir="ltr">
+                        <span className="flex-1 min-w-[2rem] h-px bg-accent/20" />
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          {juzNum != null && (
+                            <span className="text-[10px] font-semibold text-accent bg-accent/12 border border-accent/25 rounded-full px-2 py-0.5">
+                              Juz {juzNum}
+                            </span>
+                          )}
+                          {hizbNum != null && (
+                            <span className="text-[10px] font-semibold text-accent/70 bg-accent/8 border border-accent/15 rounded-full px-2 py-0.5">
+                              Hizb {hizbNum}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex-1 min-w-[2rem] h-px bg-accent/20" />
+                      </span>
+                    ) : null}
+                    <span id={`verse-${key}`} className="read-mushaf-verse-inline">
+                      <span className="read-quran-arabic read-quran-arabic--mushaf">
+                        {stripVerseEndMarker(verse.text_uthmani ?? "")}
+                      </span>
+                      <AyahEndBadge verseKey={key} compact />
+                      {idx < mushafVerses.length - 1 ? "\u00a0" : null}
+                    </span>
+                  </Fragment>
+                );
+              })}
+              {isLoadingMushaf ? (
+                <div className="py-12 text-center">
+                  <Loader2 size={18} className="animate-spin text-accent/70 inline" />
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           verses.map((verse) => (
@@ -1053,16 +1248,17 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
               playingKey={playingKey}
               setPlayingKey={setPlayingKey}
               isHighlighted={highlightVerseKey === verse.verse_key}
+              chapterName={selectedChapter?.name_simple ?? ""}
             />
           ))
         )}
       </div>
 
       {/* ── Infinite scroll sentinel ──────────────────────────────────── */}
-      <div ref={sentinelRef} className="h-1" />
+      {readingLayout === "verses" ? <div ref={sentinelRef} className="h-1" /> : null}
 
       {/* ── Loading more indicator ───────────────────────────────────── */}
-      {isLoadingMore && verses.length > 0 && (
+      {readingLayout === "verses" && isLoadingMore && verses.length > 0 && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground/60">
           <Loader2 size={13} className="animate-spin" />
           Loading more verses…
@@ -1070,7 +1266,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       )}
 
       {/* ── All verses loaded ────────────────────────────────────────── */}
-      {!hasMore && verses.length > 0 && (
+      {readingLayout === "verses" && !hasMore && verses.length > 0 && (
         <div className="text-center py-8 border-t border-border/20 mt-4">
           <p className="text-sm text-muted-foreground mb-1">
             You&apos;ve read all {verses.length} verses of{" "}

@@ -92,12 +92,12 @@ export default function ReadKeyThemesViewClient({ surahId }) {
       )}
 
       <div>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href={readHref} className="inline-flex items-center justify-center gap-2">
+        <Link href={readHref}>
+          <Button className="w-full sm:w-auto inline-flex items-center justify-center gap-2">
             <BookOpen className="h-4 w-4 shrink-0" aria-hidden />
             Continue reading
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
     </div>
   );

@@ -2,11 +2,13 @@
 
 import { useEffect, useId, useState } from "react";
 
-import { BookOpen, Compass, Footprints, Home, LogIn, ScrollText, Settings, User } from "lucide-react";
+import { BookOpen, Compass, Footprints, Headphones, Home, LogIn, RadioTower, ScrollText, Settings, User } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import ListenMiniPlayer from "@/components/ListenMiniPlayer";
+import RadioQuranButton from "@/components/RadioQuranButton";
 import { getLevelInfo, loadState } from "@/lib/gamification";
 import { cn } from "@/lib/utils";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
@@ -18,6 +20,8 @@ const PRIMARY_NAV = [
   { label: "Ahadith", href: "/ahadith", icon: ScrollText },
   { label: "Discover", href: "/discover", icon: Compass },
   { label: "Journey", href: "/journey", icon: Footprints },
+  { label: "Listen", href: "/listen", icon: Headphones },
+  { label: "Live", href: "/live", icon: RadioTower },
 ];
 
 const NUDGE_SESSION_KEY = "qalb_signin_nudge_session_id";
@@ -260,6 +264,8 @@ function UserButton() {
 function navIsActive(pathname, href) {
   if (href === "/") return pathname === "/";
   if (href === "/settings") return pathname.startsWith("/settings");
+  if (href === "/listen") return pathname === "/listen";
+  if (href === "/live") return pathname === "/live";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -307,7 +313,8 @@ export default function Navigation() {
             })}
           </nav>
 
-          <div className="flex flex-1 md:flex-none justify-end items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex flex-1 md:flex-none justify-end items-center gap-1 sm:gap-2 shrink-0 min-w-0">
+            <RadioQuranButton />
             <Link
               href="/settings"
               aria-label="Settings"
@@ -331,7 +338,7 @@ export default function Navigation() {
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-border/45 bg-background/92 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
         aria-label="Mobile primary"
       >
-        <div className="flex items-stretch justify-around h-[3.375rem] max-w-lg mx-auto px-0.5 gap-0">
+        <div className="flex items-stretch justify-start h-[3.375rem] max-w-full mx-auto px-1 gap-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
             const active = navIsActive(pathname, href);
             return (
@@ -340,7 +347,7 @@ export default function Navigation() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-lg transition-colors relative",
+                  "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
                   active ? "text-accent" : "text-muted-foreground active:opacity-80",
                 )}
               >
@@ -357,7 +364,7 @@ export default function Navigation() {
             aria-label="Profile"
             aria-current={navIsActive(pathname, "/profile") ? "page" : undefined}
             className={cn(
-              "flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-lg transition-colors relative",
+              "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
               navIsActive(pathname, "/profile") ? "text-accent" : "text-muted-foreground active:opacity-80",
             )}
           >
@@ -369,6 +376,7 @@ export default function Navigation() {
           </Link>
         </div>
       </nav>
+      <ListenMiniPlayer />
     </>
   );
 }

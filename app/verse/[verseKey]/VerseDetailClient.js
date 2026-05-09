@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { stripVerseEndMarker } from "@/lib/arabic-utils";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { LS_VERSE_CHAT, LS_VERSE_NOTES, LS_VERSE_REFLECTIONS } from "@/lib/qalb-verse-local-keys";
+import { cleanTranslationText } from "@/lib/translation-utils";
 import { useGamification } from "@/lib/useGamification";
 import {
   ACCOUNT_STORAGE_SYNCED_EVENT,
@@ -102,7 +103,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
   const chapter = initialData?.chapter;
 
   const arabicText = stripVerseEndMarker(verse?.text_uthmani ?? "");
-  const translation = verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
+  const translation = cleanTranslationText(verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "");
   const tafsirHtml = tafsir?.text ?? "";
   const chapterName = chapter?.name_simple ?? verseKey.split(":")[0];
 
@@ -155,7 +156,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
     fetch(`/api/verse/by-key?key=${verseKey}&translation=20`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        const text = data?.verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
+        const text = cleanTranslationText(data?.verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "");
         if (text) {
           setActiveTranslation(text);
           activeTranslationRef.current = text;
@@ -195,7 +196,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       const res = await fetch(`/api/verse/by-key?key=${verseKey}&translation=${tid}`);
       if (res.ok) {
         const data = await res.json();
-        const text = data.verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "";
+        const text = cleanTranslationText(data.verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "") ?? "");
         if (text) setActiveTranslation(text);
       }
     } catch {

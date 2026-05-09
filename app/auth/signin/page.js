@@ -63,7 +63,7 @@ export default function SignInPage() {
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 text-center">
             {error === "OAuthCallback"
-              ? "Sign-in was cancelled. Please try again."
+              ? "OAuth callback failed. Please try again."
               : `Sign-in error: ${error}. Please try again.`}
           </div>
         )}

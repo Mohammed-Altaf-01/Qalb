@@ -1,6 +1,11 @@
+---
+description: 
+alwaysApply: true
+---
+
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
 ## Rules
 
@@ -13,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Web app (repo root)
+
 ```bash
 npm run dev           # Next.js dev server at http://localhost:3000
 npm run build         # Production build (catches type/import errors)
@@ -21,27 +27,32 @@ npm run test:watch    # Watch mode
 npx vitest run lib/__tests__/prompts.test.js   # Single test file
 npm run format        # Prettier + import sort (write)
 npm run format:check  # Check only (CI)
-npx vercel --prod     # Deploy
+npx vercel --prod    # Deploy
 ```
 
-### Mobile app (qalb_mobile/)
+### Mobile app (`qalb_mobile/`)
+
 ```bash
 cd qalb_mobile
 npm install
 npx expo start        # Dev server (scan QR with Expo Go)
-npx expo start --lan  # currently using this for testing the mobile app
+npx expo start --lan  # LAN — common for physical device testing
 ```
 
-**Before running mobile locally:** set `CONFIG.API_BASE_URL` in `qalb_mobile/src/config.js` to your machine's LAN IP (e.g. `http://192.168.1.42:3000`) — `localhost` won't reach the host machine from a physical device. For production, point it at the Vercel URL.
+**Mobile:** set `CONFIG.API_BASE_URL` in `qalb_mobile/src/config.js` to the machine LAN IP (e.g. `http://192.168.1.42:3000`). `localhost` does not work from a phone. Production: Vercel URL.
 
 ### Test API routes locally
+
 ```bash
 curl http://localhost:3000/api/verse/daily
 curl "http://localhost:3000/api/verse/by-key?key=2:255"
 curl "http://localhost:3000/api/verse/by-key?key=2:255&translation=85"
+curl "http://localhost:3000/api/verse/by-page?page=1&translation=20"
 curl "http://localhost:3000/api/verse/tafsir?key=2:255&tafsirId=168"
 curl "http://localhost:3000/api/verse/audio?key=2:255&reciter=3"
 curl "http://localhost:3000/api/search?q=patience"
+curl "http://localhost:3000/api/audio/radios?language=eng"
+curl "http://localhost:3000/api/live/tv?language=eng"
 curl -X POST http://localhost:3000/api/ai/discover \
   -H "Content-Type: application/json" \
   -d '{"situation":"I am feeling anxious about the future"}'
@@ -52,145 +63,188 @@ curl -X POST http://localhost:3000/api/ai/discover \
 ## Environment Variables (`.env.local`)
 
 ```env
-QURAN_CLIENT_ID=406125ee-35af-4e0b-a6a8-052a21ae5f7e
-QURAN_CLIENT_SECRET=5ZiLfXC4QXKhm7j8yIneYt91Ea
+QURAN_CLIENT_ID=...
+QURAN_CLIENT_SECRET=...
 QURAN_OAUTH_ENDPOINT=https://oauth2.quran.foundation
 QURAN_API_BASE=https://apis.quran.foundation
 ANTHROPIC_API_KEY=sk-ant-...
-NEXTAUTH_SECRET=qalb-secret-change-in-prod
+NEXTAUTH_SECRET=...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-`NEXT_PUBLIC_APP_URL` is used by `app/verse/[verseKey]/page.js` to call its own API from a Server Component — must be updated to the Vercel URL after deploy.
+**`NEXT_PUBLIC_APP_URL`** is used by:
+
+- `app/verse/[verseKey]/page.js` — Server Component fetch to `/api/verse/by-key`
+- `app/live/page.js` — server fetch to `${NEXT_PUBLIC_APP_URL}/api/live/tv` at build/ISR time
+
+Set to the deployed Vercel URL in production.
 
 ---
 
 ## Architecture
 
 ### Server / Client split
-Pages follow a shell + client pattern:
-- **Server shell** (`page.js`) — fetches initial data (chapter list, verse, tafsir), passes as props; benefits from Next.js data cache.
-- **Client layer** (`*Client.js`) — all interactivity, localStorage reads/writes, streaming AI, audio playback.
 
-`app/verse/[verseKey]/page.js` → `VerseDetailClient.js` is the most complex example: server pre-fetches verse + tafsir + chapter, client handles 4 tabs + all state.
+- **Server shell** (`page.js`) — initial data (chapters, verse, tafsir, live channel list), Next.js cache where applicable.
+- **Client** (`*Client.js`) — interactivity, `localStorage`, streaming AI, HLS video, global audio.
 
-### lib/ — pure business logic, no Next.js dependencies
-All lib files are framework-agnostic and fully tested:
+Examples: `app/verse/[verseKey]/page.js` → `VerseDetailClient.js`; `app/read/page.js` → `ReadClient.js`; `app/live/page.js` → `LiveClient.js`.
 
-| File | Pattern | Responsibility |
-|---|---|---|
-| `lib/quran-api.js` | Singleton + Repository + Builder | OAuth2 token management + all Content API calls |
-| `lib/user-api.js` | Repository + Null Object | User API calls; returns `null`/empty arrays on 404 (never throws) |
-| `lib/claude.js` | Facade | Wraps Anthropic SDK; exposes `discoverVerses()` and `generateReflectionPrompts()` |
-| `lib/prompts.js` | Template | Single source of truth for all Claude prompts |
-| `lib/utils.js` | — | Shadcn `cn()` utility only |
+### UI components (shadcn / Base UI)
 
-`QuranTokenManager` is a Singleton — one shared OAuth2 token across all requests. `RequestBuilder` is a fluent builder: `.withParam().withCache().fetch()`. Never instantiate them directly — use `QuranRepository` static methods.
+- **`components/ui/button.jsx`** — Base UI `ButtonPrimitive`. It does **not** support Radix-style `asChild`. Use `<Link href="..."><Button>...</Button></Link>` instead of `Button asChild`.
+
+### `lib/` — framework-agnostic logic (tested)
+
+| File | Responsibility |
+|------|----------------|
+| `lib/quran-api.js` | OAuth2 + `QuranRepository` (chapters, verses by chapter, **by page**, by key, audio, reciters list, tafsir, search, etc.) |
+| `lib/user-api.js` | User API; null/empty on 404 |
+| `lib/claude.js` | Anthropic facade for AI routes |
+| `lib/prompts.js` | Claude prompt templates |
+| `lib/arabic-utils.js` | Verse markers, word filter, Arabic-Indic digits |
+| `lib/translation-utils.js` | `cleanTranslationText` — strip inline footnote digits from translation HTML text |
+| `lib/read-reciters.js` | Small list of reciter IDs supported by `/api/verse/audio` (verse-level recitation) |
+| `lib/read-pagination.js` | Pagination helpers for chapter verse batches |
+| `lib/qalb-journey-events.js` | `qalb_journey_local_updated` for same-tab history refresh |
+| `lib/qalb-discover-history.js` | Discover history localStorage + append helper |
+| `lib/quran-audio-player.js` | Global client audio: **listen** (full surah MP3), **radio** (stream URL); subscribers + mini-player |
+| `lib/gamification.js` / `lib/useGamification.js` | XP, badges, toasts |
+
+`QuranTokenManager` is a singleton; use `QuranRepository` static methods, not raw `RequestBuilder` in app code.
 
 ### API routes (`app/api/`)
-Thin proxy layer — they call `lib/` and stream responses. All AI routes (`/api/ai/*`) use `ReadableStream` for streaming. The `claude.js` lib is only used by AI routes, never by page Server Components directly.
 
-**AI discover flow** (the main AI feature):
-1. `/api/ai/discover` extracts keywords → calls Quran Foundation Search API for 15 candidate verses
-2. Sends candidates as context to Claude (`claude-sonnet-4-6`) via non-streaming message
-3. Claude selects 3 verse keys + writes explanations → returns JSON
-4. Client calls `/api/verse/by-key` for each key to get full verse data
+Thin proxies. AI routes stream via `ReadableStream`.
 
-### Streaming pattern
-All streaming routes write raw text chunks to a `ReadableStream`. Client components consume via `response.body.getReader()` + `TextDecoder`. See `app/api/ai/chat/route.js` for the canonical pattern.
+**Quran Foundation (authenticated server-side)**
 
-### localStorage (client-side persistence, no auth required)
-| Key | Shape |
-|---|---|
-| `qalb_bookmarks` | `{ [verseKey]: { verseKey, savedAt, ... } }` |
-| `qalb_reflections` | `{ [verseKey]: string[] }` |
-| `qalb_notes` | `{ [verseKey]: { text, savedAt } }` |
-| `qalb_chat` | `{ [verseKey]: Message[] }` |
-| `qalb_reciter_id` | `number` |
-| `qalb_reading_progress` | `{ chapterId, page, translationId, cumulativeSummary }` |
+| Route | Purpose |
+|-------|---------|
+| `/api/verse/by-chapter` | Paginated verses per surah + translation |
+| `/api/verse/by-page` | **Mushaf page** verses (page 1–604) |
+| `/api/verse/by-key` | Single verse (+ tafsir/chapter where available) |
+| `/api/verse/audio` | Verse audio URL + optional segments |
+| `/api/verse/tafsir` | Tafsir by verse |
+| `/api/search` | Search proxy |
+| `/api/verse/daily` | Daily verse |
+
+**MP3 Quran (public HTTP — proxied from app)**
+
+| Route | Upstream |
+|-------|----------|
+| `/api/audio/radios` | `https://www.mp3quran.net/api/v3/radios` |
+| `/api/audio/reciters` | `https://www.mp3quran.net/api/v3/reciters` |
+| `/api/live/tv` | `https://www.mp3quran.net/api/v3/live-tv` |
+
+**User / AI** — unchanged pattern: `/api/user/*`, `/api/ai/*`.
+
+### Reading experience (`app/read/`)
+
+- **Verses** — Infinite scroll batches; per-verse Arabic (word spans + segment highlighting when segments available), translation (`cleanTranslationText`), bookmark (`qalb_bookmarks`), verse audio via `/api/verse/audio`.
+- **Mushaf** — Quran **page numbers 1–604** via `/api/verse/by-page`; previous/next page; continuous Arabic layout + ayah badges (see `app/globals.css`).
+
+### Listen / Radio / Live
+
+- **`/listen`** — Reciters from mp3quran (A–Z). Selecting reciter filters surahs by that reciter’s `surah_list`; play uses `{server}{001-114}.mp3`. Global player: `lib/quran-audio-player.js`; leaving the page shows `ListenMiniPlayer` (bottom bar).
+- **Header radio** (`RadioQuranButton`) — Random station from `/api/audio/radios`; play/pause on same control; uses `startExternalQuranAudio` stream URL (not verse-by-verse).
+- **`/live`** — HLS live TV (`hls.js` + `<video>`); channels from `/api/live/tv`; default prefers “Quran” (Makkah-style) channel.
+
+### Journey / Profile history
+
+- **`/journey`** — `UserJourneyHistory`: key themes (`qalb_read_key_themes`), discover history, reflections, verse chat; listens for `qalb_journey_local_updated`.
+- Profile tab **Journey** shows the same component.
+- **`lib/auth.js`** / NextAuth Quran Foundation provider — scopes as configured in repo.
+
+### Navigation (`components/Navigation.js`)
+
+Desktop + mobile tabs include: Home, Read, Ahadith, Discover, Journey, Listen, Live (plus Profile / Settings in header). **`navIsActive`** uses exact match for `/journey`, `/listen`, `/live` so nested paths do not falsely highlight.
+
+### Gamification / nudges
+
+- **`components/PresenceMilestones.js`** — 5m / 20m / hourly “time with Quran” dialogs + `presence_milestone` XP (toast suppressed for that action in `useGamification`).
+- **`components/AppDayStamp.js`**, **`SessionActivityPing.js`** — activity / heatmap adjacency data.
 
 ---
 
 ## Design System
 
-**Theme:** deep forest-green (`oklch(0.11 0.025 155)`) background, emerald primary (`oklch(0.68 0.13 155)`), warm gold accent (`oklch(0.72 0.13 75)`). All tokens live in `app/globals.css` as CSS variables consumed by Tailwind v4.
+**Theme:** deep forest-green background, emerald primary, warm gold accent — tokens in `app/globals.css` (Tailwind v4).
 
-**Arabic text:** Amiri font (Google Fonts). Use class `arabic-text` — sets `font-family: Amiri`, `direction: rtl`, `line-height: 2`.
+**Arabic (Read / mushaf):** Naskh-first stack (`Noto Naskh Arabic`, `Amiri`, …). Prefer `.read-quran-arabic`, `.read-quran-arabic--mushaf`, `.ayah-end-badge` where used. Legacy `.arabic-text` remains for other screens.
 
-**Key CSS classes in `globals.css`:**
-- `.tafsir-content` — styles raw tafsir HTML (gold `h2`, muted body)
-- `.chat-markdown` — scoped markdown styles for AI chat bubbles
-- `.animate-shimmer` — skeleton loading
-- `.animate-fade-in-up` — verse card entrance
-- `@keyframes blink` — cursor for the translation typing animation
+**Markdown / prose:** `.tafsir-content`, `.chat-markdown`, `.reading-prose`, skeletons (`.animate-shimmer`), `.animate-fade-in-up`.
 
-**Translation typing animation** (`VerseDetailClient.js`): types at 2 chars/20ms with a blinking accent cursor. Triggers on translation load or language switch.
+**Verse detail:** Translation typing animation in `VerseDetailClient` — 2 chars / 20ms + cursor; translations passed through `cleanTranslationText` where applied.
 
 ---
 
-## Verified API IDs
+## Verified API IDs (Quran Foundation)
 
-### Reciters (AudioPlayer + `/api/verse/audio`)
-`7` Mishari Alafasy (default) · `3` Al-Sudais · `2` AbdulBaset Murattal · `1` AbdulBaset Mujawwad · `6` Al-Husary · `10` Saud Al-Shuraym
+### Reciters (`/api/verse/audio`)
 
-Audio fallback chain: tries `[7, 2, 1]` before showing "unavailable".
+`7` Mishari Alafasy (default fallback chain anchor) · `3` Al-Sudais · `2` AbdulBaset Murattal · `1` AbdulBaset Mujawwad · `6` Al-Husary · `10` Saud Al-Shuraym`
 
-### Translations (TRANSLATIONS array in `app/read/ReadClient.js`)
-`20` Saheeh International (EN, default) · `19` Maarif-ul-Quran (EN) · `22` The Clear Quran (EN) · `84` Ibn Kathir abr. (EN) · `97` Yusuf Ali (EN) · `85` Mufti Taqi Usmani (UR) · `234` Dr. Farhat Hashmi (UR) · `162` Turkish Diyanet · `31` French Hamidullah · `54` Indonesian Kemenag · `203` Sahih Int. Malay · `52` Russian Kuliev
+Fallback order in route tries user pick then `[7, 2, 1, 3, 6, 10]`.
 
-### Tafsirs (TAFSIRS array in `VerseDetailClient.js`)
-`169` Ibn Kathir abr. (EN, default) · `168` Ma'arif al-Qur'an (EN) · `817` Tazkirul Quran (EN) · `160` Ibn Kathir (UR) · `159` Bayan ul Quran (UR) · `157` Fi Zilal al-Quran (UR) · `14` Ibn Kathir (AR) · `91` Al-Sa'di (AR)
+### Translations (`TRANSLATIONS` in `app/read/ReadClient.js`)
+
+`20` Saheeh International · `85` M.A.S. Abdel Haleem · `19` Pickthall · `22` Yusuf Ali · `84` Mufti Taqi Usmani · `54` Junagarhi (UR) · `234` Jalandhari (UR) · `97` Maududi (UR) · `162` Bayaan (BN) · `31` Hamidullah (FR) · `52` Yazır (TR) · `33` Indonesian Ministry
+
+### Tafsirs (`VerseDetailClient.js`)
+
+`169` Ibn Kathir abr. (EN, default) · `168` Ma'arif al-Qur'an · `817` Tazkirul Quran · `160`/`159`/`157` Urdu set · `14`/`91` Arabic
 
 ---
 
 ## Quran Foundation Auth
 
-OAuth2 Client Credentials flow — server-side only (`lib/quran-api.js`). Token auto-refreshes with 60s buffer.
+OAuth2 Client Credentials — server-only in `lib/quran-api.js`. Token refresh with buffer; no refresh token.
 
-```
-Production:  Client ID 406125ee-35af-4e0b-a6a8-052a21ae5f7e  /  OAuth https://oauth2.quran.foundation
-Pre-prod:    Client ID 68eb8691-d36b-4478-9f56-2ab1e490d2b3  /  OAuth https://prelive-oauth2.quran.foundation
-```
-
-Token lifetime: 3600s. No refresh token — request a new one when expired.
+Pre-prod vs production client IDs live in project docs / env; do not hardcode secrets in source.
 
 ---
 
-## Mobile App Architecture (`qalb_mobile/`)
+## Mobile (`qalb_mobile/`)
 
-React Native + Expo 54 app. No separate backend — it proxies all AI and verse API calls through the deployed Next.js web app.
-
-### Navigation
-`RootStack` (stack) wraps a `Tab.Navigator` (5 tabs). `VerseDetailScreen` lives on the root stack so it slides over any tab without disrupting tab state.
-
-```
-AppNavigator (RootStack)
-├── Main → TabNavigator
-│   ├── Home, Discover, Read, Library, Goals
-└── VerseDetail  ← pushed from Read or Discover
-```
-
-### src/lib/ — mirrors web lib/
-| File | Responsibility |
-|---|---|
-| `quran-api.js` | Direct Quran Foundation API calls (OAuth2 token managed client-side here, unlike server-side web) |
-| `claude.js` | Calls web app's `/api/ai/*` routes — Anthropic key never stored in mobile |
-| `prompts.js` | Shared prompt templates (kept in sync with web `lib/prompts.js`) |
-| `storage.js` | AsyncStorage wrapper; same key names as web localStorage (`qalb_bookmarks`, etc.) |
-
-### Key design decisions
-- **No Anthropic key in mobile** — all Claude calls go through `CONFIG.API_BASE_URL` (the Vercel deployment). `isVercelConfigured()` in `config.js` gates AI features.
-- **Theme** — `src/theme.js` exports `COLORS`, `SPACING`, `FONT_SIZE`, `BORDER_RADIUS` as plain JS objects (no Tailwind). Tokens are hex conversions of the web's oklch values.
-- **AsyncStorage keys** match web localStorage keys exactly, enabling future cross-platform sync.
+Expo app proxies AI and verse APIs through the Next deployment. `storage.js` keys align with web `localStorage` names. No Anthropic key on device.
 
 ---
 
-## Known Issues
+## localStorage (web)
 
-1. **`NEXT_PUBLIC_APP_URL` must be set** — `app/verse/[verseKey]/page.js` calls `${NEXT_PUBLIC_APP_URL}/api/verse/by-key` from a Server Component. If unset or wrong, translation arrives empty; `VerseDetailClient` has a `useEffect` fallback fetch to recover.
+| Key | Purpose |
+|-----|---------|
+| `qalb_bookmarks` | Verse bookmarks (Read + verse page) |
+| `qalb_reflections` | Reflection prompts per verse |
+| `qalb_notes` | Notes per verse |
+| `qalb_chat` | Verse chat threads |
+| `qalb_reciter_id` | Read reciter preference |
+| `qalb_reading_progress` | Reading position |
+| `qalb_read_key_themes` | AI key themes per surah (sync namespace `read_key_themes`) |
+| `qalb_discover_history` | Recent discover queries |
+| `qalb_app_active_day` / heatmap-related keys | Activity UI |
 
-2. **User API auth not implemented** — `/api/user/*` routes require a user-scoped Bearer token (PKCE flow). Until login is added, all user features fall back gracefully to localStorage.
+---
 
-3. **MCP removed** — `client.beta.messages.create` with MCP was removed because the pre-production server returns "Resource not found" for all tool calls. Discover now grounds Claude with Search API candidates instead.
+## Known issues / caveats
 
-4. **Vitest + JSX in `.js` files** — `vitest.config.js` includes a custom `jsxInJsPlugin` that pre-transforms `.js` files with Babel before Vite's OXC handles them. Required because Vite 6 OXC doesn't parse JSX in `.js` extensions.
+1. **`NEXT_PUBLIC_APP_URL`** must be correct for server-side fetches (verse page, live TV list in some build paths).
+
+2. **Quran Foundation Content API** may return **403** for some resources in certain environments (e.g. daily verse key, `resources/recitations`). The app falls back: **Listen** uses **mp3quran** reciters; verse audio still uses Foundation `/api/verse/audio` with the supported ID set.
+
+3. **User API** — full user-scoped flows may still be partial; many features use `localStorage` + optional Supabase `app_user_storage` sync.
+
+4. **Discover** — grounded via Search API + Claude, not MCP (MCP removed for reliability on some API tiers).
+
+5. **Vitest + JSX in `.js`** — `vitest.config.js` uses a Babel `jsxInJsPlugin` so Vite 6 OXC can run tests on JSX in `.js` files.
+
+6. **Supabase** — if `read_key_themes` or other namespaces fail RLS/namespace checks, apply the migrations under `supabase/migrations/`.
+
+---
+
+## External references (product / APIs)
+
+- [Quran Foundation Content API docs](https://api-docs.quran.foundation/docs/content_apis_versioned/content-apis)
+- [MP3 Quran API](https://www.mp3quran.net/eng/api) — radios, reciters, live TV
+- [Quran.com](https://quran.com/) — UX reference for reading modes

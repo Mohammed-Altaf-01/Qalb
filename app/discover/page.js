@@ -29,6 +29,8 @@ import { toast } from "sonner";
 import VerseCard from "@/components/VerseCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { appendDiscoverHistory, LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
 import { useGamification } from "@/lib/useGamification";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,6 +131,18 @@ export default function DiscoverPage() {
       setResults(resolved);
       if (resolved.length > 0) award("discover_search");
 
+      try {
+        const verseKeys = resolved.map((r) => r?.verse_key).filter(Boolean);
+        const next = appendDiscoverHistory(
+          { situationSnippet: trimmed.slice(0, 200), verseKeys, at: Date.now() },
+          localStorage.getItem(LS_DISCOVER_HISTORY),
+        );
+        localStorage.setItem(LS_DISCOVER_HISTORY, JSON.stringify(next));
+        emitJourneyLocalUpdated();
+      } catch {
+        /* ignore */
+      }
+
       // Smooth scroll to results
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -228,22 +242,27 @@ export default function DiscoverPage() {
 
       {/* ── Loading State ───────────────────────────────────────────────── */}
       {isSearching && (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
+        <div className="space-y-4 max-w-3xl mx-auto">
+          {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="rounded-2xl border border-border/50 bg-card p-5 space-y-3"
-              style={{ animationDelay: `${i * 100}ms` }}
+              className="rounded-2xl border border-border/50 bg-card/80 p-4 md:p-5 space-y-3 animate-fade-in-up"
+              style={{ animationDelay: `${i * 90}ms` }}
             >
-              {/* Skeleton lines */}
-              <div className="h-3 rounded animate-shimmer w-1/4" />
-              <div className="h-8 rounded animate-shimmer w-full" />
-              <div className="h-3 rounded animate-shimmer w-3/4" />
-              <div className="h-3 rounded animate-shimmer w-2/3" />
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full shrink-0 animate-shimmer" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div className="h-3 rounded-md animate-shimmer w-[28%] max-w-[8rem]" />
+                  <div className="h-4 rounded-md animate-shimmer w-full" />
+                  <div className="h-4 rounded-md animate-shimmer w-[92%]" />
+                  <div className="h-4 rounded-md animate-shimmer w-[78%]" />
+                  <div className="h-3 rounded-md animate-shimmer w-[55%]" />
+                </div>
+              </div>
             </div>
           ))}
-          <p className="text-center text-xs text-muted-foreground animate-pulse mt-4">
-            Finding verses that speak to your situation...
+          <p className="text-center text-xs text-muted-foreground animate-pulse pt-1">
+            Finding verses that speak to your situation…
           </p>
         </div>
       )}

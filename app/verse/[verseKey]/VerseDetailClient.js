@@ -7,10 +7,11 @@
  *   Reflect   — AI reflection questions + personal journal
  *   Chat      — "Talk to this Verse" streaming AI chat
  *
- * Persistence (localStorage, no auth required):
+ * Persistence (localStorage; when signed in, mirrored to Supabase app_user_storage):
  *   qalb_bookmarks      — { [verseKey]: bookmark object }
- *   qalb_reflections    — { [verseKey]: string[] }
- *   qalb_notes          — { [verseKey]: { text, savedAt } }
+ *   qalb_reflections    — { [verseKey]: string[] } → verse_reflections
+ *   qalb_notes          — { [verseKey]: { text, savedAt } } → verse_notes
+ *   qalb_chat           — { [verseKey]: Message[] } → verse_chat
  */
 
 "use client";
@@ -27,7 +28,15 @@ import VerseChat from "@/components/VerseChat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { stripVerseEndMarker } from "@/lib/arabic-utils";
+import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { LS_VERSE_CHAT, LS_VERSE_NOTES, LS_VERSE_REFLECTIONS } from "@/lib/qalb-verse-local-keys";
 import { useGamification } from "@/lib/useGamification";
+import {
+  ACCOUNT_STORAGE_SYNCED_EVENT,
+  schedulePushVerseChat,
+  schedulePushVerseNotes,
+  schedulePushVerseReflections,
+} from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,9 +44,9 @@ import { cn } from "@/lib/utils";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LS_BOOKMARKS = "qalb_bookmarks";
-const LS_REFLECTIONS = "qalb_reflections";
-const LS_NOTES = "qalb_notes";
-const LS_CHAT = "qalb_chat";
+const LS_REFLECTIONS = LS_VERSE_REFLECTIONS;
+const LS_NOTES = LS_VERSE_NOTES;
+const LS_CHAT = LS_VERSE_CHAT;
 
 // Curated tafsirs available from the Quran Foundation API
 const TAFSIRS = [
@@ -62,6 +71,7 @@ function lsGet(key) {
 function lsSet(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    if (key === LS_REFLECTIONS || key === LS_CHAT) emitJourneyLocalUpdated();
   } catch {}
 }
 
@@ -237,8 +247,29 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       const stored = JSON.parse(localStorage.getItem(LS_CHAT) ?? "{}") ?? {};
       stored[verseKey] = messages;
       localStorage.setItem(LS_CHAT, JSON.stringify(stored));
+      schedulePushVerseChat();
+      emitJourneyLocalUpdated();
     } catch {}
   }
+
+  useEffect(() => {
+    function reloadFromStorage() {
+      try {
+        const chatStored = JSON.parse(localStorage.getItem(LS_CHAT) ?? "null");
+        setChatHistory(Array.isArray(chatStored?.[verseKey]) ? chatStored[verseKey] : []);
+      } catch {
+        /* ignore */
+      }
+      const refStored = lsGet(LS_REFLECTIONS) ?? {};
+      if (Array.isArray(refStored[verseKey]) && refStored[verseKey].length > 0) {
+        setReflectionQuestions(refStored[verseKey]);
+      }
+      const noteStored = lsGet(LS_NOTES) ?? {};
+      if (noteStored[verseKey]) setSavedNote(noteStored[verseKey]);
+    }
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, reloadFromStorage);
+    return () => window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, reloadFromStorage);
+  }, [verseKey]);
 
   // ── Reflection questions ───────────────────────────────────────────────────
   const [reflectionQuestions, setReflectionQuestions] = useState([]);
@@ -276,6 +307,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       const stored = lsGet(LS_REFLECTIONS) ?? {};
       stored[verseKey] = questions;
       lsSet(LS_REFLECTIONS, stored);
+      schedulePushVerseReflections();
     } catch {
       toast.error("Could not generate reflection prompts. Please try again.");
     } finally {
@@ -307,6 +339,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
       stored[verseKey] = note;
       lsSet(LS_NOTES, stored);
       setSavedNote(note);
+      schedulePushVerseNotes();
       toast.success("Reflection saved.");
       award("save_note");
     } finally {

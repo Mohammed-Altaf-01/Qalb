@@ -68,6 +68,7 @@ export default function RootLayout({ children }) {
           {/* ── Toast notifications ───────────────────────────────────────── */}
           <Toaster
             theme="dark"
+            position="bottom-left"
             toastOptions={{
               style: {
                 background: "oklch(0.16 0.03 155)",

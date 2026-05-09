@@ -87,10 +87,18 @@ export default async function VerseDetailPage({ params }) {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-5xl px-4 md:px-8 py-6 space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-24 rounded-2xl animate-shimmer" />
-          ))}
+        <div className="mx-auto max-w-3xl px-4 md:px-8 py-6 space-y-5 animate-fade-in-up">
+          <div className="h-8 w-40 rounded-lg animate-shimmer mx-auto" />
+          <div className="rounded-2xl border border-border/35 bg-card/25 p-5 space-y-3">
+            <div className="h-4 rounded-md animate-shimmer w-24 mx-auto" />
+            <div className="h-28 rounded-xl animate-shimmer w-full" />
+            <div className="h-20 rounded-xl animate-shimmer w-full" />
+          </div>
+          <div className="flex gap-2 justify-center">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-8 flex-1 max-w-[5.5rem] rounded-lg animate-shimmer" />
+            ))}
+          </div>
         </div>
       }
     >

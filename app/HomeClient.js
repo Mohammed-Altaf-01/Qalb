@@ -1,12 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BookOpen, ChevronRight, Clock, ScrollText, Search, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
+import { pickLatestReadingResume } from "@/lib/continue-reading";
 import { dedupeLastHadithByHref, LS_LAST_HADITH_READS } from "@/lib/last-hadith-reads";
 import { dedupeLastReadsByHref, LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "@/lib/qalb-last-reads";
+import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
+
+/** Idle time on home before gentle “continue reading” nudge (ms). */
+const HOME_IDLE_NUDGE_MS = 48_000;
+
+const CONTINUE_READ_TOAST_STYLE = {
+  background: "oklch(0.18 0.06 155)",
+  border: "1px solid oklch(0.68 0.13 155 / 40%)",
+  color: "oklch(0.9 0.08 155)",
+};
 
 function saveLastRead(entry) {
   try {
@@ -17,6 +30,7 @@ function saveLastRead(entry) {
       MAX_QURAN_LAST_READS,
     );
     localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(updated));
+    schedulePushReadingHistory();
   } catch {
     /* ignore */
   }
@@ -92,10 +106,12 @@ function HadithHomeStrip() {
     window.addEventListener("storage", load);
     window.addEventListener("focus", load);
     window.addEventListener("qalb-hadith-reads-changed", load);
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, load);
     return () => {
       window.removeEventListener("storage", load);
       window.removeEventListener("focus", load);
       window.removeEventListener("qalb-hadith-reads-changed", load);
+      window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, load);
     };
   }, []);
 
@@ -145,22 +161,95 @@ function HadithHomeStrip() {
  * @param {{ chapters: Array }} props  — server-fetched list of all 114 surahs
  */
 export default function HomeClient({ chapters }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [lastReads, setLastReads] = useState([]);
+  const continueNudgeShownRef = useRef(false);
 
   useEffect(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
-      const saved = Array.isArray(raw) ? raw : [];
-      const clean = dedupeLastReadsByHref(saved, MAX_QURAN_LAST_READS);
-      if (JSON.stringify(clean) !== JSON.stringify(saved)) {
-        localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(clean));
+    function loadLastReads() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
+        const saved = Array.isArray(raw) ? raw : [];
+        const clean = dedupeLastReadsByHref(saved, MAX_QURAN_LAST_READS);
+        if (JSON.stringify(clean) !== JSON.stringify(saved)) {
+          localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(clean));
+        }
+        setLastReads(clean);
+      } catch {
+        /* ignore */
       }
-      setLastReads(clean);
-    } catch {
-      /* ignore */
     }
+    loadLastReads();
+    window.addEventListener("storage", loadLastReads);
+    window.addEventListener("focus", loadLastReads);
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, loadLastReads);
+    return () => {
+      window.removeEventListener("storage", loadLastReads);
+      window.removeEventListener("focus", loadLastReads);
+      window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, loadLastReads);
+    };
   }, []);
+
+  // Gentle nudge after idle on home: resume last Quran or Hadith session (same toast stack as achievements).
+  useEffect(() => {
+    let idleTimer;
+
+    function tryShowContinueNudge() {
+      if (continueNudgeShownRef.current) return;
+      try {
+        const rawQ = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
+        const rawH = JSON.parse(localStorage.getItem(LS_LAST_HADITH_READS) ?? "[]");
+        const qList = Array.isArray(rawQ) ? dedupeLastReadsByHref(rawQ, MAX_QURAN_LAST_READS) : [];
+        const hList = Array.isArray(rawH) ? dedupeLastHadithByHref(rawH) : [];
+        const pick = pickLatestReadingResume(qList, hList);
+        if (!pick?.href) return;
+
+        continueNudgeShownRef.current = true;
+        const title =
+          pick.kind === "quran"
+            ? "Continue the Quran"
+            : "Continue where you left off";
+        const subtitle =
+          pick.kind === "quran"
+            ? "Pick up your last surah and draw nearer to Allah with every verse."
+            : "Return to your last section and keep building understanding.";
+
+        toast(title, {
+          description: subtitle,
+          duration: 22_000,
+          icon: "📖",
+          style: CONTINUE_READ_TOAST_STYLE,
+          action: {
+            label: "Continue reading",
+            onClick: () => router.push(pick.href),
+          },
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function resetIdleTimer() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(tryShowContinueNudge, HOME_IDLE_NUDGE_MS);
+    }
+
+    resetIdleTimer();
+    const opts = { passive: true };
+    window.addEventListener("mousedown", resetIdleTimer, opts);
+    window.addEventListener("keydown", resetIdleTimer, opts);
+    window.addEventListener("touchstart", resetIdleTimer, opts);
+    window.addEventListener("scroll", resetIdleTimer, opts);
+
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("mousedown", resetIdleTimer);
+      window.removeEventListener("keydown", resetIdleTimer);
+      window.removeEventListener("touchstart", resetIdleTimer);
+      window.removeEventListener("scroll", resetIdleTimer);
+    };
+  }, [router]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

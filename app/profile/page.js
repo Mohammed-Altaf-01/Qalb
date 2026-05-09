@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { Award, BookOpen, Flame, LogIn, LogOut, Star, Target, Trophy, User, Zap } from "lucide-react";
+import { Award, BookOpen, CalendarDays, Flame, Footprints, LogIn, LogOut, Star, Target, Trophy, User, Zap } from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
+import UserJourneyHistory from "@/components/UserJourneyHistory";
 import { Button } from "@/components/ui/button";
+import { buildHeatmapDayCells, dayKeyFromIso, heatmapToneClass, todayLocalDayKey } from "@/lib/activity-heatmap";
 import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
+import { LS_APP_ACTIVE_DAY } from "@/lib/qalb-storage-keys";
 import { useGamification } from "@/lib/useGamification";
+import { ACCOUNT_STORAGE_SYNCED_EVENT } from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,6 +202,155 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
   );
 }
 
+function buildMinutesSeries(events) {
+  const dailyMinutes = new Map();
+  for (const event of events ?? []) {
+    const key = dayKeyFromIso(event.created_at);
+    const mins = event?.event_type === "time_spent" ? Number(event?.metadata?.minutes ?? 0) : 0;
+    if (!Number.isFinite(mins) || mins <= 0) continue;
+    dailyMinutes.set(key, (dailyMinutes.get(key) ?? 0) + mins);
+  }
+  return dailyMinutes;
+}
+
+function buildTrendData(dailyMinutes, mode) {
+  if (mode === "daily") {
+    const out = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86_400_000);
+      const key = d.toISOString().split("T")[0];
+      out.push({ label: key.slice(5), hours: (dailyMinutes.get(key) ?? 0) / 60 });
+    }
+    return out;
+  }
+  if (mode === "weekly") {
+    const out = [];
+    for (let i = 11; i >= 0; i--) {
+      const end = new Date(Date.now() - i * 7 * 86_400_000);
+      let mins = 0;
+      for (let d = 0; d < 7; d++) {
+        const key = new Date(end.getTime() - d * 86_400_000).toISOString().split("T")[0];
+        mins += dailyMinutes.get(key) ?? 0;
+      }
+      out.push({ label: `W${12 - i}`, hours: mins / 60 });
+    }
+    return out;
+  }
+  const out = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i, 1);
+    const monthPrefix = d.toISOString().slice(0, 7);
+    let mins = 0;
+    for (const [key, value] of dailyMinutes) {
+      if (key.startsWith(monthPrefix)) mins += value;
+    }
+    out.push({ label: d.toLocaleDateString(undefined, { month: "short" }), hours: mins / 60 });
+  }
+  return out;
+}
+
+function ActivityHeatmap({ events }) {
+  const [dayBump, setDayBump] = useState(0);
+
+  useEffect(() => {
+    function bump() {
+      setDayBump((n) => n + 1);
+    }
+    window.addEventListener("storage", bump);
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+    return () => {
+      window.removeEventListener("storage", bump);
+      window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+    };
+  }, []);
+
+  const todayTouch = useMemo(() => {
+    try {
+      return localStorage.getItem(LS_APP_ACTIVE_DAY) === todayLocalDayKey();
+    } catch {
+      return false;
+    }
+  }, [dayBump]);
+
+  const days = useMemo(
+    () => buildHeatmapDayCells(events, { todayClientTouched: todayTouch }),
+    [events, todayTouch],
+  );
+  const maxIntensity = Math.max(1, ...days.map((d) => d.intensity));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <CalendarDays size={14} className="text-emerald-400" />
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Activity heatmap</p>
+      </div>
+      <p className="text-[10px] text-muted-foreground/80">
+        Darker green = more actions that day; opening the app today adds a gentle highlight.
+      </p>
+      <div className="grid grid-flow-col grid-rows-7 gap-1 overflow-x-auto pb-1">
+        {days.map((d) => (
+          <div
+            key={d.key}
+            title={`${d.key}: ${d.count} events${d.hourSpread > 0 ? ` · ~${d.hourSpread} active hours` : ""}`}
+            className={`h-3.5 w-3.5 rounded-[3px] border transition-colors ${heatmapToneClass(d.intensity, maxIntensity)}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HoursTrendChart({ events }) {
+  const [mode, setMode] = useState("daily");
+  const data = useMemo(() => {
+    const dailyMinutes = buildMinutesSeries(events);
+    return buildTrendData(dailyMinutes, mode);
+  }, [events, mode]);
+
+  const maxHours = Math.max(1, ...data.map((d) => d.hours));
+  const points = data
+    .map((d, i) => {
+      const x = (i / Math.max(1, data.length - 1)) * 100;
+      const y = 100 - (d.hours / maxHours) * 100;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hours on app</p>
+        <div className="flex items-center gap-1 rounded-lg border border-border/35 bg-muted/25 p-0.5">
+          {["daily", "weekly", "monthly"].map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={cn(
+                "px-2 py-1 text-[10px] rounded-md capitalize border transition-colors",
+                mode === m
+                  ? "bg-accent/20 text-accent border-accent/35"
+                  : "text-muted-foreground border-transparent hover:text-foreground",
+              )}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl border border-border/30 bg-card/35 p-3">
+        <svg viewBox="0 0 100 100" className="w-full h-32">
+          <polyline points={points} fill="none" stroke="oklch(0.68 0.13 155)" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{data[0]?.label ?? ""}</span>
+          <span>{data[data.length - 1]?.label ?? ""}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main profile page
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,16 +358,42 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { state } = useGamification();
-  const router = useRouter();
   const [tab, setTab] = useState("overview");
+  const [activityEvents, setActivityEvents] = useState([]);
+  const [activityEnabled, setActivityEnabled] = useState(false);
 
   const TABS = [
     { id: "overview", label: "Overview" },
+    { id: "journey", label: "Journey", icon: Footprints },
     { id: "levels", label: "Levels" },
     { id: "badges", label: "Badges" },
     { id: "deeds", label: "Deeds" },
     { id: "activity", label: "Activity" },
   ];
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setActivityEvents([]);
+      setActivityEnabled(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/user/activity?days=365");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setActivityEnabled(data.enabled === true);
+        setActivityEvents(Array.isArray(data.events) ? data.events : []);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   if (status === "loading" || !state) {
     return (
@@ -295,39 +473,65 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl bg-muted/30 p-1 border border-border/30">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
-              tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const TabIcon = t.icon;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "flex-1 py-2 text-xs font-medium rounded-lg transition-all inline-flex items-center justify-center gap-1",
+                tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {TabIcon ? <TabIcon size={12} className="opacity-70 shrink-0 hidden sm:block" aria-hidden /> : null}
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab content */}
       {tab === "overview" && (
-        <div className="space-y-4">
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Recent XP</h2>
-          {(state.actionLog ?? []).slice(0, 10).length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">Start reading to earn XP!</p>
-          ) : (
-            <div className="space-y-2">
-              {(state.actionLog ?? []).slice(0, 10).map((entry, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between py-2 px-4 rounded-xl bg-card/40 border border-border/30"
-                >
-                  <span className="text-sm text-foreground/80">{entry.label}</span>
-                  <span className="text-sm font-semibold text-accent">+{entry.xp} XP</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Recent XP</h2>
+            {(state.actionLog ?? []).slice(0, 10).length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">Start reading to earn XP!</p>
+            ) : (
+              <div className="space-y-2">
+                {(state.actionLog ?? []).slice(0, 10).map((entry, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between py-2 px-4 rounded-xl bg-card/40 border border-border/30"
+                  >
+                    <span className="text-sm text-foreground/80">{entry.label}</span>
+                    <span className="text-sm font-semibold text-accent">+{entry.xp} XP</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 pt-2 border-t border-border/25">
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Your activity</h2>
+            <ActivityHeatmap events={activityEvents} />
+            <HoursTrendChart events={activityEvents} />
+            {!activityEnabled && status === "authenticated" && (
+              <p className="text-xs text-muted-foreground">
+                Cloud activity logging is currently unavailable, so this chart may appear empty.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "journey" && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Your saved Key Themes, Discover searches, Reflect prompts, and verse chats. Sign in to sync across devices.
+          </p>
+          <UserJourneyHistory />
         </div>
       )}
 
@@ -359,6 +563,15 @@ export default function ProfilePage() {
             <StatCard icon={Flame} label="Discovers" value={state.discovers_count ?? 0} color="text-orange-400" />
             <StatCard icon={Trophy} label="Challenges" value={state.challenge_date ? 1 : 0} color="text-accent" />
           </div>
+          <>
+            <ActivityHeatmap events={activityEvents} />
+            <HoursTrendChart events={activityEvents} />
+          </>
+          {!activityEnabled && status === "authenticated" && (
+            <p className="text-xs text-muted-foreground">
+              Cloud activity logging is currently unavailable, so this chart may appear empty.
+            </p>
+          )}
         </div>
       )}
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 
-import { BookOpen, Compass, Home, LogIn, ScrollText, Settings, User } from "lucide-react";
+import { BookOpen, Compass, Footprints, Home, LogIn, ScrollText, Settings, User } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,6 +17,7 @@ const PRIMARY_NAV = [
   { label: "Read", href: "/read", icon: BookOpen },
   { label: "Ahadith", href: "/ahadith", icon: ScrollText },
   { label: "Discover", href: "/discover", icon: Compass },
+  { label: "Journey", href: "/journey", icon: Footprints },
 ];
 
 const NUDGE_SESSION_KEY = "qalb_signin_nudge_session_id";
@@ -326,11 +327,11 @@ export default function Navigation() {
       </header>
 
       {/* Mobile tab bar — four flows + profile; settings in header */}
-      <nav
+          <nav
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-border/45 bg-background/92 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
         aria-label="Mobile primary"
       >
-        <div className="flex items-stretch justify-around h-[3.375rem] max-w-md mx-auto px-1">
+        <div className="flex items-stretch justify-around h-[3.375rem] max-w-lg mx-auto px-0.5 gap-0">
           {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
             const active = navIsActive(pathname, href);
             return (

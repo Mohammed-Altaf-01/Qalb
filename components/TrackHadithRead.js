@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { LS_LAST_HADITH_READS, mergeHadithVisit } from "@/lib/last-hadith-reads";
+import { schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
 
 /**
  * Record this section as a recent read (client-side) for home “Hadith” strip.
@@ -21,6 +22,7 @@ export default function TrackHadithRead({ book, section, bookName, sectionTitle 
       };
       const merged = mergeHadithVisit(list, entry);
       localStorage.setItem(LS_LAST_HADITH_READS, JSON.stringify(merged));
+      schedulePushReadingHistory();
       window.dispatchEvent(new CustomEvent("qalb-hadith-reads-changed"));
     } catch {
       /* ignore */

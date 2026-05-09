@@ -16,10 +16,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { filterVerseWords, stripVerseEndMarker } from "@/lib/arabic-utils";
 import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
 import { paginationHasNextPage } from "@/lib/read-pagination";
+import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { LS_READ_KEY_THEMES, LS_READING_PROGRESS_KEY } from "@/lib/qalb-storage-keys";
+import {
+  schedulePushPreferences,
+  schedulePushReadKeyThemes,
+  schedulePushReadingHistory,
+  schedulePushReadingProgress,
+} from "@/lib/user-app-sync-bridge";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +63,7 @@ const RECITERS = [
 
 const DEFAULT_TRANSLATION_ID = 20;
 const BATCH_SIZE = 20;
-const LS_KEY = "qalb_reading_progress";
+const LS_KEY = LS_READING_PROGRESS_KEY;
 
 // Juz start positions — key: "surahId:verseNum" → juz number
 const JUZ_STARTS = new Map([
@@ -410,12 +420,36 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
 // SummaryPanel — AI themes/summary for all loaded verses
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SummaryPanel({ verses, surahName, onClose }) {
+function persistReadKeyThemesToLocal(surahId, surahName, markdown) {
+  if (surahId == null || typeof markdown !== "string") return;
+  try {
+    const raw = localStorage.getItem(LS_READ_KEY_THEMES) ?? "{}";
+    const doc = JSON.parse(raw);
+    const themesBySurahId =
+      doc && typeof doc === "object" && doc.themesBySurahId && typeof doc.themesBySurahId === "object"
+        ? doc.themesBySurahId
+        : {};
+    themesBySurahId[String(surahId)] = {
+      markdown,
+      updatedAt: Date.now(),
+      surahName: typeof surahName === "string" ? surahName : "",
+    };
+    localStorage.setItem(LS_READ_KEY_THEMES, JSON.stringify({ themesBySurahId, updatedAt: Date.now() }));
+    schedulePushReadKeyThemes();
+    emitJourneyLocalUpdated();
+  } catch {
+    /* ignore */
+  }
+}
+
+function SummaryPanel({ verses, surahId, surahName, onClose }) {
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [done, setDone] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
+  const openedForSurahRef = useRef(null);
 
-  useEffect(() => {
+  const runStream = useCallback(() => {
     if (!verses?.length) return;
 
     const versesPayload = verses.slice(0, 60).map((v) => ({
@@ -427,6 +461,7 @@ function SummaryPanel({ verses, surahName, onClose }) {
     setStreaming(true);
     setText("");
     setDone(false);
+    setFromCache(false);
 
     fetch("/api/ai/read-summary", {
       method: "POST",
@@ -450,13 +485,36 @@ function SummaryPanel({ verses, surahName, onClose }) {
           setText(full);
         }
         setDone(true);
+        persistReadKeyThemesToLocal(surahId, surahName, full);
       })
       .catch(() => {
         setText("Could not generate summary. Please try again.");
         setDone(true);
       })
       .finally(() => setStreaming(false));
-  }, []); // run once on mount
+  }, [verses, surahId, surahName]);
+
+  useEffect(() => {
+    if (!verses?.length || surahId == null) return;
+    if (openedForSurahRef.current === surahId) return;
+    openedForSurahRef.current = surahId;
+
+    let hadCache = false;
+    try {
+      const doc = JSON.parse(localStorage.getItem(LS_READ_KEY_THEMES) ?? "{}");
+      const row = doc?.themesBySurahId?.[String(surahId)];
+      if (typeof row?.markdown === "string" && row.markdown.length > 0) {
+        setText(row.markdown);
+        setDone(true);
+        setFromCache(true);
+        hadCache = true;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    if (!hadCache) runStream();
+  }, [surahId, verses.length, runStream]);
 
   return (
     <div
@@ -464,21 +522,38 @@ function SummaryPanel({ verses, surahName, onClose }) {
       z-50 rounded-2xl border border-accent/25 bg-card shadow-2xl shadow-black/30 overflow-hidden"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-accent/5">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-accent" />
-          <span className="text-xs font-semibold text-foreground">Key Themes — {surahName}</span>
-          {streaming && <Loader2 size={11} className="animate-spin text-accent/60" />}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-accent/5 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles size={14} className="text-accent shrink-0" />
+          <span className="text-xs font-semibold text-foreground truncate">Key Themes — {surahName}</span>
+          {streaming && <Loader2 size={11} className="animate-spin text-accent/60 shrink-0" />}
         </div>
-        <button onClick={onClose} className="text-muted-foreground/60 hover:text-foreground transition-colors">
-          <X size={15} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {(fromCache || done) && !streaming && (
+            <button
+              type="button"
+              onClick={() => runStream()}
+              className="text-[10px] font-medium text-accent hover:text-accent/90 px-2 py-1 rounded-md border border-accent/30"
+            >
+              Refresh
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="text-muted-foreground/60 hover:text-foreground transition-colors p-1">
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
-      <div className="px-4 py-4 max-h-64 overflow-y-auto text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
-        {text || <span className="text-muted-foreground/50 text-xs">Generating…</span>}
-        {streaming && <span className="inline-block w-0.5 h-3.5 bg-accent/70 ml-0.5 align-middle animate-pulse" />}
+      <div className="px-4 py-4 max-h-64 overflow-y-auto text-sm leading-relaxed text-foreground/80">
+        {text ? (
+          <div className="chat-markdown break-words">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            {streaming && <span className="inline-block w-0.5 h-3.5 bg-accent/70 ml-0.5 align-middle animate-pulse" />}
+          </div>
+        ) : (
+          <span className="text-muted-foreground/50 text-xs">Generating…</span>
+        )}
       </div>
     </div>
   );
@@ -642,7 +717,8 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   useEffect(() => {
     if (!selectedChapter) return;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({ surahId: selectedChapter.id, translationId }));
+      localStorage.setItem(LS_KEY, JSON.stringify({ surahId: selectedChapter.id, translationId, updatedAt: Date.now() }));
+      schedulePushReadingProgress();
     } catch {
       /* quota exceeded */
     }
@@ -686,8 +762,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             surahId: selectedChapter.id,
             verseNum,
             translationId,
+            updatedAt: Date.now(),
           }),
         );
+        schedulePushReadingProgress();
       } catch {
         /* ignore */
       }
@@ -703,6 +781,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           subtitle: selectedChapter.translated_name?.name ?? "",
         });
         localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(updated));
+        schedulePushReadingHistory();
       } catch {
         /* ignore */
       }
@@ -787,6 +866,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
   function handleReciterChange(id) {
     localStorage.setItem("qalb_reciter_id", String(id));
+    schedulePushPreferences();
     setReciterId(id);
     setPlayingKey(null);
     setShowReciterPicker(false);
@@ -1022,6 +1102,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       {showSummary && (
         <SummaryPanel
           verses={verses}
+          surahId={selectedChapter?.id}
           surahName={selectedChapter?.name_simple ?? ""}
           onClose={() => setShowSummary(false)}
         />

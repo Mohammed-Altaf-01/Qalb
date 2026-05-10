@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** All AsyncStorage keys used by the app — mirrors web localStorage keys */
+/** All AsyncStorage keys — mirrors web localStorage / qalb-storage-keys */
 export const STORAGE_KEYS = {
   BOOKMARKS: 'qalb_bookmarks',
   REFLECTIONS: 'qalb_reflections',
@@ -14,6 +14,13 @@ export const STORAGE_KEYS = {
   SPLASH_SHOWN: 'qalb_splash_shown_session',
   GAMIFICATION: 'qalb_gamification',
   TEXT_SIZE: 'qalb_text_size',
+  DISCOVER_HISTORY: 'qalb_discover_history',
+  READ_KEY_THEMES: 'qalb_read_key_themes',
+  QALB_LAST_READS: 'qalb_last_reads',
+  LAST_HADITH_READS: 'qalb_last_hadith_reads',
+  TIME_TRACKING: 'qalb_time_tracking',
+  READING_SCALE: 'qalb_reading_scale',
+  THEME: 'qalb_theme',
 };
 
 /** Drop-in AsyncStorage wrapper that always returns parsed JSON */
@@ -27,11 +34,27 @@ const storage = {
     }
   },
 
+  async getRaw(key) {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+
   async set(key, value) {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
       console.warn('[storage] set failed:', key, e);
+    }
+  },
+
+  async setRaw(key, value) {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (e) {
+      console.warn('[storage] setRaw failed:', key, e);
     }
   },
 

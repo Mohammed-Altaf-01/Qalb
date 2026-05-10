@@ -9,7 +9,7 @@
  * Patterns: Singleton (token), Repository (data access), Builder (requests)
  */
 
-import { CONFIG } from '../config';
+import { CONFIG, isVercelConfigured } from '../config';
 
 const { QURAN_CLIENT_ID, QURAN_CLIENT_SECRET, QURAN_OAUTH_URL, QURAN_API_BASE } = CONFIG;
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
@@ -172,6 +172,21 @@ class QuranRepository {
     return new RequestBuilder('/content/api/v4/hizbs')
       .withParam('language', language)
       .fetch();
+  }
+
+  /** Mushaf page (1–604) via deployed Next `/api/verse/by-page`. */
+  static async getVersesByPageFromApp(page, translationId = CONFIG.DEFAULT_TRANSLATION_ID) {
+    if (!isVercelConfigured()) {
+      throw new Error('Configure API_BASE_URL in src/config.js for mushaf by-page');
+    }
+    const base = CONFIG.API_BASE_URL.replace(/\/$/, '');
+    const res = await fetch(
+      `${base}/api/verse/by-page?page=${encodeURIComponent(String(page))}&translation=${encodeURIComponent(String(translationId))}`,
+    );
+    if (!res.ok) {
+      throw new Error(`Mushaf page fetch failed: ${res.status}`);
+    }
+    return res.json();
   }
 }
 

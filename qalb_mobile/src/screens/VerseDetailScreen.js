@@ -34,6 +34,7 @@ import { getTextSizePreset } from '../lib/text-settings';
 import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
+import { schedulePushVerseNotes, schedulePushVerseReflections } from '../lib/user-app-sync';
 import AudioPlayer from '../components/AudioPlayer';
 import VerseChat from '../components/VerseChat';
 import WordByWordArabic from '../components/WordByWordArabic';
@@ -291,6 +292,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
       setQuestions(q);
       const allQ = (await storage.get(STORAGE_KEYS.REFLECTIONS)) ?? {};
       await storage.set(STORAGE_KEYS.REFLECTIONS, { ...allQ, [verseKey]: q });
+      schedulePushVerseReflections();
       award('generate_reflection');
     } catch {
       Alert.alert('Error', 'Could not generate questions. Please try again.');
@@ -309,6 +311,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
         ...allNotes,
         [verseKey]: { text, savedAt: Date.now() },
       });
+      schedulePushVerseNotes();
       award('save_note');
       setNoteSaved(true);
     }, 800);

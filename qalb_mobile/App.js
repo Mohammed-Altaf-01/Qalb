@@ -4,6 +4,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import SplashScreenComponent from './src/components/SplashScreen';
+import { AuthProvider } from './src/context/AuthContext';
+import { MediaPlaybackProvider } from './src/context/MediaPlaybackContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -12,14 +14,18 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style="light" backgroundColor="transparent" translucent />
-        {!splashDone ? (
-          <SplashScreenComponent onComplete={() => setSplashDone(true)} />
-        ) : (
-          <NavigationContainer>
-            <AppNavigator />
-          </NavigationContainer>
-        )}
+        <AuthProvider>
+          <MediaPlaybackProvider>
+            <StatusBar style="light" backgroundColor="transparent" translucent />
+            {!splashDone ? (
+              <SplashScreenComponent onComplete={() => setSplashDone(true)} />
+            ) : (
+              <NavigationContainer>
+                <AppNavigator />
+              </NavigationContainer>
+            )}
+          </MediaPlaybackProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

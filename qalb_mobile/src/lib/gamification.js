@@ -20,6 +20,8 @@ export const XP_ACTIONS = {
   discover_search: { xp: 5, label: 'Discovered verses' },
   generate_reflection: { xp: 10, label: 'Generated reflections' },
   save_note: { xp: 15, label: 'Saved reflection' },
+  hadith_explore: { xp: 4, label: 'Explored hadith' },
+  play_audio: { xp: 3, label: 'Played audio' },
 };
 
 export const DEEDS = {

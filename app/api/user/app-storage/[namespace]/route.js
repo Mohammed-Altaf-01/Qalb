@@ -3,12 +3,18 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import { isAppUserStorageNamespace, validateAppUserStoragePayload } from "@/lib/app-user-storage";
+import { verifyMobileBearerUserId } from "@/lib/mobile-jwt";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { getAppUserStoragePayload, touchAppUserProfile, upsertAppUserStoragePayload } from "@/lib/supabase-app-user-repository";
 
-export async function GET(_request, context) {
+async function resolveUserId(request) {
   const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  if (session?.user?.id) return session.user.id;
+  return verifyMobileBearerUserId(request.headers.get("authorization"));
+}
+
+export async function GET(request, context) {
+  const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const params = await Promise.resolve(context.params);
@@ -33,8 +39,7 @@ export async function GET(_request, context) {
 }
 
 export async function PATCH(request, context) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const params = await Promise.resolve(context.params);

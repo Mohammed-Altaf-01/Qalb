@@ -31,7 +31,9 @@ import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
 import AudioPlayer from '../components/AudioPlayer';
 import WordByWordArabic from '../components/WordByWordArabic';
+import MushafPageReader from './MushafPageReader';
 import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { schedulePushReadingProgress } from '../lib/user-app-sync';
 
 const TRANSLATIONS = [
   { id: 20, name: 'Saheeh International', lang: 'EN' },
@@ -53,7 +55,17 @@ function stripHtml(text = '') {
 
 // ── Surah picker ──────────────────────────────────────────────────────────────
 
-function SurahGrid({ chapters, onSelect, searchQuery, onSearch, onBack, hasProgress, progress, onResumeReading }) {
+function SurahGrid({
+  chapters,
+  onSelect,
+  onOpenMushaf,
+  searchQuery,
+  onSearch,
+  onBack,
+  hasProgress,
+  progress,
+  onResumeReading,
+}) {
   const filtered = chapters.filter(
     (c) =>
       c.name_simple?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -75,12 +87,19 @@ function SurahGrid({ chapters, onSelect, searchQuery, onSearch, onBack, hasProgr
           <View>
             <Text style={styles.resumeLabel}>Continue reading</Text>
             <Text style={styles.resumeDetail}>
-              {progress?.surahName ?? 'Surah'} · Page {progress?.page ?? 1}
+              {progress?.readingLayout === 'mushaf'
+                ? `Mushaf · Page ${progress?.mushafPage ?? 1}`
+                : `${progress?.surahName ?? 'Surah'} · Page ${progress?.page ?? 1}`}
             </Text>
           </View>
           <Text style={styles.resumeArrow}>→</Text>
         </TouchableOpacity>
       )}
+
+      <TouchableOpacity style={styles.mushafEntry} onPress={onOpenMushaf} activeOpacity={0.8}>
+        <Text style={styles.mushafEntryTitle}>Mushaf by page</Text>
+        <Text style={styles.mushafEntrySub}>Pages 1–604 · continuous Arabic</Text>
+      </TouchableOpacity>
 
       {/* Search */}
       <View style={styles.searchBar}>
@@ -177,13 +196,19 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
       setPagination(data.pagination ?? null);
 
       // Save reading progress
+      const firstVerseNum = (page - 1) * CONFIG.VERSES_PER_PAGE + 1;
       await storage.merge(STORAGE_KEYS.READING_PROGRESS, {
+        surahId: chapter.id,
         chapterId: chapter.id,
+        verseNum: firstVerseNum,
         surahName: chapter.name_simple,
         page,
+        readingLayout: 'verses',
         translationId,
         lastRead: Date.now(),
+        updatedAt: Date.now(),
       });
+      schedulePushReadingProgress();
       const history = (await storage.get(STORAGE_KEYS.READING_HISTORY)) ?? [];
       const nextHistory = [
         { chapterId: chapter.id, surahName: chapter.name_simple, chapterArabic: chapter.name_arabic, at: Date.now() },
@@ -466,6 +491,7 @@ export default function ReadScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [progress, setProgress] = useState(null);
+  const [mushafStartPage, setMushafStartPage] = useState(1);
   const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
 
   useEffect(() => {
@@ -506,8 +532,14 @@ export default function ReadScreen({ navigation, route }) {
   );
 
   const handleResumeReading = useCallback(async () => {
-    if (!progress?.chapterId) return;
-    const chapter = chapters.find((c) => c.id === progress.chapterId);
+    if (progress?.readingLayout === 'mushaf' && progress?.mushafPage != null) {
+      setMushafStartPage(Number(progress.mushafPage) || 1);
+      setView('mushaf');
+      return;
+    }
+    const cid = progress?.chapterId ?? progress?.surahId;
+    if (!cid) return;
+    const chapter = chapters.find((c) => c.id === cid);
     if (chapter) {
       setSelectedChapter(chapter);
       setView('verseReader');
@@ -528,12 +560,23 @@ export default function ReadScreen({ navigation, route }) {
         <SurahGrid
           chapters={chapters}
           onSelect={(ch) => { setSelectedChapter(ch); setView('verseReader'); }}
+          onOpenMushaf={() => {
+            const p = Number(progress?.mushafPage);
+            setMushafStartPage(Number.isFinite(p) && p >= 1 ? p : 1);
+            setView('mushaf');
+          }}
           searchQuery={searchQuery}
           onSearch={setSearchQuery}
           onBack={() => setView('surahList')}
-          hasProgress={!!progress?.chapterId}
+          hasProgress={!!(progress?.chapterId ?? progress?.surahId ?? progress?.mushafPage)}
           progress={progress}
           onResumeReading={handleResumeReading}
+        />
+      ) : view === 'mushaf' ? (
+        <MushafPageReader
+          navigation={navigation}
+          onBack={() => setView('surahList')}
+          initialPage={mushafStartPage}
         />
       ) : (
         <VerseReader
@@ -571,6 +614,18 @@ const styles = StyleSheet.create({
   resumeLabel: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '600' },
   resumeDetail: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 2 },
   resumeArrow: { color: COLORS.accent, fontSize: 18 },
+
+  mushafEntry: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: `${COLORS.accent}35`,
+  },
+  mushafEntryTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  mushafEntrySub: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 4 },
 
   searchBar: {
     flexDirection: 'row',

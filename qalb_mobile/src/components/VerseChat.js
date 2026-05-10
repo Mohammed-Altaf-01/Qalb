@@ -24,6 +24,7 @@ import {
 import Markdown from 'react-native-markdown-display';
 import { aiService } from '../lib/claude';
 import storage, { STORAGE_KEYS } from '../lib/storage';
+import { schedulePushVerseChat } from '../lib/user-app-sync';
 import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
 import { isVercelConfigured } from '../config';
 
@@ -98,6 +99,7 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
   const persistHistory = async (msgs) => {
     const all = (await storage.get(STORAGE_KEYS.CHAT)) ?? {};
     await storage.set(STORAGE_KEYS.CHAT, { ...all, [verseKey]: msgs });
+    schedulePushVerseChat();
   };
 
   const scrollToBottom = () => {
@@ -165,6 +167,7 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
     const all = (await storage.get(STORAGE_KEYS.CHAT)) ?? {};
     delete all[verseKey];
     await storage.set(STORAGE_KEYS.CHAT, all);
+    schedulePushVerseChat();
   };
 
   // Build the data array for FlatList

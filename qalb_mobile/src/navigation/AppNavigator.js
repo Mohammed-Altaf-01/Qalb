@@ -1,10 +1,19 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Text } from 'react-native';
+
+import AhadithBooksScreen from '../screens/AhadithBooksScreen';
+import AhadithChaptersScreen from '../screens/AhadithChaptersScreen';
+import AhadithSectionScreen from '../screens/AhadithSectionScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import GoalsScreen from '../screens/GoalsScreen';
 import HomeScreen from '../screens/HomeScreen';
+import JourneyScreen from '../screens/JourneyScreen';
 import LibraryScreen from '../screens/LibraryScreen';
+import GoalsScreen from '../screens/GoalsScreen';
+import ListenScreen from '../screens/ListenScreen';
+import LiveScreen from '../screens/LiveScreen';
+import MenuScreen from '../screens/MenuScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import ReadScreen from '../screens/ReadScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import VerseDetailScreen from '../screens/VerseDetailScreen';
@@ -17,9 +26,8 @@ const TAB_ICONS = {
   Home: { default: '⌂', active: '⌂' },
   Discover: { default: '◎', active: '◎' },
   Read: { default: '☰', active: '☰' },
-  Library: { default: '☆', active: '★' },
-  Goals: { default: '◇', active: '◆' },
-  Settings: { default: '⚙', active: '⚙' },
+  Journey: { default: '◇', active: '◆' },
+  Menu: { default: '⋯', active: '⋯' },
 };
 
 function TabIcon({ name, focused }) {
@@ -56,17 +64,14 @@ function TabNavigator() {
           fontWeight: '500',
           marginTop: 2,
         },
-        tabBarIcon: ({ focused }) => (
-          <TabIcon name={route.name} focused={focused} />
-        ),
+        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Discover" component={DiscoverScreen} />
       <Tab.Screen name="Read" component={ReadScreen} />
-      <Tab.Screen name="Library" component={LibraryScreen} />
-      <Tab.Screen name="Goals" component={GoalsScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen name="Journey" component={JourneyScreen} />
+      <Tab.Screen name="Menu" component={MenuScreen} options={{ title: 'More' }} />
     </Tab.Navigator>
   );
 }
@@ -83,6 +88,15 @@ export default function AppNavigator() {
           cardStyle: { backgroundColor: COLORS.background },
         }}
       />
+      <RootStack.Screen name="Library" component={LibraryScreen} />
+      <RootStack.Screen name="Goals" component={GoalsScreen} />
+      <RootStack.Screen name="Settings" component={SettingsScreen} />
+      <RootStack.Screen name="Listen" component={ListenScreen} />
+      <RootStack.Screen name="Live" component={LiveScreen} />
+      <RootStack.Screen name="Profile" component={ProfileScreen} />
+      <RootStack.Screen name="AhadithBooks" component={AhadithBooksScreen} />
+      <RootStack.Screen name="AhadithChapters" component={AhadithChaptersScreen} />
+      <RootStack.Screen name="AhadithSection" component={AhadithSectionScreen} />
     </RootStack.Navigator>
   );
 }

@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useMediaPlayback } from '../context/MediaPlaybackContext';
 import { CONFIG, isVercelConfigured } from '../config';
 import storage, { STORAGE_KEYS } from '../lib/storage';
 import { getTextSizePreset } from '../lib/text-settings';
@@ -60,6 +62,7 @@ function dedupeByNumber(items = [], possibleKeys = []) {
 }
 
 export default function HomeScreen({ navigation }) {
+  const { playFromUri, stopAudio, currentLabel } = useMediaPlayback();
   const { state: gamificationState, levelInfo } = useGamification();
   const [verse, setVerse] = useState(null);
   const [chapterName, setChapterName] = useState('');
@@ -76,6 +79,7 @@ export default function HomeScreen({ navigation }) {
   const [listQuery, setListQuery] = useState('');
   const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
   const [playback, setPlayback] = useState({ playing: false, progress: 0 });
+  const [radioBusy, setRadioBusy] = useState(false);
 
   useEffect(() => {
     setListQuery('');
@@ -154,6 +158,30 @@ export default function HomeScreen({ navigation }) {
       loadLastReadSurahs();
     }, [loadLastReadSurahs]),
   );
+
+  const playRandomRadio = useCallback(async () => {
+    if (!isVercelConfigured()) {
+      Alert.alert('Radio', 'Set API_BASE_URL in src/config.js to your deployed Next app.');
+      return;
+    }
+    setRadioBusy(true);
+    try {
+      const base = CONFIG.API_BASE_URL.replace(/\/$/, '');
+      const res = await fetch(`${base}/api/audio/radios?language=eng`);
+      const data = await res.json();
+      const radios = Array.isArray(data.radios) ? data.radios : [];
+      if (!radios.length) {
+        Alert.alert('Radio', 'No stations returned.');
+        return;
+      }
+      const pick = radios[Math.floor(Math.random() * radios.length)];
+      if (pick.url) await playFromUri({ url: pick.url, title: pick.name ?? 'Quran Radio' });
+    } catch {
+      Alert.alert('Radio', 'Could not start playback.');
+    } finally {
+      setRadioBusy(false);
+    }
+  }, [playFromUri]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -234,6 +262,18 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.streakText}>{streak} day{streak !== 1 ? 's' : ''}</Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.radioRow}>
+          <TouchableOpacity style={styles.radioBtn} onPress={playRandomRadio} disabled={radioBusy} activeOpacity={0.8}>
+            <Text style={styles.radioBtnTxt}>{radioBusy ? 'Loading…' : 'Quran Radio'}</Text>
+            <Text style={styles.radioBtnHint}>Random station (mp3quran)</Text>
+          </TouchableOpacity>
+          {currentLabel ? (
+            <TouchableOpacity onPress={stopAudio} style={styles.radioStop}>
+              <Text style={styles.radioStopTxt}>Stop</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Daily verse section label */}
@@ -491,6 +531,24 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  radioBtn: {
+    flex: 1,
+    backgroundColor: COLORS.accentDim,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
+    borderWidth: 1,
+    borderColor: `${COLORS.accent}35`,
+  },
+  radioBtnTxt: { color: COLORS.accent, fontWeight: '700', fontSize: FONT_SIZE.sm },
+  radioBtnHint: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs - 1, marginTop: 4 },
+  radioStop: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
+  radioStopTxt: { color: COLORS.textMuted, fontWeight: '600', fontSize: FONT_SIZE.sm },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   kaabaFrame: {
     width: 68,

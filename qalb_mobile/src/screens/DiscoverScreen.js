@@ -20,8 +20,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { appendDiscoverHistory } from '../../../lib/qalb-discover-history';
+
 import { isVercelConfigured } from '../config';
 import { aiService } from '../lib/claude';
+import { emitJourneyLocalUpdated } from '../lib/qalb-events';
 import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
@@ -96,6 +99,17 @@ export default function DiscoverScreen({ navigation }) {
 
       setResults(verseData.filter(Boolean));
       award('discover_search');
+      const existingHist = await storage.get(STORAGE_KEYS.DISCOVER_HISTORY);
+      const nextHist = appendDiscoverHistory(
+        {
+          situationSnippet: trimmed.slice(0, 200),
+          verseKeys: verses.map((v) => v.verse_key).filter(Boolean),
+          at: Date.now(),
+        },
+        existingHist,
+      );
+      await storage.set(STORAGE_KEYS.DISCOVER_HISTORY, nextHist);
+      emitJourneyLocalUpdated();
       await loadBookmarks();
     } catch (e) {
       setError('Something went wrong. Please check your connection and try again.');

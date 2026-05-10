@@ -7,14 +7,40 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { getQuranAudioState, startExternalQuranAudio, subscribeQuranAudio } from "@/lib/quran-audio-player";
+import { preferredMoshafEntry } from "@/lib/mp3quran-moshaf";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 /**
  * @param {{ chapters: Array<{ id: number; name_simple: string; verses_count: number }>, reciters: Array<any> }} props
  */
-export default function ListenClient({ chapters, reciters }) {
+export default function ListenClient({ chapters, reciters: initialReciters }) {
   const { award } = useGamification();
+  const [reciters, setReciters] = useState(() => initialReciters);
+  useEffect(() => {
+    setReciters(initialReciters);
+  }, [initialReciters]);
+
+  const needsClientReciters = !Array.isArray(reciters) || reciters.length === 0;
+  useEffect(() => {
+    if (!needsClientReciters) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/audio/reciters?language=eng");
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const rows = Array.isArray(data?.reciters) ? data.reciters : [];
+        if (!cancelled && rows.length > 0) setReciters(rows);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [needsClientReciters]);
+
   const parsedReciters = useMemo(() => {
     const raw = Array.isArray(reciters) ? reciters : [];
     return raw
@@ -33,7 +59,7 @@ export default function ListenClient({ chapters, reciters }) {
           };
         }
         const moshaf = Array.isArray(r?.moshaf) ? r.moshaf : [];
-        const preferred = moshaf.find((m) => Number(m?.moshaf_type) === 0) || moshaf[0];
+        const preferred = preferredMoshafEntry(moshaf);
         let server = String(preferred?.server ?? "").trim();
         const surahIds = Array.from(
           new Set(

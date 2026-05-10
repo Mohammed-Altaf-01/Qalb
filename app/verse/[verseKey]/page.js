@@ -18,6 +18,11 @@
  */
 import { Suspense } from "react";
 
+import {
+  getInternalAppOrigin,
+  shouldDeferLoopbackSelfFetchDuringBuild,
+} from "@/lib/internal-app-url";
+
 import VerseDetailClient from "./VerseDetailClient";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,10 +37,16 @@ import VerseDetailClient from "./VerseDetailClient";
  */
 async function fetchVerseData(verseKey) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const baseUrl = await getInternalAppOrigin();
+    if (shouldDeferLoopbackSelfFetchDuringBuild(baseUrl)) {
+      return null;
+    }
     const res = await fetch(
-      `${baseUrl}/api/verse/by-key?key=${encodeURIComponent(verseKey)}`,
-      { next: { revalidate: 3600 } }, // cache for 1 hour — content is stable
+      `${baseUrl.replace(/\/$/, "")}/api/verse/by-key?key=${encodeURIComponent(verseKey)}`,
+      {
+        next: { revalidate: 3600 },
+        signal: AbortSignal.timeout(20_000),
+      },
     );
     if (!res.ok) return null;
     return res.json();

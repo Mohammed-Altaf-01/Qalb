@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
 import { apiLog } from "@/lib/logger";
+import { preferredMoshafEntry } from "@/lib/mp3quran-moshaf";
 
 const MP3QURAN_BASE = "https://www.mp3quran.net/api/v3";
 
@@ -32,7 +33,7 @@ export const GET = withLoggedRoute(async (request) => {
       ? data.reciters
           .map((r) => {
             const moshafList = Array.isArray(r?.moshaf) ? r.moshaf : [];
-            const preferred = moshafList.find((m) => Number(m?.moshaf_type) === 0) || moshafList[0];
+            const preferred = preferredMoshafEntry(moshafList);
             const server = String(preferred?.server ?? "").trim();
             const surahIds = parseSurahIds(String(preferred?.surah_list ?? ""));
             return {

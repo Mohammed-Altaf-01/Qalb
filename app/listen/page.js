@@ -1,4 +1,8 @@
 import { QuranRepository } from "@/lib/quran-api";
+import {
+  getInternalAppOrigin,
+  shouldDeferLoopbackSelfFetchDuringBuild,
+} from "@/lib/internal-app-url";
 
 import ListenClient from "./ListenClient";
 
@@ -18,9 +22,13 @@ export default async function ListenPage() {
     console.error("[/listen] chapters:", e?.message ?? e);
   }
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const base = await getInternalAppOrigin();
+    if (shouldDeferLoopbackSelfFetchDuringBuild(base)) {
+      throw new Error("defer_reciters_build");
+    }
     const res = await fetch(`${base.replace(/\/$/, "")}/api/audio/reciters?language=eng`, {
       next: { revalidate: 60 * 60 * 24 },
+      signal: AbortSignal.timeout(20_000),
     });
     if (res.ok) {
       const data = await res.json();

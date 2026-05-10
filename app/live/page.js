@@ -2,6 +2,10 @@ import {
   LIVE_STREAM_FALLBACK_MADINAH,
   LIVE_STREAM_FALLBACK_MAKKAH,
 } from "@/lib/live-stream-defaults";
+import {
+  getInternalAppOrigin,
+  shouldDeferLoopbackSelfFetchDuringBuild,
+} from "@/lib/internal-app-url";
 
 import LiveClient from "./LiveClient";
 
@@ -13,8 +17,14 @@ export const metadata = {
 export default async function LivePage() {
   let channels = [];
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/live/tv?language=eng`, { cache: "no-store" });
+    const baseUrl = await getInternalAppOrigin();
+    if (shouldDeferLoopbackSelfFetchDuringBuild(baseUrl)) {
+      throw new Error("defer_live_tv_build");
+    }
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/live/tv?language=eng`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(20_000),
+    });
     if (res.ok) {
       const data = await res.json();
       channels = Array.isArray(data?.channels) ? data.channels : [];

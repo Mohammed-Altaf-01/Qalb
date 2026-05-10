@@ -19,9 +19,22 @@ export default function ListenClient({ chapters, reciters }) {
     const raw = Array.isArray(reciters) ? reciters : [];
     return raw
       .map((r) => {
+        /** Already normalized via [/api/audio/reciters](/api/audio/reciters) */
+        if (r?.server != null && Array.isArray(r.surahIds)) {
+          let server = String(r.server ?? "").trim();
+          if (!server) return null;
+          server = server.endsWith("/") ? server : `${server}/`;
+          const surahIds = r.surahIds.filter((n) => Number.isFinite(n) && n >= 1 && n <= 114).sort((a, b) => a - b);
+          return {
+            id: Number(r?.id),
+            name: String(r?.name ?? "").trim(),
+            server,
+            surahIds,
+          };
+        }
         const moshaf = Array.isArray(r?.moshaf) ? r.moshaf : [];
         const preferred = moshaf.find((m) => Number(m?.moshaf_type) === 0) || moshaf[0];
-        const server = String(preferred?.server ?? "").trim();
+        let server = String(preferred?.server ?? "").trim();
         const surahIds = Array.from(
           new Set(
             String(preferred?.surah_list ?? "")
@@ -30,14 +43,15 @@ export default function ListenClient({ chapters, reciters }) {
               .filter((n) => Number.isFinite(n) && n >= 1 && n <= 114),
           ),
         ).sort((a, b) => a - b);
+        server = server.endsWith("/") ? server : `${server}/`;
         return {
           id: Number(r?.id),
           name: String(r?.name ?? "").trim(),
-          server: server.endsWith("/") ? server : `${server}/`,
+          server,
           surahIds,
         };
       })
-      .filter((r) => Number.isFinite(r.id) && r.name && r.server && r.surahIds.length > 0)
+      .filter((r) => r && Number.isFinite(r.id) && r.name && r.server && r.surahIds.length > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [reciters]);
 

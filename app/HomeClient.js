@@ -2,14 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { BookOpen, ChevronRight, Clock, ScrollText, Search, X } from "lucide-react";
+import { BookOpen, ChevronRight, Clock, Feather, Loader2, ScrollText, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { pickLatestReadingResume } from "@/lib/continue-reading";
 import { dedupeLastHadithByHref, LS_LAST_HADITH_READS } from "@/lib/last-hadith-reads";
+import { LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
 import { dedupeLastReadsByHref, LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "@/lib/qalb-last-reads";
+import { toLocalDayKey } from "@/lib/local-calendar-day";
 import { useGamification } from "@/lib/useGamification";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
 
@@ -164,6 +166,102 @@ function HadithHomeStrip() {
   );
 }
 
+function DailyLetterHomeCard() {
+  const [body, setBody] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [dayBlocked, setDayBlocked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dk = typeof window !== "undefined" ? localStorage.getItem("qalb_daily_letter_day") : null;
+      setDayBlocked(dk === toLocalDayKey());
+      const txt = typeof window !== "undefined" ? localStorage.getItem("qalb_daily_letter_text") ?? "" : "";
+      if (dk === toLocalDayKey()) setBody(txt);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const runLetter = async () => {
+    if (loading) return;
+    setLoading(true);
+    setBody("");
+    try {
+      const discover = JSON.parse(localStorage.getItem(LS_DISCOVER_HISTORY) ?? "[]");
+      const discoverLines = (Array.isArray(discover) ? discover : []).slice(0, 6).map((r) => r?.situationSnippet).join(" | ");
+      const bm = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "{}");
+      const keys = typeof bm === "object" && bm && !Array.isArray(bm) ? Object.keys(bm).slice(0, 40).join(", ") : "";
+      const reads = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
+      const tops = Array.isArray(reads)
+        ? reads
+            .slice(0, 5)
+            .map((r) => r.label)
+            .join(", ")
+        : "";
+      const res = await fetch("/api/ai/daily-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookmarkedKeys: keys,
+          topSurahs: tops,
+          lastDiscoverThemes: discoverLines,
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const reader = res.body?.getReader();
+      const dec = new TextDecoder();
+      if (!reader) throw new Error("no_body");
+      let acc = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += dec.decode(value, { stream: true });
+        setBody(acc);
+      }
+      const dk = toLocalDayKey();
+      localStorage.setItem("qalb_daily_letter_day", dk);
+      localStorage.setItem("qalb_daily_letter_text", acc);
+      setDayBlocked(true);
+    } catch {
+      setBody("We couldn’t compose a letter right now — try again in a minute.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="mb-6 rounded-2xl border border-primary/35 bg-card/55 px-4 py-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start gap-2">
+          <Feather size={16} className="text-primary mt-0.5 shrink-0" aria-hidden />
+          <div>
+            <p className="text-xs font-semibold text-foreground">Letter to your heart</p>
+            <p className="text-[10px] text-muted-foreground mt-1 max-w-xl">
+              One gentle reflection based on bookmarks, recent reads, and Discover prompts (once per local day).
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => void runLetter()}
+          disabled={loading || dayBlocked}
+          className="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-primary text-primary-foreground shrink-0
+            disabled:opacity-45 disabled:cursor-not-allowed hover:opacity-95 transition-opacity"
+        >
+          {dayBlocked ? "Saved today" : loading ? "Writing…" : "Open today’s letter"}
+        </button>
+      </div>
+      {loading && !body ? (
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Loader2 size={14} className="animate-spin" />
+          Generating…
+        </div>
+      ) : null}
+      {body ? <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap reading-prose">{body}</p> : null}
+    </section>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -306,6 +404,8 @@ export default function HomeClient({ chapters }) {
   return (
     <div className="mx-auto max-w-3xl px-4 md:px-8 pb-24 md:pb-8 pt-4">
       <HadithHomeStrip />
+
+      <DailyLetterHomeCard />
 
       {lastReads.length > 0 && (
         <div className="mb-5">

@@ -1,14 +1,16 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
+import { apiLog } from "@/lib/logger";
 import { validateActivityMetadata } from "@/lib/app-user-storage";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { insertUserActivityEvent, listUserActivityEvents } from "@/lib/supabase-app-user-repository";
 
 const MAX_EVENT_TYPE_LEN = 120;
 
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -23,14 +25,14 @@ export async function GET(request) {
 
   const result = await listUserActivityEvents(userId, { fromIso, limit: 20_000 });
   if (!result.ok) {
-    console.error("[/api/user/activity GET]", result.error);
+    apiLog.error("activity_list_failed", { err: result.error });
     return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });
   }
 
   return NextResponse.json({ enabled: true, events: result.events });
-}
+});
 
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -58,9 +60,9 @@ export async function POST(request) {
 
   const result = await insertUserActivityEvent(userId, eventType, meta.metadata);
   if (!result.ok) {
-    console.error("[/api/user/activity POST]", result.error);
+    apiLog.error("activity_insert_failed", { err: result.error });
     return NextResponse.json({ error: "Failed to record activity" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
-}
+});

@@ -15,7 +15,9 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { aiService } from "@/lib/claude";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 
 export const maxDuration = 60;
@@ -88,7 +90,7 @@ function extractSearchKeywords(situation) {
  * @param {Request} request - Body: { situation: string }
  * @returns {NextResponse} JSON with { verses: Array<{verse_key, relevance_explanation, theme}> }
  */
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   let body;
   try {
     body = await request.json();
@@ -134,8 +136,7 @@ export async function POST(request) {
       }
     }
   } catch (err) {
-    // Search failure is non-fatal — Claude can still find verses via MCP
-    console.warn("[/api/ai/discover] Search pre-fetch failed, continuing:", err.message);
+    apiLog.warn("discover_search_prefetch_failed", { errMessage: err?.message ?? String(err) });
   }
 
   // ── Step 2: AI contextual ranking via Claude + Quran MCP ─────────────────
@@ -152,7 +153,7 @@ export async function POST(request) {
 
     return NextResponse.json({ verses: result.verses });
   } catch (error) {
-    console.error("[/api/ai/discover] Claude error:", error);
+    apiLog.error("discover_claude_failed", { err: error });
     return NextResponse.json({ error: "AI service temporarily unavailable. Please try again." }, { status: 503 });
   }
-}
+});

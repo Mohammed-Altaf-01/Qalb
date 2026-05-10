@@ -7,6 +7,8 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 
 /**
@@ -15,7 +17,7 @@ import { QuranRepository } from "@/lib/quran-api";
  * @param {Request} request
  * @returns {NextResponse} JSON with { verse, tafsir, chapter }
  */
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const verseKey = searchParams.get("key");
 
@@ -46,7 +48,7 @@ export async function GET(request) {
     if (error.message?.includes("[404]")) {
       return NextResponse.json({ error: "Verse not found in API" }, { status: 404 });
     }
-    console.error(`[/api/verse/by-key] Error for key=${verseKey}:`, error);
+    apiLog.error("by_key_failed", { verseKey, err: error });
     return NextResponse.json({ error: "Failed to fetch verse" }, { status: 500 });
   }
-}
+});

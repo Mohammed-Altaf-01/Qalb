@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
+import { apiLog } from "@/lib/logger";
 import { isAppUserStorageNamespace, validateAppUserStoragePayload } from "@/lib/app-user-storage";
 import { verifyMobileBearerUserId } from "@/lib/mobile-jwt";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
@@ -13,7 +15,7 @@ async function resolveUserId(request) {
   return verifyMobileBearerUserId(request.headers.get("authorization"));
 }
 
-export async function GET(request, context) {
+export const GET = withLoggedRoute(async (request, context) => {
   const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -29,16 +31,16 @@ export async function GET(request, context) {
 
   const result = await getAppUserStoragePayload(userId, namespace);
   if (!result.ok) {
-    console.error("[/api/user/app-storage GET]", result.error);
+    apiLog.error("app_storage_get_failed", { namespace, err: result.error });
     return NextResponse.json({ error: "Failed to load storage" }, { status: 500 });
   }
 
   void touchAppUserProfile(userId);
 
   return NextResponse.json({ enabled: true, namespace, payload: result.payload });
-}
+});
 
-export async function PATCH(request, context) {
+export const PATCH = withLoggedRoute(async (request, context) => {
   const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -66,9 +68,9 @@ export async function PATCH(request, context) {
 
   const saved = await upsertAppUserStoragePayload(userId, namespace, validated.payload);
   if (!saved.ok) {
-    console.error("[/api/user/app-storage PATCH]", saved.error);
+    apiLog.error("app_storage_patch_failed", { namespace, err: saved.error });
     return NextResponse.json({ error: "Failed to save storage" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, namespace, payload: validated.payload });
-}
+});

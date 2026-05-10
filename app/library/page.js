@@ -26,6 +26,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  ACCOUNT_STORAGE_SYNCED_EVENT,
+  LS_LIBRARY_COLLECTIONS,
+  schedulePushLibraryBookmarks,
+  schedulePushLibraryCollections,
+} from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,23 +159,46 @@ export default function LibraryPage() {
   // Load bookmarks from localStorage (written by VerseDetailClient)
   const [bookmarks, setBookmarks] = useState([]);
 
-  useEffect(() => {
+  function loadBookmarksFromStorage() {
     try {
       const stored = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "null");
       if (stored && typeof stored === "object") {
         setBookmarks(Object.values(stored).sort((a, b) => new Date(b.bookmarkedAt) - new Date(a.bookmarkedAt)));
+      } else {
+        setBookmarks([]);
       }
-    } catch {}
+    } catch {
+      setBookmarks([]);
+    }
+  }
+
+  function loadCollectionsFromStorage() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LS_LIBRARY_COLLECTIONS) ?? "null");
+      if (raw && Array.isArray(raw.collections)) {
+        setCollections(raw.collections);
+      }
+    } catch {
+      /* keep default */
+    }
+  }
+
+  useEffect(() => {
+    loadBookmarksFromStorage();
+    loadCollectionsFromStorage();
+  }, []);
+
+  useEffect(() => {
+    function onSync() {
+      loadBookmarksFromStorage();
+      loadCollectionsFromStorage();
+    }
+    window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, onSync);
+    return () => window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, onSync);
   }, []);
 
   /** Collections with their verse lists */
-  const [collections, setCollections] = useState([
-    {
-      id: "demo-comfort",
-      name: "Verses of Comfort",
-      verses: [{ verseKey: "94:5", chapterName: "Ash-Sharh" }],
-    },
-  ]);
+  const [collections, setCollections] = useState([]);
 
   /** New collection name input */
   const [newCollectionName, setNewCollectionName] = useState("");
@@ -184,9 +213,20 @@ export default function LibraryPage() {
       const stored = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "{}");
       delete stored[verseKey];
       localStorage.setItem("qalb_bookmarks", JSON.stringify(stored));
+      schedulePushLibraryBookmarks();
     } catch {}
     toast("Bookmark removed.");
   };
+
+  function persistCollections(cols) {
+    try {
+      const doc = { collections: cols, updatedAt: Date.now() };
+      localStorage.setItem(LS_LIBRARY_COLLECTIONS, JSON.stringify(doc));
+      schedulePushLibraryCollections();
+    } catch {
+      /* ignore */
+    }
+  }
 
   /** Creates a new empty collection. */
   const handleCreateCollection = () => {
@@ -195,7 +235,11 @@ export default function LibraryPage() {
       toast.error("Please enter a collection name.");
       return;
     }
-    setCollections((prev) => [{ id: Date.now().toString(), name, verses: [] }, ...prev]);
+    setCollections((prev) => {
+      const next = [{ id: Date.now().toString(), name, verses: [], updatedAt: Date.now() }, ...prev];
+      persistCollections(next);
+      return next;
+    });
     setNewCollectionName("");
     setIsCreatingCollection(false);
     toast.success(`Collection "${name}" created.`);
@@ -203,7 +247,11 @@ export default function LibraryPage() {
 
   /** Deletes a collection. */
   const handleDeleteCollection = (collectionId) => {
-    setCollections((prev) => prev.filter((c) => c.id !== collectionId));
+    setCollections((prev) => {
+      const next = prev.filter((c) => c.id !== collectionId);
+      persistCollections(next);
+      return next;
+    });
     toast("Collection deleted.");
   };
 

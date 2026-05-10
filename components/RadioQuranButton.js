@@ -12,11 +12,20 @@ import {
   subscribeQuranAudio,
 } from "@/lib/quran-audio-player";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function RadioQuranButton() {
   const [player, setPlayer] = useState(getQuranAudioState());
 
-  useEffect(() => subscribeQuranAudio(setPlayer), []);
+  useEffect(() => {
+    const unsub = subscribeQuranAudio((next) => {
+      if (next.mode === "radio" && next.status === "error" && next.error) {
+        toast.error("Quran radio couldn’t start", { description: next.error });
+      }
+      setPlayer(next);
+    });
+    return unsub;
+  }, []);
 
   async function handleClick() {
     if (player.mode === "radio") {
@@ -30,10 +39,16 @@ export default function RadioQuranButton() {
       }
     }
     const res = await fetch("/api/audio/radios?language=eng");
-    if (!res.ok) return;
+    if (!res.ok) {
+      toast.error("Couldn’t load radio list", { description: `HTTP ${res.status}` });
+      return;
+    }
     const data = await res.json();
     const stations = Array.isArray(data?.radios) ? data.radios : [];
-    if (stations.length === 0) return;
+    if (stations.length === 0) {
+      toast.error("No radio stations returned", { description: "Try again in a moment." });
+      return;
+    }
     const station = stations[Math.floor(Math.random() * stations.length)];
     await startExternalQuranAudio({
       mode: "radio",

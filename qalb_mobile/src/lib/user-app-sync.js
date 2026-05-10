@@ -4,7 +4,9 @@
  */
 
 import {
+  mergeBookmarksMap,
   mergeKeyThemesPayload,
+  mergeLibraryCollectionsPayload,
   mergePreferencesPayload,
   mergeReadingProgress,
   mergeRecentByHref,
@@ -13,6 +15,7 @@ import {
 } from '../../../lib/merge-user-app-storage';
 import { LS_LAST_HADITH_READS, MAX_LAST_HADITH_READS } from '../../../lib/last-hadith-reads';
 import { LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from '../../../lib/qalb-last-reads';
+import { normalizeQuranScript, parseTajweedPreference } from '../../../lib/quran-text-preferences';
 import { normalizeReadingScale } from '../../../lib/reading-scale';
 
 import { apiFetch } from './api-with-auth';
@@ -74,10 +77,21 @@ async function applyPreferencesFromServer(payload) {
   const localScale = normalizeReadingScale(await storage.get(STORAGE_KEYS.READING_SCALE));
   const recRaw = await storage.get(STORAGE_KEYS.RECITER_ID);
   const localRec = typeof recRaw === 'number' ? recRaw : parseInt(String(recRaw ?? '7'), 10);
-  const merged = mergePreferencesPayload(payload, localTheme, localScale, Number.isFinite(localRec) ? localRec : 7, 'uthmani', false);
+  const localScript = normalizeQuranScript(await storage.getRaw(STORAGE_KEYS.QURAN_SCRIPT));
+  const localTajweed = parseTajweedPreference(await storage.getRaw(STORAGE_KEYS.QURAN_TAJWEED));
+  const merged = mergePreferencesPayload(
+    payload,
+    localTheme,
+    localScale,
+    Number.isFinite(localRec) ? localRec : 7,
+    localScript,
+    localTajweed,
+  );
   await storage.set(STORAGE_KEYS.RECITER_ID, merged.reciterId);
   await storage.set(STORAGE_KEYS.READING_SCALE, merged.readingScale);
   await storage.setRaw(STORAGE_KEYS.THEME, merged.theme === 'light' ? 'light' : 'dark');
+  await storage.setRaw(STORAGE_KEYS.QURAN_SCRIPT, normalizeQuranScript(merged.quranScript));
+  await storage.setRaw(STORAGE_KEYS.QURAN_TAJWEED, merged.tajweedEnabled ? '1' : '0');
 }
 
 /**
@@ -89,7 +103,7 @@ export async function pullAccountScopedStorageIntoDevice() {
   let wrote = false;
 
   try {
-    const [pr, pg, ph, jref, jchat, jnotes, jthemes, jgoals] = await Promise.all([
+    const [pr, pg, ph, jref, jchat, jnotes, jthemes, jgoals, prLibBm, prLibCol] = await Promise.all([
       apiFetch('/api/user/app-storage/preferences'),
       apiFetch('/api/user/app-storage/reading_progress'),
       apiFetch('/api/user/app-storage/reading_history'),
@@ -98,6 +112,8 @@ export async function pullAccountScopedStorageIntoDevice() {
       apiFetch('/api/user/app-storage/verse_notes'),
       apiFetch('/api/user/app-storage/read_key_themes'),
       apiFetch('/api/user/app-storage/goals_local'),
+      apiFetch('/api/user/app-storage/library_bookmarks'),
+      apiFetch('/api/user/app-storage/library_collections'),
     ]);
 
     const jp = await pr.json();
@@ -108,6 +124,8 @@ export async function pullAccountScopedStorageIntoDevice() {
     const vnotes = await jnotes.json();
     const kthemes = await jthemes.json();
     const goals = await jgoals.json();
+    const libBm = await prLibBm.json();
+    const libCol = await prLibCol.json();
 
     const cloudEnabled =
       jp.enabled === true ||
@@ -117,7 +135,9 @@ export async function pullAccountScopedStorageIntoDevice() {
       vchat.enabled === true ||
       vnotes.enabled === true ||
       kthemes.enabled === true ||
-      goals.enabled === true;
+      goals.enabled === true ||
+      libBm.enabled === true ||
+      libCol.enabled === true;
     lastKnownCloudEnabled = cloudEnabled;
 
     if (jp.enabled === true && jp.payload && typeof jp.payload === 'object') {
@@ -191,6 +211,32 @@ export async function pullAccountScopedStorageIntoDevice() {
       }
     }
 
+    if (libBm.enabled === true && libBm.payload && typeof libBm.payload === 'object') {
+      const localMap = (await storage.get(STORAGE_KEYS.BOOKMARKS)) ?? {};
+      const p = libBm.payload;
+      const remoteMap =
+        p.bookmarks && typeof p.bookmarks === 'object' && !Array.isArray(p.bookmarks) ? p.bookmarks : {};
+      const mergedBm = mergeBookmarksMap(
+        remoteMap,
+        typeof localMap === 'object' && localMap && !Array.isArray(localMap) ? localMap : {},
+      );
+      await storage.set(STORAGE_KEYS.BOOKMARKS, mergedBm);
+      wrote = true;
+    }
+
+    if (libCol.enabled === true && libCol.payload && typeof libCol.payload === 'object') {
+      const localDoc = (await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS)) ?? {
+        collections: [],
+        updatedAt: 0,
+      };
+      const mergedC = mergeLibraryCollectionsPayload(
+        libCol.payload,
+        typeof localDoc === 'object' && localDoc ? localDoc : { collections: [], updatedAt: 0 },
+      );
+      await storage.set(STORAGE_KEYS.LIBRARY_COLLECTIONS, mergedC);
+      wrote = true;
+    }
+
     markAccountStoragePullCompleted();
     if (wrote || cloudEnabled) emitAccountStorageSynced();
     return { cloudEnabled, wrote };
@@ -208,12 +254,14 @@ export function schedulePushPreferences() {
     const scale = normalizeReadingScale(await storage.get(STORAGE_KEYS.READING_SCALE));
     const recRaw = await storage.get(STORAGE_KEYS.RECITER_ID);
     const rec = parseInt(String(recRaw ?? '7'), 10);
+    const script = normalizeQuranScript(await storage.getRaw(STORAGE_KEYS.QURAN_SCRIPT));
+    const tajweedEnabled = parseTajweedPreference(await storage.getRaw(STORAGE_KEYS.QURAN_TAJWEED));
     await patchNamespace('preferences', {
       theme: localTheme,
       readingScale: scale,
       reciterId: Number.isFinite(rec) ? rec : 7,
-      quranScript: 'uthmani',
-      tajweedEnabled: false,
+      quranScript: script,
+      tajweedEnabled,
       updatedAt: Date.now(),
     });
   });
@@ -294,6 +342,33 @@ export function schedulePushGoalsLocal() {
     await patchNamespace('goals_local', {
       timeTracking: typeof timeTracking === 'object' && timeTracking && !Array.isArray(timeTracking) ? timeTracking : {},
       updatedAt: Date.now(),
+    });
+  });
+}
+
+export function schedulePushLibraryBookmarks() {
+  debounce('library_bookmarks', async () => {
+    if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
+    const blob = (await storage.get(STORAGE_KEYS.BOOKMARKS)) ?? {};
+    await patchNamespace('library_bookmarks', {
+      bookmarks: typeof blob === 'object' && blob && !Array.isArray(blob) ? blob : {},
+      updatedAt: Date.now(),
+    });
+  });
+}
+
+export function schedulePushLibraryCollections() {
+  debounce('library_collections', async () => {
+    if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
+    const doc =
+      (await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS)) ??
+      ({
+        collections: [],
+        updatedAt: 0,
+      });
+    await patchNamespace('library_collections', {
+      collections: Array.isArray(doc.collections) ? doc.collections : [],
+      updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now(),
     });
   });
 }

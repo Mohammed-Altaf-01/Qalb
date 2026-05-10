@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import storage, { STORAGE_KEYS } from '../lib/storage';
-import VerseCard from '../components/VerseCard';
+import { schedulePushLibraryBookmarks, schedulePushLibraryCollections } from '../lib/user-app-sync';
 import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
 
 const TABS = ['Bookmarks', 'Collections'];
@@ -31,8 +32,19 @@ export default function LibraryScreen({ navigation }) {
     setBookmarks(
       Object.values(bm).sort((a, b) => (b.savedAt ?? 0) - (a.savedAt ?? 0)),
     );
-    const cols = (await storage.get(STORAGE_KEYS.COLLECTIONS)) ?? [];
-    setCollections(cols);
+    let doc = await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS);
+    if (!doc && (await storage.getRaw('qalb_collections'))) {
+      const legacyArr = await storage.get('qalb_collections');
+      if (Array.isArray(legacyArr) && legacyArr.length) {
+        doc = { collections: legacyArr, updatedAt: Date.now() };
+        await storage.set(STORAGE_KEYS.LIBRARY_COLLECTIONS, doc);
+      }
+    }
+    const normalized =
+      doc && typeof doc === 'object' && !Array.isArray(doc)
+        ? doc
+        : { collections: Array.isArray(doc) ? doc : [], updatedAt: 0 };
+    setCollections(Array.isArray(normalized.collections) ? normalized.collections : []);
   }, []);
 
   useFocusEffect(
@@ -51,11 +63,44 @@ export default function LibraryScreen({ navigation }) {
           const bm = (await storage.get(STORAGE_KEYS.BOOKMARKS)) ?? {};
           delete bm[verseKey];
           await storage.set(STORAGE_KEYS.BOOKMARKS, bm);
+          schedulePushLibraryBookmarks();
           loadData();
         },
       },
     ]);
   }, []);
+
+  const persistCollections = useCallback(async (cols) => {
+    await storage.set(STORAGE_KEYS.LIBRARY_COLLECTIONS, {
+      collections: cols,
+      updatedAt: Date.now(),
+    });
+    schedulePushLibraryCollections();
+    await loadData();
+  }, [loadData]);
+
+  const promptCreateCollection = useCallback(() => {
+    const add = async (name) => {
+      const trimmed = typeof name === 'string' ? name.trim() : '';
+      if (!trimmed) return;
+      const cols = [...collections];
+      cols.push({
+        id: `${Date.now()}`,
+        name: trimmed,
+        verses: [],
+        updatedAt: Date.now(),
+      });
+      await persistCollections(cols);
+    };
+    if (Platform.OS === 'ios') {
+      Alert.prompt('Collection name', 'Group verses around a theme or topic.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Create', onPress: (txt) => void add(txt ?? '') },
+      ]);
+    } else {
+      void add(`Collection ${collections.length + 1}`);
+    }
+  }, [collections, persistCollections]);
 
   const renderBookmark = ({ item }) => (
     <TouchableOpacity
@@ -144,14 +189,14 @@ export default function LibraryScreen({ navigation }) {
               <Text style={styles.emptySubtitle}>
                 Collections let you group verses by theme
               </Text>
-              <TouchableOpacity style={styles.createBtn} onPress={() => {}}>
+              <TouchableOpacity style={styles.createBtn} onPress={promptCreateCollection}>
                 <Text style={styles.createBtnText}>+ Create Collection</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <FlatList
               data={collections}
-              keyExtractor={(item, i) => String(i)}
+              keyExtractor={(item) => String(item.id ?? item.name)}
               renderItem={({ item }) => (
                 <View style={styles.collectionCard}>
                   <Text style={styles.collectionName}>{item.name}</Text>

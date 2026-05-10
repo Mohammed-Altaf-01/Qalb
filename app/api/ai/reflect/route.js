@@ -10,7 +10,9 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { aiService } from "@/lib/claude";
+import { apiLog } from "@/lib/logger";
 
 export const maxDuration = 30;
 
@@ -19,7 +21,7 @@ export const maxDuration = 30;
  *
  * @param {Request} request
  */
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   let body;
   try {
     body = await request.json();
@@ -43,7 +45,7 @@ export async function POST(request) {
 
     return NextResponse.json({ questions });
   } catch (error) {
-    console.error("[/api/ai/reflect] Error:", error);
+    apiLog.error("reflect_failed", { err: error });
 
     // Return generic fallback questions — never fail silently on the UI
     return NextResponse.json({
@@ -54,4 +56,4 @@ export async function POST(request) {
       ],
     });
   }
-}
+});

@@ -69,16 +69,21 @@ export default function AudioPlayer({
       for (const id of tryIds) {
         try {
           const data = await QuranRepository.getVerseAudio(verseKey, id);
+          const direct = data?.audioUrl && String(data.audioUrl).trim();
+          if (direct) {
+            audioUrl = direct;
+            break;
+          }
           const file = data?.audio_files?.[0];
           const raw = file?.url ?? file?.audio_url;
           if (raw) {
             const u = String(raw).trim();
             audioUrl =
-              u.startsWith("http://") || u.startsWith("https://")
+              u.startsWith('http://') || u.startsWith('https://')
                 ? u
-                : u.startsWith("//")
+                : u.startsWith('//')
                   ? `https:${u}`
-                  : `https://verses.quran.com/${u.replace(/^\/+/, "")}`;
+                  : `https://verses.quran.com/${u.replace(/^\/+/, '')}`;
             break;
           }
         } catch {}

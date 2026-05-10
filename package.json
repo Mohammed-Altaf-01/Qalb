@@ -8,6 +8,7 @@
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "smoke": "bash scripts/smoke-api.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -45,7 +46,9 @@
     "@vitejs/plugin-react": "^6.0.1",
     "jsdom": "^29.0.2",
     "prettier": "^3.8.3",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.4",
+    "zod": "^4.4.3"
   }
 }

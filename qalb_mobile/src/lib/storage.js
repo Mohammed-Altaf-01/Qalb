@@ -10,7 +10,8 @@ export const STORAGE_KEYS = {
   READING_PROGRESS: 'qalb_reading_progress',
   READING_HISTORY: 'qalb_reading_history',
   GOALS: 'qalb_goals',
-  COLLECTIONS: 'qalb_collections',
+  /** Same key as web — `lib/user-app-sync-bridge` LS_LIBRARY_COLLECTIONS */
+  LIBRARY_COLLECTIONS: 'qalb_library_collections',
   SPLASH_SHOWN: 'qalb_splash_shown_session',
   GAMIFICATION: 'qalb_gamification',
   TEXT_SIZE: 'qalb_text_size',
@@ -21,6 +22,9 @@ export const STORAGE_KEYS = {
   TIME_TRACKING: 'qalb_time_tracking',
   READING_SCALE: 'qalb_reading_scale',
   THEME: 'qalb_theme',
+  /** Match web `lib/quran-text-preferences` LS_* */
+  QURAN_SCRIPT: 'qalb_quran_script',
+  QURAN_TAJWEED: 'qalb_quran_tajweed',
 };
 
 /** Drop-in AsyncStorage wrapper that always returns parsed JSON */

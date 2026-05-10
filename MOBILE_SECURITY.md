@@ -3,7 +3,7 @@
 ## Architecture
 
 - The Expo app **never** embeds Supabase service role keys, `NEXTAUTH_SECRET`, or Quran Foundation **server** client secrets for Next-only routes.
-- **Quran Foundation client credentials** in `qalb_mobile/src/config.js` are the same pattern as the web repo’s documented read-only content API keys (device-exposed); rotate if compromised.
+- **Quran content on mobile** is fetched only through your Next.js deployment (`EXPO_PUBLIC_API_BASE_URL` + `/api/quran/*`, `/api/verse/*`, etc.); no Content API OAuth client secret is shipped in the Expo bundle.
 - **Cloud `app_user_storage`** is read/written only through Next.js [`app/api/user/app-storage/[namespace]/route.js`](app/api/user/app-storage/[namespace]/route.js), which uses the server Supabase client.
 
 ## Mobile session JWT (Option B)

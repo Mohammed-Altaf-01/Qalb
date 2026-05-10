@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
+import { apiLog } from "@/lib/logger";
 import { UserRepository } from "@/lib/user-api";
 
 async function getToken(request) {
@@ -14,7 +16,7 @@ async function getToken(request) {
   return null;
 }
 
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -22,12 +24,12 @@ export async function GET(request) {
     const data = await UserRepository.getBookmarks(token);
     return NextResponse.json(data ?? { bookmarks: [] });
   } catch (error) {
-    console.error("[/api/user/bookmark GET]", error);
+    apiLog.error("bookmark_get_failed", { err: error });
     return NextResponse.json({ error: "Failed to fetch bookmarks" }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -38,12 +40,12 @@ export async function POST(request) {
     const data = await UserRepository.addBookmark(token, verseKey);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/user/bookmark POST]", error);
+    apiLog.error("bookmark_post_failed", { err: error });
     return NextResponse.json({ error: "Failed to add bookmark" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request) {
+export const DELETE = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -54,7 +56,7 @@ export async function DELETE(request) {
     await UserRepository.removeBookmark(token, verseKey);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/user/bookmark DELETE]", error);
+    apiLog.error("bookmark_delete_failed", { err: error });
     return NextResponse.json({ error: "Failed to remove bookmark" }, { status: 500 });
   }
-}
+});

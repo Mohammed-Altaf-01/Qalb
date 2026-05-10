@@ -4,8 +4,8 @@
  * All AI calls are proxied through the Vercel-deployed Next.js API routes.
  * This keeps the Anthropic API key secret (never bundled in the mobile app).
  *
- * Set CONFIG.API_BASE_URL in src/config.js to your Vercel deployment URL.
- * For local dev, point to your machine's LAN IP: http://192.168.x.x:3000
+ * Set `EXPO_PUBLIC_API_BASE_URL` in `qalb_mobile/.env` (see `.env.example`).
+ * For local dev on a device, use your machine's LAN IP — not localhost.
  *
  * Supports streaming for chat (text appears incrementally via onChunk callback).
  * Discover/Reflect use regular JSON responses for simplicity.

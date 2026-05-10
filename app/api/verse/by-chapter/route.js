@@ -8,9 +8,11 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const surah = parseInt(searchParams.get("surah") ?? "0", 10);
   const page = parseInt(searchParams.get("page") ?? "1", 10);
@@ -33,7 +35,7 @@ export async function GET(request) {
       chapter: chapterData?.chapter ?? null,
     });
   } catch (error) {
-    console.error("[/api/verse/by-chapter]", error.message);
+    apiLog.error("by_chapter_failed", { err: error });
     return NextResponse.json({ error: "Failed to fetch verses" }, { status: 500 });
   }
-}
+});

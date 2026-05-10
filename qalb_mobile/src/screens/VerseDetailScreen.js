@@ -34,7 +34,11 @@ import { getTextSizePreset } from '../lib/text-settings';
 import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
-import { schedulePushVerseNotes, schedulePushVerseReflections } from '../lib/user-app-sync';
+import {
+  schedulePushLibraryBookmarks,
+  schedulePushVerseNotes,
+  schedulePushVerseReflections,
+} from '../lib/user-app-sync';
 import AudioPlayer from '../components/AudioPlayer';
 import VerseChat from '../components/VerseChat';
 import WordByWordArabic from '../components/WordByWordArabic';
@@ -461,6 +465,7 @@ export default function VerseDetailScreen({ route, navigation }) {
       setIsBookmarked(true);
     }
     await storage.set(STORAGE_KEYS.BOOKMARKS, bm);
+    schedulePushLibraryBookmarks();
   };
 
   if (loading) {

@@ -14,13 +14,15 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { buildReadSummaryPrompt } from "@/lib/prompts";
 
 export const maxDuration = 60;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   let body;
   try {
     body = await request.json();
@@ -56,7 +58,7 @@ export async function POST(request) {
           }
         }
       } catch (error) {
-        console.error("[/api/ai/read-summary]", error);
+        apiLog.error("read_summary_stream_failed", { err: error });
         controller.enqueue(encoder.encode("Could not generate summary. Please try again."));
       } finally {
         controller.close();
@@ -70,4 +72,4 @@ export async function POST(request) {
       "Cache-Control": "no-cache, no-transform",
     },
   });
-}
+});

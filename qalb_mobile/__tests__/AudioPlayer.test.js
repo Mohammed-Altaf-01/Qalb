@@ -21,7 +21,7 @@ jest.mock('expo-audio', () => {
 jest.mock('../src/lib/quran-api', () => ({
   QuranRepository: {
     getVerseAudio: jest.fn().mockResolvedValue({
-      audio_files: [{ url: 'audio/001_001.mp3' }],
+      audioUrl: 'https://verses.quran.com/audio/001_001.mp3',
     }),
   },
 }));
@@ -48,7 +48,7 @@ beforeEach(() => {
   setAudioModeAsync.mockResolvedValue(undefined);
   const { QuranRepository } = require('../src/lib/quran-api');
   QuranRepository.getVerseAudio.mockResolvedValue({
-    audio_files: [{ url: 'audio/001_001.mp3' }],
+    audioUrl: 'https://verses.quran.com/audio/001_001.mp3',
   });
   const storage = require('../src/lib/storage').default;
   storage.get.mockResolvedValue(null);
@@ -93,7 +93,7 @@ describe('AudioPlayer', () => {
 
   it('shows error state when no audio URL is found', async () => {
     const { QuranRepository } = require('../src/lib/quran-api');
-    QuranRepository.getVerseAudio.mockResolvedValue({ audio_files: [] });
+    QuranRepository.getVerseAudio.mockResolvedValue({});
     const { getByText } = render(<AudioPlayer verseKey="1:1" />);
     await waitFor(() =>
       expect(getByText('Audio unavailable for this verse.')).toBeTruthy()

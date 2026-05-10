@@ -49,12 +49,17 @@ export function getLevelInfo(xp = 0) {
 export function defaultGamificationState() {
   return {
     xp: 0,
+    badges: [],
+    badgeLog: [],
     actionsToday: {},
     todayKey: null,
     actionLog: [],
+    surahs_read: [],
     discovers_count: 0,
     reflections_count: 0,
     notes_count: 0,
+    challenge_completed: false,
+    challenge_date: null,
     total_minutes_spent: 0,
     deeds: [],
     deedLog: [],
@@ -66,14 +71,23 @@ function todayString() {
 }
 
 export function normalizeGamificationState(state) {
-  const s = state ?? defaultGamificationState();
+  const base = defaultGamificationState();
+  const s =
+    typeof state === 'object' && state !== null && !Array.isArray(state)
+      ? { ...base, ...state }
+      : { ...base };
+
   if (s.todayKey !== todayString()) {
     s.todayKey = todayString();
     s.actionsToday = {};
+    s.challenge_completed = false;
   }
   s.actionLog = s.actionLog ?? [];
+  s.badges = s.badges ?? [];
+  s.badgeLog = s.badgeLog ?? [];
   s.deeds = s.deeds ?? [];
   s.deedLog = s.deedLog ?? [];
+  s.surahs_read = s.surahs_read ?? [];
   s.total_minutes_spent = s.total_minutes_spent ?? 0;
   return s;
 }

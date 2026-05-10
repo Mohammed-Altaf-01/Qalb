@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { TRANSLATIONS } from "@/app/read/ReadClient";
 import AudioPlayer from "@/components/AudioPlayer";
+import VerseComparePanels from "@/components/VerseComparePanels";
 import VerseChat from "@/components/VerseChat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,7 @@ import { cleanTranslationText } from "@/lib/translation-utils";
 import { useGamification } from "@/lib/useGamification";
 import {
   ACCOUNT_STORAGE_SYNCED_EVENT,
+  schedulePushLibraryBookmarks,
   schedulePushVerseChat,
   schedulePushVerseNotes,
   schedulePushVerseReflections,
@@ -123,6 +125,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
     if (stored[verseKey]) {
       delete stored[verseKey];
       lsSet(LS_BOOKMARKS, stored);
+      schedulePushLibraryBookmarks();
       setIsBookmarked(false);
       toast("Bookmark removed.");
     } else {
@@ -134,6 +137,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
         bookmarkedAt: new Date().toISOString(),
       };
       lsSet(LS_BOOKMARKS, stored);
+      schedulePushLibraryBookmarks();
       setIsBookmarked(true);
       toast.success("Verse bookmarked!");
     }
@@ -493,6 +497,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
 
           {/* Audio */}
           <AudioPlayer verseKey={verseKey} />
+          <VerseComparePanels verseKey={verseKey} />
         </div>
       )}
 

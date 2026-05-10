@@ -1,193 +1,115 @@
 /**
- * Quran Foundation Content API Client — React Native adaptation.
+ * Quran content via the deployed Next.js API only — no OAuth client credentials on device.
  *
- * Adapted from web app lib/quran-api.js:
- *  - Replaced Buffer.from().toString('base64') with btoa() (RN global)
- *  - Removed Next.js `next: { revalidate }` cache options from fetch
- *  - Reads credentials from src/config.js instead of process.env
- *
- * Patterns: Singleton (token), Repository (data access), Builder (requests)
+ * See /api/quran/chapters, /api/verse/by-chapter, /api/verse/by-key, /api/verse/audio, /api/verse/tafsir, /api/verse/by-page.
  */
 
 import { CONFIG, isVercelConfigured } from '../config';
 
-const { QURAN_CLIENT_ID, QURAN_CLIENT_SECRET, QURAN_OAUTH_URL, QURAN_API_BASE } = CONFIG;
-const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+function baseUrl() {
+  return CONFIG.API_BASE_URL.replace(/\/$/, '');
+}
 
-// ── Singleton: Token Manager ───────────────────────────────────────────────────
+async function getJson(path, init) {
+  if (!isVercelConfigured()) {
+    throw new Error('Configure EXPO_PUBLIC_API_BASE_URL for Quran content');
+  }
+  const url = `${baseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    throw new Error(`Quran API proxy error [${res.status}] ${path}: ${res.statusText}`);
+  }
+  return res.json();
+}
 
-class QuranTokenManager {
-  static #instance = null;
-  #accessToken = null;
-  #expiresAt = 0;
-
+/** @deprecated Use QuranRepository only; token manager was for direct Foundation OAuth (removed from mobile). */
+export class QuranTokenManager {
   static getInstance() {
-    if (!QuranTokenManager.#instance) {
-      QuranTokenManager.#instance = new QuranTokenManager();
-    }
-    return QuranTokenManager.#instance;
+    return QuranTokenManager;
   }
 
   async getToken() {
-    if (this.#accessToken && Date.now() < this.#expiresAt) {
-      return this.#accessToken;
-    }
-    return this.#fetchNewToken();
-  }
-
-  async #fetchNewToken() {
-    const credentials = btoa(`${QURAN_CLIENT_ID}:${QURAN_CLIENT_SECRET}`);
-    const res = await fetch(`${QURAN_OAUTH_URL}/oauth2/token`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials&scope=content',
-    });
-    if (!res.ok) throw new Error(`Token fetch failed: ${res.status} ${res.statusText}`);
-    const data = await res.json();
-    this.#accessToken = data.access_token;
-    this.#expiresAt = Date.now() + data.expires_in * 1000 - TOKEN_EXPIRY_BUFFER_MS;
-    return this.#accessToken;
+    throw new Error('QuranTokenManager is not used on mobile — use Next API routes');
   }
 }
 
-// ── Builder: Request Builder ───────────────────────────────────────────────────
-
-class RequestBuilder {
-  constructor(path) {
-    this.path = path;
-    this.params = new URLSearchParams();
-    this.tokenManager = QuranTokenManager.getInstance();
-  }
-
-  withParam(key, value) {
-    if (value !== undefined && value !== null) {
-      this.params.set(String(key), String(value));
-    }
-    return this;
-  }
-
-  async fetch() {
-    const token = await this.tokenManager.getToken();
-    const queryString = this.params.toString();
-    const url = `${QURAN_API_BASE}${this.path}${queryString ? `?${queryString}` : ''}`;
-
-    const res = await fetch(url, {
-      headers: {
-        'x-auth-token': token,
-        'x-client-id': QURAN_CLIENT_ID,
-        Accept: 'application/json',
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Quran API error [${res.status}] ${this.path}: ${res.statusText}`);
-    }
-
-    return res.json();
+/** @deprecated Direct Foundation requests removed from mobile. */
+export class RequestBuilder {
+  constructor() {
+    throw new Error('RequestBuilder is not used on mobile — use QuranRepository');
   }
 }
 
-// ── Repository: Quran Repository ──────────────────────────────────────────────
-
-class QuranRepository {
+export class QuranRepository {
   static async getChapters(language = 'en') {
-    return new RequestBuilder('/content/api/v4/chapters')
-      .withParam('language', language)
-      .fetch();
+    return getJson(`/api/quran/chapters?language=${encodeURIComponent(language)}`);
   }
 
   static async getChapter(chapterId, language = 'en') {
-    return new RequestBuilder(`/content/api/v4/chapters/${chapterId}`)
-      .withParam('language', language)
-      .fetch();
+    const id = String(chapterId).includes(':')
+      ? String(chapterId).split(':')[0]
+      : String(chapterId);
+    return getJson(`/api/quran/chapters/${encodeURIComponent(id)}?language=${encodeURIComponent(language)}`);
   }
 
   static async getVersesByChapter(chapterId, opts = {}) {
     const {
       translationId = CONFIG.DEFAULT_TRANSLATION_ID,
-      language = 'en',
       perPage = CONFIG.VERSES_PER_PAGE,
       page = 1,
     } = opts;
-    return new RequestBuilder(`/content/api/v4/verses/by_chapter/${chapterId}`)
-      .withParam('translations', translationId)
-      .withParam('language', language)
-      .withParam('per_page', perPage)
-      .withParam('page', page)
-      .withParam('fields', 'text_uthmani,chapter_id,verse_number,verse_key,juz_number')
-      .withParam('audio', 7)
-      .fetch();
+    const q = new URLSearchParams({
+      surah: String(chapterId),
+      page: String(page),
+      perPage: String(perPage),
+      translation: String(translationId),
+    });
+    return getJson(`/api/verse/by-chapter?${q}`);
   }
 
   static async getVerseByKey(verseKey, opts = {}) {
     const { translationId = CONFIG.DEFAULT_TRANSLATION_ID } = opts;
-    return new RequestBuilder(`/content/api/v4/verses/by_key/${verseKey}`)
-      .withParam('translations', translationId)
-      .withParam('fields', 'text_uthmani,chapter_id,verse_number,verse_key,juz_number')
-      .withParam('audio', 7)
-      .fetch();
-  }
-
-  static async getRandomVerse(opts = {}) {
-    const { translationId = CONFIG.DEFAULT_TRANSLATION_ID } = opts;
-    return new RequestBuilder('/content/api/v4/verses/random')
-      .withParam('translations', translationId)
-      .withParam('fields', 'text_uthmani,chapter_id,verse_number,verse_key,juz_number')
-      .withParam('audio', 7)
-      .fetch();
+    const q = new URLSearchParams({
+      key: verseKey,
+      translation: String(translationId),
+    });
+    return getJson(`/api/verse/by-key?${q}`);
   }
 
   static async searchVerses(query, opts = {}) {
-    const { language = 'en', size = 15, page = 0 } = opts;
-    return new RequestBuilder('/content/api/v4/search')
-      .withParam('q', query)
-      .withParam('size', size)
-      .withParam('page', page)
-      .withParam('language', language)
-      .fetch();
+    const { size = 15, page = 0 } = opts;
+    const q = new URLSearchParams({
+      q: query,
+      size: String(size),
+      page: String(page),
+    });
+    return getJson(`/api/search?${q}`);
   }
 
+  /**
+   * Proxies /api/verse/audio — returns { audioUrl, verseKey, reciter, segments? } (not raw Foundation shape).
+   */
   static async getVerseAudio(verseKey, recitationId = CONFIG.DEFAULT_RECITER_ID) {
-    return new RequestBuilder(
-      `/content/api/v4/recitations/${recitationId}/by_ayah/${verseKey}`,
-    ).fetch();
+    const q = new URLSearchParams({
+      key: verseKey,
+      reciter: String(recitationId),
+    });
+    return getJson(`/api/verse/audio?${q}`);
   }
 
   static async getTafsirByVerse(verseKey, tafsirId = CONFIG.DEFAULT_TAFSIR_ID) {
-    return new RequestBuilder(
-      `/content/api/v4/tafsirs/${tafsirId}/by_ayah/${verseKey}`,
-    ).fetch();
+    const q = new URLSearchParams({
+      key: verseKey,
+      tafsirId: String(tafsirId),
+    });
+    return getJson(`/api/verse/tafsir?${q}`);
   }
 
-  static async getJuzs(language = 'en') {
-    return new RequestBuilder('/content/api/v4/juzs')
-      .withParam('language', language)
-      .fetch();
-  }
-
-  static async getHizbs(language = 'en') {
-    return new RequestBuilder('/content/api/v4/hizbs')
-      .withParam('language', language)
-      .fetch();
-  }
-
-  /** Mushaf page (1–604) via deployed Next `/api/verse/by-page`. */
   static async getVersesByPageFromApp(page, translationId = CONFIG.DEFAULT_TRANSLATION_ID) {
-    if (!isVercelConfigured()) {
-      throw new Error('Configure API_BASE_URL in src/config.js for mushaf by-page');
-    }
-    const base = CONFIG.API_BASE_URL.replace(/\/$/, '');
-    const res = await fetch(
-      `${base}/api/verse/by-page?page=${encodeURIComponent(String(page))}&translation=${encodeURIComponent(String(translationId))}`,
-    );
-    if (!res.ok) {
-      throw new Error(`Mushaf page fetch failed: ${res.status}`);
-    }
-    return res.json();
+    const q = new URLSearchParams({
+      page: String(page),
+      translation: String(translationId),
+    });
+    return getJson(`/api/verse/by-page?${q}`);
   }
 }
-
-export { QuranRepository, QuranTokenManager, RequestBuilder };

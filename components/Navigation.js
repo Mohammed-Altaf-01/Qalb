@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ListenMiniPlayer from "@/components/ListenMiniPlayer";
+import PrayerStrip from "@/components/PrayerStrip";
 import RadioQuranButton from "@/components/RadioQuranButton";
 import { getLevelInfo, loadState } from "@/lib/gamification";
 import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
@@ -411,6 +412,7 @@ export default function Navigation() {
             <UserButton />
           </div>
         </div>
+        <PrayerStrip />
       </header>
 
       {/* Mobile tab bar — compact primary flows + profile; settings in header */}

@@ -1,11 +1,20 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
+import { apiLog } from "@/lib/logger";
 import { GAMIFICATION_SYNC_MAX_BODY_BYTES } from "@/lib/constants/gamification";
 import { normalizeGamificationState } from "@/lib/gamification";
+import { verifyMobileBearerUserId } from "@/lib/mobile-jwt";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { touchAppUserProfile } from "@/lib/supabase-app-user-repository";
+
+async function resolveUserId(request) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id) return session.user.id;
+  return verifyMobileBearerUserId(request.headers.get("authorization"));
+}
 
 function isNormalizedGamificationState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) return false;
@@ -17,9 +26,8 @@ function isNormalizedGamificationState(state) {
   return true;
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+export const GET = withLoggedRoute(async (request) => {
+  const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const supabase = getSupabaseServiceRole();
@@ -30,17 +38,16 @@ export async function GET() {
   const { data, error } = await supabase.from("user_gamification").select("state").eq("user_id", userId).maybeSingle();
 
   if (error) {
-    console.error("[/api/user/gamification GET]", error);
+    apiLog.error("gamification_get_failed", { err: error });
     return NextResponse.json({ error: "Failed to load gamification" }, { status: 500 });
   }
 
   void touchAppUserProfile(userId);
   return NextResponse.json({ enabled: true, state: data?.state ?? null });
-}
+});
 
-export async function PATCH(request) {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+export const PATCH = withLoggedRoute(async (request) => {
+  const userId = await resolveUserId(request);
   if (!userId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const supabase = getSupabaseServiceRole();
@@ -81,10 +88,10 @@ export async function PATCH(request) {
   );
 
   if (error) {
-    console.error("[/api/user/gamification PATCH]", error);
+    apiLog.error("gamification_patch_failed", { err: error });
     return NextResponse.json({ error: "Failed to save gamification" }, { status: 500 });
   }
 
   void touchAppUserProfile(userId);
   return NextResponse.json({ ok: true, state: normalized });
-}
+});

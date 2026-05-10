@@ -1,7 +1,9 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
+import { apiLog } from "@/lib/logger";
 import { UserRepository } from "@/lib/user-api";
 
 async function getToken(request) {
@@ -12,7 +14,7 @@ async function getToken(request) {
   return null;
 }
 
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -20,12 +22,12 @@ export async function GET(request) {
     const data = await UserRepository.getGoals(token);
     return NextResponse.json(data ?? { goals: [] });
   } catch (error) {
-    console.error("[/api/user/goals GET]", error);
+    apiLog.error("goals_get_failed", { err: error });
     return NextResponse.json({ error: "Failed to fetch goals" }, { status: 500 });
   }
-}
+});
 
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -38,12 +40,12 @@ export async function POST(request) {
     const data = await UserRepository.createGoal(token, goal);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/user/goals POST]", error);
+    apiLog.error("goals_post_failed", { err: error });
     return NextResponse.json({ error: "Failed to create goal" }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request) {
+export const PATCH = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -54,12 +56,12 @@ export async function PATCH(request) {
     const data = await UserRepository.updateGoal(token, goalId, updates);
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[/api/user/goals PATCH]", error);
+    apiLog.error("goals_patch_failed", { err: error });
     return NextResponse.json({ error: "Failed to update goal" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request) {
+export const DELETE = withLoggedRoute(async (request) => {
   const token = await getToken(request);
   if (!token) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -70,7 +72,7 @@ export async function DELETE(request) {
     await UserRepository.deleteGoal(token, goalId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/user/goals DELETE]", error);
+    apiLog.error("goals_delete_failed", { err: error });
     return NextResponse.json({ error: "Failed to delete goal" }, { status: 500 });
   }
-}
+});

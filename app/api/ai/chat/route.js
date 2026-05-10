@@ -16,6 +16,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { buildVersechatSystemPrompt } from "@/lib/prompts";
 
 export const maxDuration = 60;
@@ -36,7 +38,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
  * @param {Request} request
  * @returns {Response} Streaming text/plain response
  */
-export async function POST(request) {
+export const POST = withLoggedRoute(async (request) => {
   let body;
   try {
     body = await request.json();
@@ -77,7 +79,7 @@ export async function POST(request) {
           }
         }
       } catch (error) {
-        console.error("[/api/ai/chat] Stream error:", error);
+        apiLog.error("verse_chat_stream_failed", { err: error });
         controller.enqueue(
           encoder.encode("I'm sorry, I encountered an error while processing your question. Please try again."),
         );
@@ -95,4 +97,4 @@ export async function POST(request) {
       "Cache-Control": "no-cache, no-transform",
     },
   });
-}
+});

@@ -13,6 +13,8 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 import { normalizeVerseAudioUrl } from "@/lib/verse-audio-url";
 
@@ -51,7 +53,7 @@ function extractAudioPayload(data, wantSegments, verseKey, recitationId) {
  * @param {Request} request
  * @returns {NextResponse} JSON: { audioUrl, verseKey, reciter }
  */
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const verseKey = searchParams.get("key");
   const reciterParam = parseInt(searchParams.get("reciter") ?? "0", 10);
@@ -75,13 +77,14 @@ export async function GET(request) {
         const payload = extractAudioPayload(data, wantSegments, verseKey, recitationId);
         if (payload) return NextResponse.json(payload);
       } catch (err) {
-        console.warn(
-          `[/api/verse/audio] Recitation ${recitationId}, segments=${wantSegments}:`,
-          err.message ?? err,
-        );
+        apiLog.warn("verse_audio_attempt", {
+          recitationId,
+          wantSegments,
+          errMessage: err?.message ?? String(err),
+        });
       }
     }
   }
 
   return NextResponse.json({ error: "Audio not available for this verse" }, { status: 404 });
-}
+});

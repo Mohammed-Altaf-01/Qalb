@@ -2,8 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { Award, BookOpen, CalendarDays, Flame, Footprints, LogIn, LogOut, Star, Target, Trophy, User, Zap } from "lucide-react";
+import {
+  Award,
+  BookMarked,
+  BookOpen,
+  CalendarDays,
+  Flame,
+  Footprints,
+  LogIn,
+  LogOut,
+  Star,
+  Target,
+  Trophy,
+  User,
+  Zap,
+} from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 
 import UserJourneyHistory from "@/components/UserJourneyHistory";
 import { Button } from "@/components/ui/button";
@@ -504,6 +519,33 @@ export default function ProfilePage() {
       <div className="grid grid-cols-2 gap-3">
         <StatCard icon={Flame} label="Deeds Earned" value={(state.deeds ?? []).length} color="text-primary" />
         <StatCard icon={Target} label="Minutes Spent" value={state.total_minutes_spent ?? 0} color="text-accent" />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/khatm"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-colors"
+        >
+          <BookMarked size={13} aria-hidden /> Khatm
+        </Link>
+        <Link
+          href="/hifz"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-colors"
+        >
+          <Star size={13} aria-hidden /> Hifz
+        </Link>
+        <Link
+          href="/goals"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-colors"
+        >
+          <Target size={13} aria-hidden /> Goals
+        </Link>
+        <Link
+          href="/library"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-colors"
+        >
+          <BookOpen size={13} aria-hidden /> Library
+        </Link>
       </div>
 
       {/* Daily challenge */}

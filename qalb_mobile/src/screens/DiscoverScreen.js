@@ -27,6 +27,7 @@ import { aiService } from '../lib/claude';
 import { emitJourneyLocalUpdated } from '../lib/qalb-events';
 import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
+import { schedulePushLibraryBookmarks } from '../lib/user-app-sync';
 import storage, { STORAGE_KEYS } from '../lib/storage';
 import VerseCard from '../components/VerseCard';
 import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
@@ -128,6 +129,7 @@ export default function DiscoverScreen({ navigation }) {
     }
     await storage.set(STORAGE_KEYS.BOOKMARKS, bm);
     setBookmarks(bm);
+    schedulePushLibraryBookmarks();
   };
 
   return (

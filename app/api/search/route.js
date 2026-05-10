@@ -6,6 +6,8 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 
 /**
@@ -14,7 +16,7 @@ import { QuranRepository } from "@/lib/quran-api";
  * @param {Request} request
  * @returns {NextResponse} JSON with { results, total_results }
  */
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
   const sizeRaw = parseInt(searchParams.get("size") ?? "10", 10);
@@ -35,7 +37,7 @@ export async function GET(request) {
       size,
     });
   } catch (error) {
-    console.error("[/api/search] Error:", error);
+    apiLog.error("search_failed", { err: error });
     return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
-}
+});

@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import Hls from "hls.js";
 import { RadioTower } from "lucide-react";
 
+import { attachLiveHls } from "@/lib/hls-live";
 import {
   attachLiveDualPrewarmToContainer,
   ensureLiveDualPrewarm,
@@ -114,16 +114,7 @@ export default function LiveClient({ channels }) {
 
     const video = legacyVideoRef.current;
     if (!video || !selected?.url) return;
-    let hls;
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = selected.url;
-    } else if (Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-      hls.loadSource(selected.url);
-      hls.attachMedia(video);
-    } else {
-      video.src = selected.url;
-    }
+    const hls = attachLiveHls(video, selected.url);
     legacyHlsRef.current = hls;
     const play = () => {
       video.play().catch(() => {});
@@ -153,6 +144,16 @@ export default function LiveClient({ channels }) {
     if (isPlaying) void v.play().catch(() => {});
     else v.pause();
   }, [isPlaying, usingPrewarmPair, selected?.url]);
+
+  /** Recover playback if React strict mode / attach timing caused the first play() to miss. */
+  useEffect(() => {
+    if (!usingPrewarmPair || !isPlaying) return;
+    const t = window.setTimeout(() => {
+      const v = getActiveLiveDualVideo();
+      if (v && v.paused) void v.play().catch(() => {});
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [usingPrewarmPair, isPlaying, channelsKey]);
 
   useEffect(() => {
     if (usingPrewarmPair) return;

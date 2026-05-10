@@ -1,6 +1,10 @@
 import { transformSync } from "@babel/core";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Vite 6 uses OXC which doesn't handle JSX in .js files.
 // This plugin pre-transforms them with Babel before OXC runs.
@@ -40,7 +44,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": "/Users/altaf/code/quran_hackathon_prj",
+      "@": path.resolve(__dirname, "."),
+      "server-only": path.resolve(__dirname, "vitest/stubs/server-only.js"),
     },
   },
 });

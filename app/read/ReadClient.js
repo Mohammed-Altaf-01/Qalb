@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutList,
+  Layers,
   Loader2,
   MessageCircle,
   Pause,
@@ -21,15 +22,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
 import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
 import { paginationHasNextPage } from "@/lib/read-pagination";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { LS_READ_KEY_THEMES, LS_READING_PROGRESS_KEY } from "@/lib/qalb-storage-keys";
+import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
+import { minVerseKeyFromMapping } from "@/lib/verse-key-compare";
 import { READ_RECITERS } from "@/lib/read-reciters";
 import { cleanTranslationText } from "@/lib/translation-utils";
 import {
+  schedulePushLibraryBookmarks,
   schedulePushPreferences,
   schedulePushReadKeyThemes,
   schedulePushReadingHistory,
@@ -316,6 +321,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
       if (next[verseKey]) {
         delete next[verseKey];
         localStorage.setItem(LS_BOOKMARKS_READ, JSON.stringify(next));
+        schedulePushLibraryBookmarks();
         setIsBookmarked(false);
       } else {
         next[verseKey] = {
@@ -326,6 +332,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
           bookmarkedAt: new Date().toISOString(),
         };
         localStorage.setItem(LS_BOOKMARKS_READ, JSON.stringify(next));
+        schedulePushLibraryBookmarks();
         setIsBookmarked(true);
         awardRef.current("bookmark_verse");
       }
@@ -617,6 +624,13 @@ function SummaryPanel({ verses, surahId, surahName, onClose }) {
   );
 }
 
+/** @param {object | null} jrec Raw juz row from Quran Foundation `/juzs` list */
+function firstVerseKeyFromJuzApiRecord(jrec) {
+  if (!jrec || typeof jrec !== "object") return null;
+  if (typeof jrec.first_verse_key === "string") return jrec.first_verse_key;
+  return minVerseKeyFromMapping(jrec.verse_mapping ?? jrec.verses_mapping);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -662,8 +676,11 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   // ── Summary ──────────────────────────────────────────────────────────────
   const [showSummary, setShowSummary] = useState(false);
 
-  /** `verses` — per-ayah layout + translation + audio. `mushaf` — continuous Arabic flow (quran.com-style). */
+  /** `verses` — per-ayah layout + translation + audio. `mushaf` — continuous Arabic flow (quran.com-style). `juz` — mushaf constrained to one juz. */
   const [readingLayout, setReadingLayout] = useState("verses");
+  /** When set, `readingLayout === "juz"` only loads/navigates pages inside this mushaf span. */
+  const [juzReadContext, setJuzReadContext] = useState(null);
+  const [pickerTab, setPickerTab] = useState("surah");
   const [mushafPage, setMushafPage] = useState(1);
   const [mushafVerses, setMushafVerses] = useState([]);
   const [isLoadingMushaf, setIsLoadingMushaf] = useState(false);
@@ -736,7 +753,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   }, []);
 
   useEffect(() => {
-    if (view !== "reading" || readingLayout !== "mushaf") return;
+    if (view !== "reading" || (readingLayout !== "mushaf" && readingLayout !== "juz")) return;
     let cancelled = false;
     async function loadMushafPage() {
       setIsLoadingMushaf(true);
@@ -747,7 +764,8 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
         if (cancelled) return;
         const nextVerses = Array.isArray(data?.verses) ? data.verses : [];
         setMushafVerses(nextVerses);
-        setMushafHasNext(mushafPage < 604 && nextVerses.length > 0);
+        const jMax = readingLayout === "juz" && juzReadContext ? juzReadContext.lastPage : 604;
+        setMushafHasNext(mushafPage < jMax && nextVerses.length > 0);
       } catch (err) {
         if (!cancelled) {
           console.error("[ReadClient] loadMushafPage:", err);
@@ -762,14 +780,14 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     return () => {
       cancelled = true;
     };
-  }, [view, readingLayout, mushafPage, translationId]);
+  }, [view, readingLayout, juzReadContext, mushafPage, translationId]);
 
   useEffect(() => {
     // Reset page playback when context changes.
     setMushafPlayingIndex(-1);
     setIsMushafPagePlaying(false);
     setMushafAudioUrl(null);
-  }, [mushafPage, reciterId, readingLayout, view]);
+  }, [mushafPage, reciterId, readingLayout, juzReadContext, view]);
 
   useEffect(() => {
     if (!isMushafPagePlaying) return;
@@ -968,6 +986,8 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   function startReading(chapter, startVerse = 1) {
     const startPage = Math.ceil(Math.max(startVerse, 1) / BATCH_SIZE);
 
+    setJuzReadContext(null);
+
     versesSessionRef.current += 1;
     selectedChapterRef.current = chapter;
     currentPageRef.current = startPage;
@@ -996,6 +1016,73 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
     // Load first batch immediately (bypasses the observer on first render)
     loadMore();
+  }
+
+  async function startJuzReading(num) {
+    versesSessionRef.current += 1;
+    isLoadingRef.current = false;
+    hasMoreRef.current = false;
+
+    const first = firstMushafPageForJuz(num);
+    const last = lastMushafPageForJuz(num);
+    setJuzReadContext({ num, firstPage: first, lastPage: last });
+    setMushafPage(first);
+    setMushafVerses([]);
+    setReadingLayout("juz");
+    setVerses([]);
+    setHasMore(false);
+    setIsLoadingMore(false);
+    setPlayingKey(null);
+    setShowSummary(false);
+    setView("reading");
+
+    let anchorChapter = null;
+    try {
+      const res = await fetch("/api/quran/juz");
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data?.juzs) ? data.juzs : [];
+        const jrec = list.find((x) => Number(x?.juz_number ?? x?.id) === num);
+        const fk = firstVerseKeyFromJuzApiRecord(jrec);
+        if (fk && chapters?.length) {
+          const sid = parseInt(fk.split(":")[0], 10);
+          anchorChapter = chapters.find((c) => c.id === sid) ?? null;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    if (!anchorChapter && chapters?.length) anchorChapter = chapters[0];
+    setSelectedChapter(anchorChapter);
+
+    const awardKey = `juz:${num}:${new Date().toISOString().split("T")[0]}`;
+    if (lastAwardedReadRef.current !== awardKey && anchorChapter?.id) {
+      award("read_verse_page", { surahNumber: anchorChapter.id });
+      lastAwardedReadRef.current = awardKey;
+    }
+  }
+
+  function enterJuzLayoutFromCurrent() {
+    let jn = null;
+    if (readingLayout === "verses" && verses[0]?.juz_number) jn = verses[0].juz_number;
+    else if ((readingLayout === "mushaf" || readingLayout === "juz") && mushafVerses[0]?.juz_number) {
+      jn = mushafVerses[0].juz_number;
+    }
+    if (!jn) {
+      toast.message("Open a surah or mushaf page first, or start from the Juz picker.", { duration: 3500 });
+      return;
+    }
+    const first = firstMushafPageForJuz(jn);
+    const last = lastMushafPageForJuz(jn);
+    let page = mushafPage;
+    if (readingLayout === "verses") {
+      const fp = Number(verses[0]?.page_number);
+      page = Number.isFinite(fp) && fp > 0 ? fp : first;
+    }
+    page = Math.min(Math.max(page, first), last);
+    setJuzReadContext({ num: jn, firstPage: first, lastPage: last });
+    setMushafPage(page);
+    setReadingLayout("juz");
   }
 
   function handleTranslationChange(id) {
@@ -1036,7 +1123,39 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       <div className="mx-auto max-w-5xl px-4 md:px-8 py-6">
         <div className="mb-8 text-center">
           <h1 className="text-xl font-semibold text-foreground mb-1">Read the Quran</h1>
-          <p className="text-sm text-muted-foreground">Choose a surah to begin reading</p>
+          <p className="text-sm text-muted-foreground">
+            {pickerTab === "surah" ? "Choose a surah to begin reading" : "Jump to any juz in mushaf layout"}
+          </p>
+          <div
+            className="mt-4 inline-flex rounded-xl border border-border/40 bg-muted/20 p-0.5 gap-0.5"
+            role="tablist"
+            aria-label="Read picker mode"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pickerTab === "surah"}
+              onClick={() => setPickerTab("surah")}
+              className={cn(
+                "rounded-[10px] px-4 py-1.5 text-xs font-medium transition-colors",
+                pickerTab === "surah" ? "bg-card text-accent shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Surahs
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pickerTab === "juz"}
+              onClick={() => setPickerTab("juz")}
+              className={cn(
+                "rounded-[10px] px-4 py-1.5 text-xs font-medium transition-colors",
+                pickerTab === "juz" ? "bg-card text-accent shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Juz
+            </button>
+          </div>
         </div>
 
         {/* Translation selector */}
@@ -1072,28 +1191,43 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           </div>
         </div>
 
-        {/* Chapter grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-          {(chapters ?? []).map((chapter) => (
-            <button
-              key={chapter.id}
-              onClick={() => startReading(chapter)}
-              className="flex flex-col items-start p-3 rounded-xl border border-border/40 bg-card
-                hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 text-left group"
-            >
-              <div className="flex items-center justify-between w-full mb-1.5">
-                <span className="text-[10px] text-accent/70 font-semibold">{chapter.id}</span>
-                <span className="text-[9px] text-muted-foreground/50 bg-muted/40 px-1.5 py-0.5 rounded-full">
-                  {chapter.verses_count}v
-                </span>
-              </div>
-              <p className="text-sm font-semibold text-foreground group-hover:text-accent transition-colors truncate w-full">
-                {chapter.name_simple}
-              </p>
-              <p className="text-[10px] text-muted-foreground/60 truncate w-full">{chapter.translated_name?.name}</p>
-            </button>
-          ))}
-        </div>
+        {pickerTab === "surah" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            {(chapters ?? []).map((chapter) => (
+              <button
+                key={chapter.id}
+                onClick={() => startReading(chapter)}
+                className="flex flex-col items-start p-3 rounded-xl border border-border/40 bg-card
+                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 text-left group"
+              >
+                <div className="flex items-center justify-between w-full mb-1.5">
+                  <span className="text-[10px] text-accent/70 font-semibold">{chapter.id}</span>
+                  <span className="text-[9px] text-muted-foreground/50 bg-muted/40 px-1.5 py-0.5 rounded-full">
+                    {chapter.verses_count}v
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-foreground group-hover:text-accent transition-colors truncate w-full">
+                  {chapter.name_simple}
+                </p>
+                <p className="text-[10px] text-muted-foreground/60 truncate w-full">{chapter.translated_name?.name}</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2">
+            {Array.from({ length: 30 }, (_, idx) => idx + 1).map((jn) => (
+              <button
+                key={jn}
+                type="button"
+                onClick={() => void startJuzReading(jn)}
+                className="aspect-square flex flex-col items-center justify-center rounded-xl border border-border/40 bg-card
+                  hover:border-accent/40 hover:bg-accent/5 transition-all text-sm font-semibold text-foreground"
+              >
+                {jn}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -1117,9 +1251,13 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
         {/* Title + layout toggle */}
         <div className="flex-1 text-center min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{selectedChapter?.name_simple}</p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {juzReadContext ? `Juz ${juzReadContext.num}` : selectedChapter?.name_simple}
+          </p>
           <p className="text-[10px] text-muted-foreground">
-            {verses.length} / {selectedChapter?.verses_count} loaded
+            {juzReadContext
+              ? `Mushaf pages ${juzReadContext.firstPage}–${juzReadContext.lastPage}`
+              : `${verses.length} / ${selectedChapter?.verses_count ?? "—"} loaded`}
           </p>
           <div
             className="mt-2 inline-flex rounded-lg border border-border/40 bg-muted/20 p-0.5 gap-0.5"
@@ -1128,7 +1266,13 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           >
             <button
               type="button"
-              onClick={() => setReadingLayout("verses")}
+              onClick={() => {
+                if (readingLayout === "juz" && selectedChapter) {
+                  startReading(selectedChapter, 1);
+                  return;
+                }
+                setReadingLayout("verses");
+              }}
               className={cn(
                 "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
                 readingLayout === "verses"
@@ -1142,6 +1286,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             <button
               type="button"
               onClick={() => {
+                setJuzReadContext(null);
                 const firstLoadedPage = Number(verses?.[0]?.page_number);
                 setMushafPage(Number.isFinite(firstLoadedPage) && firstLoadedPage > 0 ? firstLoadedPage : 1);
                 setReadingLayout("mushaf");
@@ -1155,6 +1300,19 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             >
               <Rows3 size={11} aria-hidden />
               Mushaf
+            </button>
+            <button
+              type="button"
+              onClick={enterJuzLayoutFromCurrent}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
+                readingLayout === "juz"
+                  ? "bg-card text-accent shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Layers size={11} aria-hidden />
+              Juz
             </button>
           </div>
         </div>
@@ -1235,8 +1393,35 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
           <div className="flex items-center justify-center py-20">
             <Loader2 size={20} className="animate-spin text-accent/60" />
           </div>
-        ) : readingLayout === "mushaf" ? (
+        ) : readingLayout === "mushaf" || readingLayout === "juz" ? (
           <div className="py-8 md:py-10">
+            <div className="mb-3 flex justify-center">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-2">
+                Juz
+                <select
+                  className="text-[10px] rounded-md border border-border/50 bg-background px-2 py-1"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const j = parseInt(e.target.value, 10);
+                    e.target.value = "";
+                    if (!Number.isFinite(j) || j < 1 || j > 30) return;
+                    const jpFirst = firstMushafPageForJuz(j);
+                    const jpLast = lastMushafPageForJuz(j);
+                    if (readingLayout === "juz") setJuzReadContext({ num: j, firstPage: jpFirst, lastPage: jpLast });
+                    setMushafPage(jpFirst);
+                  }}
+                >
+                  <option value="" disabled>
+                    Jump to…
+                  </option>
+                  {Array.from({ length: 30 }, (_, idx) => idx + 1).map((j) => (
+                    <option key={j} value={j}>
+                      {j}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="mb-4 flex items-center justify-center">
               <button
                 type="button"
@@ -1262,8 +1447,15 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
             <div className="mb-6 flex items-center justify-center gap-2">
               <button
                 type="button"
-                onClick={() => setMushafPage((p) => Math.max(1, p - 1))}
-                disabled={isLoadingMushaf || mushafPage <= 1}
+                onClick={() =>
+                  setMushafPage((p) =>
+                    Math.max(readingLayout === "juz" && juzReadContext ? juzReadContext.firstPage : 1, p - 1),
+                  )
+                }
+                disabled={
+                  isLoadingMushaf ||
+                  mushafPage <= (readingLayout === "juz" && juzReadContext ? juzReadContext.firstPage : 1)
+                }
                 className="text-xs px-3 py-1.5 rounded-lg border border-border/50 text-muted-foreground disabled:opacity-40"
               >
                 Previous page

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { listHadithBooks } from "@/lib/hadith-catalog";
 
-export async function GET() {
+export const GET = withLoggedRoute(async () => {
   try {
     const books = listHadithBooks();
     return NextResponse.json({ books });
   } catch (e) {
-    console.error("[/api/hadith/books]", e);
+    apiLog.error("hadith_books_failed", { err: e });
     return NextResponse.json({ error: "Failed to list books" }, { status: 500 });
   }
-}
+});

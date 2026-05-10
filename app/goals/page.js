@@ -17,10 +17,15 @@
 
 "use client";
 
-import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { CheckCircle2, Clock, Plus, Target, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, Plus, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+import { aggregateGoalSignals, computeDerivedProgress, normalizeApiGoal } from "@/lib/goal-progress";
+import { QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
+import { useGamification } from "@/lib/useGamification";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,7 +130,8 @@ function defaultTargetDate() {
 function GoalCard({ goal, onDelete, onProgress }) {
   const daysLeft = daysUntil(goal.targetDate);
   const template = GOAL_TEMPLATES.find((t) => t.id === goal.type) ?? GOAL_TEMPLATES[4];
-  const progressPct = Math.min(100, Math.round((goal.progress / goal.total) * 100));
+  const blended = Math.min(goal.total, Math.max(Number(goal.progress) || 0, Number(goal.derivedProgress) || 0));
+  const progressPct = Math.min(100, Math.round((blended / goal.total) * 100));
   const isComplete = progressPct >= 100;
 
   return (
@@ -192,10 +198,14 @@ function GoalCard({ goal, onDelete, onProgress }) {
  * Goals page — set and track post-Ramadan Quran reading goals.
  */
 export default function GoalsPage() {
-  // ── State ──────────────────────────────────────────────────────────────────
+  const { status } = useSession();
+  const { award } = useGamification();
 
   /** List of active user goals */
   const [goals, setGoals] = useState([]);
+  const [activityEvents, setActivityEvents] = useState([]);
+  const [hydrating, setHydrating] = useState(false);
+  const completedAwardedRef = useRef(new Set());
 
   /** Controls which template is selected in the creator */
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -209,13 +219,100 @@ export default function GoalsPage() {
   /** Whether the "Add Goal" form is open */
   const [isAdding, setIsAdding] = useState(false);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
+  const applyDerivedProgress = useCallback((goalList, events) => {
+    const agg = aggregateGoalSignals(events);
+    return goalList.map((g) => ({
+      ...g,
+      derivedProgress: computeDerivedProgress(g, agg),
+    }));
+  }, []);
+
+  const hydrate = useCallback(async () => {
+    if (status !== "authenticated") {
+      try {
+        const raw = typeof window !== "undefined" ? localStorage.getItem("qalb_goals_local") : null;
+        const parsed = raw ? JSON.parse(raw) : [];
+        setGoals(Array.isArray(parsed) ? applyDerivedProgress(parsed, []) : []);
+      } catch {
+        setGoals([]);
+      }
+      setActivityEvents([]);
+      return;
+    }
+    setHydrating(true);
+    try {
+      const [gr, ar] = await Promise.all([fetch("/api/user/goals"), fetch("/api/user/activity?days=400")]);
+      let nextGoals = [];
+      if (gr.ok) {
+        const gj = await gr.json().catch(() => ({}));
+        const list = Array.isArray(gj?.goals) ? gj.goals : [];
+        nextGoals = list
+          .map((row) => normalizeApiGoal(row, GOAL_TEMPLATES))
+          .filter(Boolean);
+      }
+      let events = [];
+      if (ar.ok) {
+        const aj = await ar.json().catch(() => ({}));
+        events = aj?.events && Array.isArray(aj.events) ? aj.events : [];
+      }
+      setActivityEvents(events);
+      nextGoals =
+        nextGoals.length > 0
+          ? applyDerivedProgress(nextGoals, events)
+          : (() => {
+              try {
+                const raw = localStorage.getItem("qalb_goals_local");
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? applyDerivedProgress(parsed, events) : [];
+              } catch {
+                return [];
+              }
+            })();
+      setGoals(nextGoals);
+    } catch {
+      toast.error("Could not refresh goals.");
+    } finally {
+      setHydrating(false);
+    }
+  }, [applyDerivedProgress, status]);
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function onTk() {
+      void hydrate();
+    }
+    window.addEventListener(QALB_TIME_TRACKING_UPDATED_EVENT, onTk);
+    return () => window.removeEventListener(QALB_TIME_TRACKING_UPDATED_EVENT, onTk);
+  }, [hydrate]);
+
+  useEffect(() => {
+    if (!goals.length) return;
+    for (const g of goals) {
+      const blended = Math.min(g.total, Math.max(Number(g.progress) || 0, Number(g.derivedProgress) || 0));
+      if (blended >= g.total && !completedAwardedRef.current.has(g.id)) {
+        completedAwardedRef.current.add(g.id);
+        award("complete_goal");
+        toast.success("Goal completed — you earned XP for finishing strong.");
+      }
+    }
+  }, [goals, award]);
+
+  const persistLocalFallback = useCallback((list) => {
+    try {
+      localStorage.setItem("qalb_goals_local", JSON.stringify(list));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   /**
-   * Saves a new goal from the selected template.
-   * In production this also calls /api/user/goals (POST).
+   * Saves a new goal from the selected template — POST /api/user/goals when signed in.
    */
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
     if (!selectedTemplate) {
       toast.error("Please select a goal type.");
       return;
@@ -225,44 +322,108 @@ export default function GoalsPage() {
       return;
     }
 
-    const template = GOAL_TEMPLATES.find((t) => t.id === selectedTemplate);
+    const templateId = selectedTemplate;
+    const template = GOAL_TEMPLATES.find((t) => t.id === templateId);
 
+    const total = templateId === "complete_quran" ? 30 : daysUntil(targetDate);
     const newGoal = {
       id: Date.now().toString(),
-      type: selectedTemplate,
+      type: templateId,
       label: template.label,
-      description: selectedTemplate === "custom" ? customDescription || template.description : template.description,
+      description: templateId === "custom" ? customDescription || template.description : template.description,
       targetDate,
       dailyMinutes: template.dailyMinutes,
       progress: 0,
-      // For "complete Quran" goals, total = 30 juz; for others it's days until deadline
-      total: selectedTemplate === "complete_quran" ? 30 : daysUntil(targetDate),
+      total,
       createdAt: new Date().toISOString(),
     };
 
-    setGoals((prev) => [newGoal, ...prev]);
     setSelectedTemplate(null);
     setCustomDescription("");
     setIsAdding(false);
-    toast.success("Goal created! Stay consistent — one day at a time.");
+
+    if (status === "authenticated") {
+      try {
+        const body = {
+          type: templateId,
+          targetDate,
+          dailyMinutes: template.dailyMinutes,
+          target: template.label,
+          total,
+          metadata: {
+            templateId,
+            label: template.label,
+            description: newGoal.description,
+            total,
+          },
+        };
+        const res = await fetch("/api/user/goals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const gj = await res.json().catch(() => ({}));
+        const normalized = gj?.goal ? normalizeApiGoal(gj.goal, GOAL_TEMPLATES) : normalizeApiGoal(gj, GOAL_TEMPLATES);
+        if (normalized) {
+          setGoals((prev) =>
+            applyDerivedProgress([normalized, ...prev.filter((p) => p.id !== normalized.id)], activityEvents),
+          );
+        } else {
+          setGoals((prev) => applyDerivedProgress([newGoal, ...prev], activityEvents));
+        }
+        toast.success("Goal synced to your account.");
+      } catch {
+        setGoals((prev) => {
+          const u = applyDerivedProgress([newGoal, ...prev], activityEvents);
+          persistLocalFallback(u);
+          return u;
+        });
+        toast.success("Goal saved locally (remote sync unavailable).");
+      }
+      await hydrate();
+    } else {
+      setGoals((prev) => {
+        const u = applyDerivedProgress([newGoal, ...prev], []);
+        persistLocalFallback(u);
+        return u;
+      });
+      toast.success("Goal created locally — sign in to sync.");
+    }
   };
 
-  /**
-   * Increments a goal's progress by one unit.
-   * In production this calls /api/user/goals (PATCH).
-   */
+  /** Manual nudge (+1 progress). */
   const handleProgress = (goalId) => {
-    setGoals((prev) => prev.map((g) => (g.id === goalId ? { ...g, progress: Math.min(g.progress + 1, g.total) } : g)));
-    toast.success("Progress saved! Keep it up.");
+    setGoals((prev) => {
+      const bumped = prev.map((g) =>
+        g.id === goalId ? { ...g, progress: Math.min((Number(g.progress) || 0) + 1, g.total) } : g,
+      );
+      persistLocalFallback(bumped);
+      return applyDerivedProgress(bumped, activityEvents);
+    });
+    toast.success("Progress saved!");
   };
 
-  /**
-   * Removes a goal from the list.
-   * In production this calls /api/user/goals (DELETE).
-   */
-  const handleDelete = (goalId) => {
-    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+  /** Removes goal — DELETE /api/user/goals body when signed in. */
+  const handleDelete = async (goalId) => {
+    setGoals((prev) => {
+      const u = prev.filter((g) => g.id !== goalId);
+      persistLocalFallback(u);
+      completedAwardedRef.current.delete(goalId);
+      return u;
+    });
     toast("Goal removed.");
+    if (status === "authenticated") {
+      try {
+        await fetch("/api/user/goals", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ goalId }),
+        });
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -276,7 +437,15 @@ export default function GoalsPage() {
             <Target size={20} className="text-accent" />
             My Goals
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Build lasting habits beyond Ramadan</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Build lasting habits beyond Ramadan
+            {hydrating ? (
+              <Loader2 size={12} className="inline ml-2 animate-spin text-accent align-middle opacity-70" />
+            ) : null}
+          </p>
+          {status === "unauthenticated" ? (
+            <p className="text-[11px] text-amber-500/90 mt-1">Sign in to sync goals with your Quran Foundation account.</p>
+          ) : null}
         </div>
         <Button size="sm" onClick={() => setIsAdding(!isAdding)} className="h-8 text-xs bg-primary hover:bg-primary/80">
           <Plus size={13} className="mr-1" />

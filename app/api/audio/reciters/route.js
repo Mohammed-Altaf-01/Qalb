@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
+
 const MP3QURAN_BASE = "https://www.mp3quran.net/api/v3";
 
 function parseSurahIds(csv) {
@@ -14,7 +17,7 @@ function parseSurahIds(csv) {
   ).sort((a, b) => a - b);
 }
 
-export async function GET(request) {
+export const GET = withLoggedRoute(async (request) => {
   const { searchParams } = new URL(request.url);
   const language = searchParams.get("language") || "eng";
   try {
@@ -45,7 +48,7 @@ export async function GET(request) {
 
     return NextResponse.json({ reciters });
   } catch (error) {
-    console.error("[/api/audio/reciters]", error?.message ?? error);
+    apiLog.error("reciters_failed", { err: error });
     return NextResponse.json({ error: "Failed to fetch reciters" }, { status: 500 });
   }
-}
+});

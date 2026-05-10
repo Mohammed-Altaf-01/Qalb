@@ -12,6 +12,8 @@
  */
 import { NextResponse } from "next/server";
 
+import { withLoggedRoute } from "@/lib/api-route-utils";
+import { apiLog } from "@/lib/logger";
 import { QuranRepository } from "@/lib/quran-api";
 
 /**
@@ -74,7 +76,7 @@ function getDailyVerseKey() {
  * @param {Request} _request - Unused but required by Next.js route signature
  * @returns {NextResponse} JSON with { verse, chapter, date }
  */
-export async function GET(_request) {
+export const GET = withLoggedRoute(async (_request) => {
   try {
     const verseKey = getDailyVerseKey();
 
@@ -92,7 +94,7 @@ export async function GET(_request) {
       date: new Date().toISOString().split("T")[0], // YYYY-MM-DD
     });
   } catch (error) {
-    console.error("[/api/verse/daily] Error:", error);
+    apiLog.error("daily_verse_failed", { err: error });
 
     // Fallback: return a random verse rather than an error page
     try {
@@ -102,7 +104,7 @@ export async function GET(_request) {
       return NextResponse.json({ error: "Failed to fetch daily verse" }, { status: 500 });
     }
   }
-}
+});
 
 /** Cache this response for 24 hours — the daily verse never changes within a day */
 export const revalidate = 86400;

@@ -8,6 +8,7 @@ import {
   mergePreferencesPayload,
   mergeReadingProgress,
   mergeRecentByHref,
+  mergeTimeTracking,
   mergeVerseKeyedBlob,
 } from '../../../lib/merge-user-app-storage';
 import { LS_LAST_HADITH_READS, MAX_LAST_HADITH_READS } from '../../../lib/last-hadith-reads';
@@ -183,7 +184,9 @@ export async function pullAccountScopedStorageIntoDevice() {
     if (goals.enabled === true && goals.payload && typeof goals.payload === 'object') {
       const payload = goals.payload.timeTracking;
       if (payload && typeof payload === 'object') {
-        await storage.set(STORAGE_KEYS.TIME_TRACKING, payload);
+        const localTT = (await storage.get(STORAGE_KEYS.TIME_TRACKING)) ?? {};
+        const mergedTT = mergeTimeTracking(payload, typeof localTT === 'object' && localTT && !Array.isArray(localTT) ? localTT : {});
+        await storage.set(STORAGE_KEYS.TIME_TRACKING, mergedTT);
         wrote = true;
       }
     }

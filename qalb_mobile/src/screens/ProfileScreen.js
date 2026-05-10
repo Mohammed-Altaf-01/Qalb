@@ -6,7 +6,7 @@ import useGamification from '../lib/useGamification';
 import { pullAccountScopedStorageIntoDevice } from '../lib/user-app-sync';
 import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   const { isSignedIn, userId, signIn, signOut } = useAuth();
   const { state, levelInfo } = useGamification();
 
@@ -54,6 +54,30 @@ export default function ProfileScreen() {
           Level {levelInfo?.level ?? 1} · {state?.xp ?? 0} XP
         </Text>
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>More</Text>
+        <View style={styles.moreList}>
+          {[
+            ['Journey', 'Journey'],
+            ['Library', 'Library'],
+            ['Goals', 'Goals'],
+            ['Ahadith', 'AhadithBooks'],
+            ['Settings', 'Settings'],
+            ['Tools & shortcuts', 'Menu'],
+          ].map(([label, screen]) => (
+            <TouchableOpacity
+              key={screen}
+              style={styles.moreRow}
+              onPress={() => navigation.navigate(screen)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.moreRowTxt}>{label}</Text>
+              <Text style={styles.linkChev}>→</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -89,4 +113,18 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   btnSecondaryTxt: { color: COLORS.text, fontWeight: '600', fontSize: FONT_SIZE.sm },
+  moreList: { gap: SPACING.xs, marginTop: SPACING.sm },
+  moreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  moreRowTxt: { color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '600' },
+  linkChev: { color: COLORS.accent, fontSize: 16 },
 });

@@ -7,10 +7,11 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 import UserJourneyHistory from "@/components/UserJourneyHistory";
 import { Button } from "@/components/ui/button";
-import { buildHeatmapDayCells, dayKeyFromIso, heatmapToneClass, todayLocalDayKey } from "@/lib/activity-heatmap";
+import { buildHeatmapDayCells, heatmapToneClass, todayLocalDayKey } from "@/lib/activity-heatmap";
+import { bucketDayKeyLocal, toLocalDayKey } from "@/lib/local-calendar-day";
 import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
-import { LS_APP_ACTIVE_DAY } from "@/lib/qalb-storage-keys";
+import { LS_APP_ACTIVE_DAY, QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
 import { useGamification } from "@/lib/useGamification";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, LS_TIME_TRACKING } from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
@@ -202,10 +203,15 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
   );
 }
 
+function localCalendarNoonAtOffset(deltaDays) {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + deltaDays, 12, 0, 0, 0);
+}
+
 function buildMinutesSeries(events, localByDay = new Map()) {
   const dailyMinutes = new Map();
   for (const event of events ?? []) {
-    const key = dayKeyFromIso(event.created_at);
+    const key = bucketDayKeyLocal(event.created_at);
     const mins = event?.event_type === "time_spent" ? Number(event?.metadata?.minutes ?? 0) : 0;
     if (!Number.isFinite(mins) || mins <= 0) continue;
     dailyMinutes.set(key, (dailyMinutes.get(key) ?? 0) + mins);
@@ -222,8 +228,7 @@ function buildTrendData(dailyMinutes, mode) {
   if (mode === "daily") {
     const out = [];
     for (let i = 29; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86_400_000);
-      const key = d.toISOString().split("T")[0];
+      const key = toLocalDayKey(localCalendarNoonAtOffset(-i));
       out.push({ label: key.slice(5), minutes: dailyMinutes.get(key) ?? 0 });
     }
     return out;
@@ -231,10 +236,11 @@ function buildTrendData(dailyMinutes, mode) {
   if (mode === "weekly") {
     const out = [];
     for (let i = 11; i >= 0; i--) {
-      const end = new Date(Date.now() - i * 7 * 86_400_000);
+      const end = localCalendarNoonAtOffset(-i * 7);
       let mins = 0;
       for (let d = 0; d < 7; d++) {
-        const key = new Date(end.getTime() - d * 86_400_000).toISOString().split("T")[0];
+        const day = new Date(end.getFullYear(), end.getMonth(), end.getDate() - d, 12, 0, 0, 0);
+        const key = toLocalDayKey(day);
         mins += dailyMinutes.get(key) ?? 0;
       }
       out.push({ label: `W${12 - i}`, minutes: mins });
@@ -242,13 +248,13 @@ function buildTrendData(dailyMinutes, mode) {
     return out;
   }
   const out = [];
+  const anchor = new Date();
   for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i, 1);
-    const monthPrefix = d.toISOString().slice(0, 7);
+    const d = new Date(anchor.getFullYear(), anchor.getMonth() - i, 1, 12, 0, 0, 0);
+    const monthPrefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     let mins = 0;
     for (const [key, value] of dailyMinutes) {
-      if (key.startsWith(monthPrefix)) mins += value;
+      if (key.startsWith(monthPrefix)) mins += Number(value) || 0;
     }
     out.push({ label: d.toLocaleDateString(undefined, { month: "short" }), minutes: mins });
   }
@@ -279,12 +285,10 @@ function ActivityHeatmap({ events, localByDay }) {
   }, [dayBump]);
 
   const days = useMemo(() => {
-    const fallbackEvents = Array.from(localByDay.entries()).map(([key, minutes]) => ({
-      created_at: `${key}T12:00:00.000Z`,
-      event_type: "time_spent",
-      metadata: { minutes },
-    }));
-    return buildHeatmapDayCells([...(events ?? []), ...fallbackEvents], { todayClientTouched: todayTouch });
+    return buildHeatmapDayCells(events ?? [], {
+      todayClientTouched: todayTouch,
+      minutesByDay: localByDay,
+    });
   }, [events, localByDay, todayTouch]);
   const maxIntensity = Math.max(1, ...days.map((d) => d.intensity));
 
@@ -411,9 +415,11 @@ export default function ProfilePage() {
     }
     window.addEventListener("storage", bump);
     window.addEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+    window.addEventListener(QALB_TIME_TRACKING_UPDATED_EVENT, bump);
     return () => {
       window.removeEventListener("storage", bump);
       window.removeEventListener(ACCOUNT_STORAGE_SYNCED_EVENT, bump);
+      window.removeEventListener(QALB_TIME_TRACKING_UPDATED_EVENT, bump);
     };
   }, []);
 

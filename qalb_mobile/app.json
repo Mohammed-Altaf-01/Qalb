@@ -32,7 +32,8 @@
       "expo-audio",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-video"
+      "expo-video",
+      "expo-asset"
     ]
   }
 }

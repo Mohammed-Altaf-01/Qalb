@@ -5,7 +5,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
 import { RadioTower } from "lucide-react";
 
-import { disposeLiveWarmup } from "@/lib/live-stream-warmup";
+import {
+  attachLiveDualPrewarmToContainer,
+  ensureLiveDualPrewarm,
+  getActiveLiveDualVideo,
+  pauseLiveDualPrewarm,
+  resolveMakkahMadinahUrls,
+  resumeLiveDualPrewarm,
+  setLiveDualPrewarmActive,
+  setLiveDualUserMuted,
+  slotForSelectedUrl,
+} from "@/lib/live-dual-prewarm";
 import { cn } from "@/lib/utils";
 
 function pickDefaultChannel(channels) {
@@ -25,15 +35,84 @@ export default function LiveClient({ channels }) {
   const [selectedId, setSelectedId] = useState(initial?.id ?? null);
   const [isMuted, setIsMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
-  const videoRef = useRef(null);
+  const dualContainerRef = useRef(null);
+  const detachDualRef = useRef(() => {});
+  const legacyVideoRef = useRef(null);
+  const legacyHlsRef = useRef(null);
+  /** Latest UI state for applying audio after async attach completes */
+  const liveSyncRef = useRef({ url: "", muted: false, usingPrewarm: true });
+
   const selected = (channels ?? []).find((c) => c.id === selectedId) ?? initial;
+  const { makkahUrl, madinahUrl } = useMemo(() => resolveMakkahMadinahUrls(channels), [channels]);
+
+  const usingPrewarmPair = Boolean(
+    selected?.url && (selected.url === makkahUrl || selected.url === madinahUrl),
+  );
+
+  liveSyncRef.current = {
+    url: selected?.url ?? "",
+    muted: isMuted,
+    usingPrewarm: usingPrewarmPair,
+  };
+
+  const channelsKey = useMemo(
+    () => (channels ?? []).map((c) => `${c.id}:${c.url ?? ""}`).join("|"),
+    [channels],
+  );
 
   useEffect(() => {
-    disposeLiveWarmup();
-  }, []);
+    let cancelled = false;
+    (async () => {
+      await ensureLiveDualPrewarm(channels);
+      if (cancelled || !dualContainerRef.current) return;
+      detachDualRef.current?.();
+      detachDualRef.current = attachLiveDualPrewarmToContainer(dualContainerRef.current);
+      const s = liveSyncRef.current;
+      if (s.usingPrewarm) {
+        setLiveDualPrewarmActive(slotForSelectedUrl(s.url));
+        setLiveDualUserMuted(s.muted);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      detachDualRef.current?.();
+      detachDualRef.current = () => {};
+    };
+  }, [channelsKey, channels]);
 
   useEffect(() => {
-    const video = videoRef.current;
+    if (!usingPrewarmPair) return;
+    setLiveDualPrewarmActive(slotForSelectedUrl(selected?.url));
+    setLiveDualUserMuted(isMuted);
+  }, [usingPrewarmPair, selected?.url, isMuted]);
+
+  useEffect(() => {
+    if (usingPrewarmPair) {
+      if (legacyHlsRef.current) {
+        try {
+          legacyHlsRef.current.destroy();
+        } catch {
+          /* ignore */
+        }
+        legacyHlsRef.current = null;
+      }
+      const v = legacyVideoRef.current;
+      if (v) {
+        try {
+          v.pause();
+          v.removeAttribute("src");
+          v.load();
+        } catch {
+          /* ignore */
+        }
+      }
+      resumeLiveDualPrewarm();
+      return;
+    }
+
+    pauseLiveDualPrewarm();
+
+    const video = legacyVideoRef.current;
     if (!video || !selected?.url) return;
     let hls;
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -45,27 +124,56 @@ export default function LiveClient({ channels }) {
     } else {
       video.src = selected.url;
     }
-
+    legacyHlsRef.current = hls;
     const play = () => {
       video.play().catch(() => {});
       setIsPlaying(true);
     };
     video.addEventListener("canplay", play);
+    video.muted = isMuted;
     play();
     return () => {
       video.removeEventListener("canplay", play);
-      if (hls) hls.destroy();
+      if (hls) {
+        try {
+          hls.destroy();
+        } catch {
+          /* ignore */
+        }
+      }
+      legacyHlsRef.current = null;
+      resumeLiveDualPrewarm();
     };
-  }, [selected?.url]);
+  }, [selected?.url, usingPrewarmPair, isMuted]);
 
   useEffect(() => {
-    const video = videoRef.current;
+    if (!usingPrewarmPair) return;
+    const v = getActiveLiveDualVideo();
+    if (!v) return;
+    if (isPlaying) void v.play().catch(() => {});
+    else v.pause();
+  }, [isPlaying, usingPrewarmPair, selected?.url]);
+
+  useEffect(() => {
+    if (usingPrewarmPair) return;
+    const video = legacyVideoRef.current;
     if (!video) return;
     video.muted = isMuted;
-  }, [isMuted]);
+  }, [isMuted, usingPrewarmPair]);
 
   function togglePlay() {
-    const video = videoRef.current;
+    if (usingPrewarmPair) {
+      const video = getActiveLiveDualVideo();
+      if (!video) return;
+      if (video.paused) {
+        video.play().then(() => setIsPlaying(true)).catch(() => {});
+        return;
+      }
+      video.pause();
+      setIsPlaying(false);
+      return;
+    }
+    const video = legacyVideoRef.current;
     if (!video) return;
     if (video.paused) {
       video.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -83,7 +191,10 @@ export default function LiveClient({ channels }) {
           <span className="text-xs font-semibold uppercase tracking-wider">Live</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">Makkah & Madina live</h1>
-        <p className="text-sm text-muted-foreground">Default stream starts with Makkah Live.</p>
+        <p className="text-sm text-muted-foreground">
+          Streams preload in the background (muted). Opening Live unmutes Makkah by default; Madinah unmutes when you
+          select it.
+        </p>
       </header>
 
       <div className="rounded-2xl border border-border/40 bg-card/35 p-3 md:p-4 space-y-3">
@@ -122,17 +233,26 @@ export default function LiveClient({ channels }) {
           </button>
         </div>
 
-        <div className="rounded-xl overflow-hidden border border-border/35 bg-black">
-          <video
-            ref={videoRef}
-            controls={false}
-            autoPlay
-            playsInline
-            muted={isMuted}
-            className="w-full aspect-video bg-black"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
+        <div className="rounded-xl overflow-hidden border border-border/35 bg-black relative aspect-video w-full min-h-[200px] isolate">
+          <div
+            ref={dualContainerRef}
+            className={cn(
+              "absolute inset-0 z-0 min-h-0 min-w-0 h-full w-full overflow-hidden",
+              !usingPrewarmPair && "hidden",
+            )}
           />
+          {!usingPrewarmPair ? (
+            <video
+              ref={legacyVideoRef}
+              controls={false}
+              autoPlay
+              playsInline
+              muted={isMuted}
+              className="absolute inset-0 z-[1] h-full w-full object-contain bg-black"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+          ) : null}
         </div>
       </div>
     </div>

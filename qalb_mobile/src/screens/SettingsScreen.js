@@ -41,7 +41,7 @@ export default function SettingsScreen({ navigation }) {
             <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
               <Text style={styles.signOutTxt}>Sign out</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('Profile')}>
+            <TouchableOpacity style={styles.linkBtn} onPress={() => navigation.navigate('Main', { screen: 'Profile' })}>
               <Text style={styles.linkTxt}>Open profile</Text>
             </TouchableOpacity>
           </>

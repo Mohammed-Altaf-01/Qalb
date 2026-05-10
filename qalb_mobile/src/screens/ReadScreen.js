@@ -29,6 +29,7 @@ import { getTextSizePreset } from '../lib/text-settings';
 import useGamification from '../lib/useGamification';
 import { QuranRepository } from '../lib/quran-api';
 import storage, { STORAGE_KEYS } from '../lib/storage';
+import { touchQuranLastReadChapter } from '../lib/quran-last-read-touch';
 import AudioPlayer from '../components/AudioPlayer';
 import WordByWordArabic from '../components/WordByWordArabic';
 import MushafPageReader from './MushafPageReader';
@@ -515,6 +516,7 @@ export default function ReadScreen({ navigation, route }) {
     if (!requestedChapterId || chapters.length === 0) return;
     const chapter = chapters.find((c) => c.id === requestedChapterId);
     if (chapter) {
+      void touchQuranLastReadChapter(chapter);
       setSelectedChapter(chapter);
       setView('verseReader');
       navigation.setParams?.({ initialChapterId: undefined });
@@ -541,6 +543,7 @@ export default function ReadScreen({ navigation, route }) {
     if (!cid) return;
     const chapter = chapters.find((c) => c.id === cid);
     if (chapter) {
+      void touchQuranLastReadChapter(chapter);
       setSelectedChapter(chapter);
       setView('verseReader');
     }
@@ -559,7 +562,11 @@ export default function ReadScreen({ navigation, route }) {
       {view === 'surahList' ? (
         <SurahGrid
           chapters={chapters}
-          onSelect={(ch) => { setSelectedChapter(ch); setView('verseReader'); }}
+          onSelect={async (ch) => {
+            await touchQuranLastReadChapter(ch);
+            setSelectedChapter(ch);
+            setView('verseReader');
+          }}
           onOpenMushaf={() => {
             const p = Number(progress?.mushafPage);
             setMushafStartPage(Number.isFinite(p) && p >= 1 ? p : 1);

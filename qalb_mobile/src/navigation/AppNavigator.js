@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Text } from 'react-native';
+import { BookOpen, Compass, Headphones, Home, RadioTower, User } from 'lucide-react-native';
 
 import AhadithBooksScreen from '../screens/AhadithBooksScreen';
 import AhadithChaptersScreen from '../screens/AhadithChaptersScreen';
@@ -22,25 +22,21 @@ import { COLORS, FONT_SIZE } from '../theme';
 const Tab = createBottomTabNavigator();
 const RootStack = createStackNavigator();
 
+/** Same lucide icons as web `components/Navigation.js` mobile tab bar */
 const TAB_ICONS = {
-  Home: { default: '⌂', active: '⌂' },
-  Discover: { default: '◎', active: '◎' },
-  Read: { default: '☰', active: '☰' },
-  Journey: { default: '◇', active: '◆' },
-  Menu: { default: '⋯', active: '⋯' },
+  Read: BookOpen,
+  Home,
+  Discover: Compass,
+  Listen: Headphones,
+  Live: RadioTower,
+  Profile: User,
 };
 
-function TabIcon({ name, focused }) {
-  const icons = TAB_ICONS[name] ?? { default: '●', active: '●' };
+function TabIcon({ routeName, focused }) {
+  const Icon = TAB_ICONS[routeName];
+  if (!Icon) return null;
   return (
-    <Text
-      style={{
-        fontSize: 22,
-        color: focused ? COLORS.accent : COLORS.textFaint,
-      }}
-    >
-      {focused ? icons.active : icons.default}
-    </Text>
+    <Icon size={22} strokeWidth={focused ? 2.35 : 1.75} color={focused ? COLORS.accent : COLORS.textFaint} />
   );
 }
 
@@ -64,14 +60,15 @@ function TabNavigator() {
           fontWeight: '500',
           marginTop: 2,
         },
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused }) => <TabIcon routeName={route.name} focused={focused} />,
       })}
     >
+      <Tab.Screen name="Read" component={ReadScreen} />
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Discover" component={DiscoverScreen} />
-      <Tab.Screen name="Read" component={ReadScreen} />
-      <Tab.Screen name="Journey" component={JourneyScreen} />
-      <Tab.Screen name="Menu" component={MenuScreen} options={{ title: 'More' }} />
+      <Tab.Screen name="Listen" component={ListenScreen} />
+      <Tab.Screen name="Live" component={LiveScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -91,9 +88,8 @@ export default function AppNavigator() {
       <RootStack.Screen name="Library" component={LibraryScreen} />
       <RootStack.Screen name="Goals" component={GoalsScreen} />
       <RootStack.Screen name="Settings" component={SettingsScreen} />
-      <RootStack.Screen name="Listen" component={ListenScreen} />
-      <RootStack.Screen name="Live" component={LiveScreen} />
-      <RootStack.Screen name="Profile" component={ProfileScreen} />
+      <RootStack.Screen name="Journey" component={JourneyScreen} />
+      <RootStack.Screen name="Menu" component={MenuScreen} />
       <RootStack.Screen name="AhadithBooks" component={AhadithBooksScreen} />
       <RootStack.Screen name="AhadithChapters" component={AhadithChaptersScreen} />
       <RootStack.Screen name="AhadithSection" component={AhadithSectionScreen} />

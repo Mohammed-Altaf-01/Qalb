@@ -14,9 +14,8 @@ import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
 import { cn } from "@/lib/utils";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
-/** Primary routes — keep the header readable; Library & Goals live under Settings. */
+/** Primary routes (Home is rendered first, before Read). Library & Goals live under Settings. */
 const PRIMARY_NAV = [
-  { label: "Home", href: "/", icon: Home },
   { label: "Discover", href: "/discover", icon: Compass },
   { label: "Listen", href: "/listen", icon: Headphones },
   { label: "Live", href: "/live", icon: RadioTower },
@@ -316,6 +315,20 @@ export default function Navigation() {
           </div>
 
           <nav className="hidden md:flex flex-1 justify-center items-center gap-1 min-w-0" aria-label="Primary">
+            <Link
+              href="/"
+              aria-label="Home"
+              aria-current={navIsActive(pathname, "/") ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap",
+                navIsActive(pathname, "/")
+                  ? "text-accent bg-accent/10 font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+              )}
+            >
+              <Home size={16} strokeWidth={navIsActive(pathname, "/") ? 2.35 : 1.75} className="shrink-0" aria-hidden />
+              Home
+            </Link>
             <div className="relative">
               <button
                 type="button"
@@ -406,6 +419,21 @@ export default function Navigation() {
         aria-label="Mobile primary"
       >
         <div className="flex items-stretch justify-start h-[3.375rem] max-w-full mx-auto px-1 gap-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Link
+            href="/"
+            aria-label="Home"
+            aria-current={navIsActive(pathname, "/") ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
+              navIsActive(pathname, "/") ? "text-accent" : "text-muted-foreground active:opacity-80",
+            )}
+          >
+            <Home size={21} strokeWidth={navIsActive(pathname, "/") ? 2.35 : 1.75} aria-hidden />
+            <span className="text-[10px] font-medium">Home</span>
+            {navIsActive(pathname, "/") && (
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
+            )}
+          </Link>
           <Link
             href="/read"
             aria-label="Read"

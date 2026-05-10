@@ -97,7 +97,12 @@ export default function JourneyScreen({ navigation }) {
               <TouchableOpacity
                 key={r.surahId}
                 style={styles.row}
-                onPress={() => navigation.navigate('Read', { screen: 'Read', params: { initialChapterId: Number(r.surahId) } })}
+                onPress={() =>
+                  navigation.navigate('Main', {
+                    screen: 'Read',
+                    params: { initialChapterId: Number(r.surahId) },
+                  })
+                }
               >
                 <Text style={styles.rowMain}>{r.surahName}</Text>
                 <Text style={styles.rowSub}>Surah {r.surahId}</Text>
@@ -121,7 +126,7 @@ export default function JourneyScreen({ navigation }) {
                 </View>
               </View>
             ))}
-            <TouchableOpacity onPress={() => navigation.navigate('Discover')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Discover' })}>
               <Text style={styles.link}>New search →</Text>
             </TouchableOpacity>
           </View>

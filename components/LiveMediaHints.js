@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { ensureLiveDualPrewarm } from "@/lib/live-dual-prewarm";
 import { LIVE_STREAM_CDN_ORIGIN } from "@/lib/live-stream-defaults";
 
 function injectOnce(rel, href, crossOrigin) {
@@ -26,7 +27,7 @@ export default function LiveMediaHints() {
 
   useEffect(() => {
     const run = () => {
-      void fetch("/api/live/tv?language=eng").catch(() => {});
+      void ensureLiveDualPrewarm().catch(() => {});
     };
     const ric = window.requestIdleCallback;
     if (typeof ric === "function") {

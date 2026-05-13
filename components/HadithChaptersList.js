@@ -6,7 +6,9 @@ import { ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 
 function normalize(text) {
-  return String(text ?? "").toLowerCase().trim();
+  return String(text ?? "")
+    .toLowerCase()
+    .trim();
 }
 
 export default function HadithChaptersList({ bookSlug, chapters }) {
@@ -40,7 +42,9 @@ export default function HadithChaptersList({ bookSlug, chapters }) {
                 {String(i + 1).padStart(2, "0")}
               </span>
               <div className="min-w-0 flex-1">
-                <span className="font-medium text-foreground group-hover:text-accent transition-colors block">{ch.title}</span>
+                <span className="font-medium text-foreground group-hover:text-accent transition-colors block">
+                  {ch.title}
+                </span>
                 <span className="text-xs text-muted-foreground mt-0.5">
                   Hadith {ch.hadithFirst}
                   {ch.hadithLast !== ch.hadithFirst ? `–${ch.hadithLast}` : ""}

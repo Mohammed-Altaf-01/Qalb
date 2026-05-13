@@ -1,7 +1,7 @@
-import { mergeInitialGamificationSyncMobile } from '../gamification-remote-sync';
+import { mergeInitialGamificationSyncMobile } from "../gamification-remote-sync";
 
-describe('mergeInitialGamificationSyncMobile', () => {
-  it('promotes local when remote is absent and local has progress', () => {
+describe("mergeInitialGamificationSyncMobile", () => {
+  it("promotes local when remote is absent and local has progress", () => {
     const local = {
       xp: 10,
       badges: [],
@@ -21,9 +21,9 @@ describe('mergeInitialGamificationSyncMobile', () => {
     expect(nextState.xp).toBeGreaterThanOrEqual(10);
   });
 
-  it('prefers remote when present', () => {
+  it("prefers remote when present", () => {
     const { nextState, promoteToServer } = mergeInitialGamificationSyncMobile({
-      remoteState: { xp: 200, badges: ['read_10_surahs'] },
+      remoteState: { xp: 200, badges: ["read_10_surahs"] },
       localState: { xp: 10 },
     });
     expect(promoteToServer).toBe(false);

@@ -19,7 +19,11 @@ export default function ListenMiniPlayer() {
   useEffect(() => subscribeQuranAudio(setPlayer), []);
 
   if (pathname === "/listen") return null;
-  if (player.mode !== "listen" || (player.status !== "playing" && player.status !== "paused" && player.status !== "loading")) return null;
+  if (
+    player.mode !== "listen" ||
+    (player.status !== "playing" && player.status !== "paused" && player.status !== "loading")
+  )
+    return null;
 
   return (
     <div className="fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-50 w-[min(94vw,36rem)] rounded-xl border border-border/55 bg-card/95 backdrop-blur-sm px-3 py-2 shadow-lg">

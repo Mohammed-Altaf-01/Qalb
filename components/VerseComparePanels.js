@@ -6,6 +6,7 @@ import { Headphones } from "lucide-react";
 
 import { READ_RECITERS } from "@/lib/read-reciters";
 import { cleanTranslationText } from "@/lib/translation-utils";
+
 const DEFAULT_TRIPLE = [20, 85, 22];
 /** @type {Array<[string,number]>} */
 const DEFAULT_RECITER_TRIPLE = [7, 3, 2].map((id) => {
@@ -56,7 +57,9 @@ export default function VerseComparePanels({ verseKey }) {
           }
         }),
       );
-      setRecUrls(urls.map((url, idx) => ({ name: DEFAULT_RECITER_TRIPLE[idx][0], id: DEFAULT_RECITER_TRIPLE[idx][1], url })));
+      setRecUrls(
+        urls.map((url, idx) => ({ name: DEFAULT_RECITER_TRIPLE[idx][0], id: DEFAULT_RECITER_TRIPLE[idx][1], url })),
+      );
     } catch {
       setRecUrls(null);
     }
@@ -89,7 +92,9 @@ export default function VerseComparePanels({ verseKey }) {
           ))}
         </div>
       ) : (
-        <p className="text-[11px] text-muted-foreground">Shows Saheeh International, Abdel Haleem, and Yusuf Ali side by side.</p>
+        <p className="text-[11px] text-muted-foreground">
+          Shows Saheeh International, Abdel Haleem, and Yusuf Ali side by side.
+        </p>
       )}
 
       <div className="border-t border-border/30 pt-4 space-y-2">
@@ -98,7 +103,11 @@ export default function VerseComparePanels({ verseKey }) {
             <Headphones size={12} aria-hidden />
             Compare reciters
           </p>
-          <button type="button" onClick={() => void refreshReciters()} className="text-[11px] text-accent hover:underline">
+          <button
+            type="button"
+            onClick={() => void refreshReciters()}
+            className="text-[11px] text-accent hover:underline"
+          >
             {recUrls ? "Refresh" : "Load clips"}
           </button>
         </div>
@@ -107,12 +116,18 @@ export default function VerseComparePanels({ verseKey }) {
             {recUrls.map((r) => (
               <div key={r.id} className="rounded-lg border border-border/40 bg-card/50 p-2">
                 <p className="text-[10px] text-muted-foreground mb-1">{r.name}</p>
-                {r.url ? <audio controls className="w-full h-8" src={r.url} /> : <p className="text-[10px] text-red-400/70">Unavailable</p>}
+                {r.url ? (
+                  <audio controls className="w-full h-8" src={r.url} />
+                ) : (
+                  <p className="text-[10px] text-red-400/70">Unavailable</p>
+                )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-[11px] text-muted-foreground">Verse samples from Mishari · Sudais · Abdul Baset Murattal.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Verse samples from Mishari · Sudais · Abdul Baset Murattal.
+          </p>
         )}
       </div>
     </section>

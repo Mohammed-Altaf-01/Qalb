@@ -1,7 +1,6 @@
-import { dedupeLastReadsByHref, MAX_QURAN_LAST_READS } from '../../../lib/qalb-last-reads';
-
-import storage, { STORAGE_KEYS } from './storage';
-import { schedulePushReadingHistory } from './user-app-sync';
+import { MAX_QURAN_LAST_READS, dedupeLastReadsByHref } from "../../../lib/qalb-last-reads";
+import storage, { STORAGE_KEYS } from "./storage";
+import { schedulePushReadingHistory } from "./user-app-sync";
 
 /** Append / refresh Quran entry in `qalb_last_reads` (parity with web HomeClient `saveLastRead`). */
 export async function touchQuranLastReadChapter(chapter) {
@@ -13,8 +12,8 @@ export async function touchQuranLastReadChapter(chapter) {
       {
         href,
         label: chapter.name_simple,
-        sub: chapter.translated_name?.name ?? '',
-        type: 'surah',
+        sub: chapter.translated_name?.name ?? "",
+        type: "surah",
         timestamp: Date.now(),
       },
       ...lastReads.filter((r) => r.href !== href),

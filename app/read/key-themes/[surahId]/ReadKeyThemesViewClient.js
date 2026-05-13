@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 import { ArrowLeft, BookOpen, Sparkles } from "lucide-react";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,7 @@ export default function ReadKeyThemesViewClient({ surahId }) {
       if (r && typeof r.markdown === "string" && r.markdown.length > 0) {
         return {
           markdown: r.markdown,
-          surahName:
-            typeof r.surahName === "string" && r.surahName.trim() ? r.surahName.trim() : `Surah ${surahId}`,
+          surahName: typeof r.surahName === "string" && r.surahName.trim() ? r.surahName.trim() : `Surah ${surahId}`,
         };
       }
     } catch {
@@ -57,7 +56,9 @@ export default function ReadKeyThemesViewClient({ surahId }) {
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Journey
         </Link>
-        <span aria-hidden className="text-border">·</span>
+        <span aria-hidden className="text-border">
+          ·
+        </span>
         <Link href="/read" className="hover:text-foreground transition-colors">
           Read
         </Link>

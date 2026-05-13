@@ -1,10 +1,10 @@
 /**
  * Cloud gamification merge (same rules as web lib/gamification-merge.js) for mobile storage shape.
  */
-import { normalizeGamificationState, defaultGamificationState } from './gamification';
+import { defaultGamificationState, normalizeGamificationState } from "./gamification";
 
 function hasPromotableLocalProgress(local) {
-  if (!local || typeof local !== 'object') return false;
+  if (!local || typeof local !== "object") return false;
   if ((local.xp ?? 0) > 0) return true;
   if ((local.badges?.length ?? 0) > 0) return true;
   if ((local.deeds?.length ?? 0) > 0) return true;

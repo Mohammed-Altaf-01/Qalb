@@ -24,8 +24,8 @@ import { toast } from "sonner";
 
 import { TRANSLATIONS } from "@/app/read/ReadClient";
 import AudioPlayer from "@/components/AudioPlayer";
-import VerseComparePanels from "@/components/VerseComparePanels";
 import VerseChat from "@/components/VerseChat";
+import VerseComparePanels from "@/components/VerseComparePanels";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { stripVerseEndMarker } from "@/lib/arabic-utils";

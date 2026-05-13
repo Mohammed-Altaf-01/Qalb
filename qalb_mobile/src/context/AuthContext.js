@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { decodeJwtSub, getStoredMobileJwt, signInWithHostedNextAuth, signOutMobile } from '../lib/mobile-auth';
-import { pullAccountScopedStorageIntoDevice } from '../lib/user-app-sync';
+import { decodeJwtSub, getStoredMobileJwt, signInWithHostedNextAuth, signOutMobile } from "../lib/mobile-auth";
+import { pullAccountScopedStorageIntoDevice } from "../lib/user-app-sync";
 
 const AuthContext = createContext(null);
 
@@ -57,6 +57,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

@@ -45,9 +45,7 @@ export default function LiveClient({ channels }) {
   const selected = (channels ?? []).find((c) => c.id === selectedId) ?? initial;
   const { makkahUrl, madinahUrl } = useMemo(() => resolveMakkahMadinahUrls(channels), [channels]);
 
-  const usingPrewarmPair = Boolean(
-    selected?.url && (selected.url === makkahUrl || selected.url === madinahUrl),
-  );
+  const usingPrewarmPair = Boolean(selected?.url && (selected.url === makkahUrl || selected.url === madinahUrl));
 
   liveSyncRef.current = {
     url: selected?.url ?? "",
@@ -55,10 +53,7 @@ export default function LiveClient({ channels }) {
     usingPrewarm: usingPrewarmPair,
   };
 
-  const channelsKey = useMemo(
-    () => (channels ?? []).map((c) => `${c.id}:${c.url ?? ""}`).join("|"),
-    [channels],
-  );
+  const channelsKey = useMemo(() => (channels ?? []).map((c) => `${c.id}:${c.url ?? ""}`).join("|"), [channels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,7 +162,10 @@ export default function LiveClient({ channels }) {
       const video = getActiveLiveDualVideo();
       if (!video) return;
       if (video.paused) {
-        video.play().then(() => setIsPlaying(true)).catch(() => {});
+        video
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch(() => {});
         return;
       }
       video.pause();
@@ -177,7 +175,10 @@ export default function LiveClient({ channels }) {
     const video = legacyVideoRef.current;
     if (!video) return;
     if (video.paused) {
-      video.play().then(() => setIsPlaying(true)).catch(() => {});
+      video
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
       return;
     }
     video.pause();

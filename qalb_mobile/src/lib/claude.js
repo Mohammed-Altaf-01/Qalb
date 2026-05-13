@@ -10,8 +10,7 @@
  * Supports streaming for chat (text appears incrementally via onChunk callback).
  * Discover/Reflect use regular JSON responses for simplicity.
  */
-
-import { CONFIG } from '../config';
+import { CONFIG } from "../config";
 
 const base = () => CONFIG.API_BASE_URL;
 
@@ -23,8 +22,8 @@ export const aiService = {
    */
   async discoverVerses(userSituation) {
     const res = await fetch(`${base()}/api/ai/discover`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ situation: userSituation }),
     });
     if (!res.ok) throw new Error(`Discover failed: ${res.status}`);
@@ -44,7 +43,7 @@ export const aiService = {
         const parsed = JSON.parse(text);
         return { verses: parsed.verses ?? [], success: true };
       } catch {
-        return { verses: [], success: false, error: 'Failed to parse AI response' };
+        return { verses: [], success: false, error: "Failed to parse AI response" };
       }
     }
   },
@@ -54,10 +53,10 @@ export const aiService = {
    * Calls POST /api/ai/reflect on the Vercel backend.
    * @returns {Promise<string[]>}
    */
-  async generateReflectionPrompts(verseKey, arabicText, translation, tafsirSnippet = '') {
+  async generateReflectionPrompts(verseKey, arabicText, translation, tafsirSnippet = "") {
     const res = await fetch(`${base()}/api/ai/reflect`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ verseKey, arabicText, translation, tafsirSnippet }),
     });
     if (!res.ok) throw new Error(`Reflect failed: ${res.status}`);
@@ -68,9 +67,9 @@ export const aiService = {
       return JSON.parse(jsonMatch[1].trim());
     } catch {
       return [
-        'How does this verse apply to a challenge you are facing right now?',
-        'What action can you take today that reflects the teaching of this verse?',
-        'How would your daily life change if you truly internalized this verse?',
+        "How does this verse apply to a challenge you are facing right now?",
+        "What action can you take today that reflects the teaching of this verse?",
+        "How would your daily life change if you truly internalized this verse?",
       ];
     }
   },
@@ -84,8 +83,8 @@ export const aiService = {
    */
   async chatStream(messages, verseContext, onChunk, onDone) {
     const res = await fetch(`${base()}/api/ai/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages, verseContext }),
     });
     if (!res.ok) throw new Error(`Chat failed: ${res.status}`);
@@ -100,7 +99,7 @@ export const aiService = {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let fullText = '';
+    let fullText = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -116,10 +115,10 @@ export const aiService = {
    * Buffers full response (non-streaming) for simplicity on mobile.
    * @returns {Promise<string>} Full summary text
    */
-  async readSummary({ surahName, pageNumber, versesText, priorSummary = '' }) {
+  async readSummary({ surahName, pageNumber, versesText, priorSummary = "" }) {
     const res = await fetch(`${base()}/api/ai/read-summary`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ surahName, pageNumber, versesText, priorSummary }),
     });
     if (!res.ok) throw new Error(`Read summary failed: ${res.status}`);

@@ -1,12 +1,12 @@
-import Link from "next/link";
-
 import { ArrowLeft, Footprints } from "lucide-react";
+import Link from "next/link";
 
 import UserJourneyHistory from "@/components/UserJourneyHistory";
 
 export const metadata = {
   title: "Your journey · Qalb",
-  description: "Key themes from reading, Discover searches, reflection prompts, and verse chats — your recent activity in one place.",
+  description:
+    "Key themes from reading, Discover searches, reflection prompts, and verse chats — your recent activity in one place.",
 };
 
 export default function JourneyPage() {
@@ -28,8 +28,8 @@ export default function JourneyPage() {
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">History &amp; memory</h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-xl leading-relaxed">
-            A gentle record of what you have explored — key themes, discoveries, reflection prompts, and conversations with verses.
-            It fills in as you finish each AI step.
+            A gentle record of what you have explored — key themes, discoveries, reflection prompts, and conversations
+            with verses. It fills in as you finish each AI step.
           </p>
         </header>
 

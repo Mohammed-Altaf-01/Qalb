@@ -10,10 +10,10 @@ import { usePathname } from "next/navigation";
 import ListenMiniPlayer from "@/components/ListenMiniPlayer";
 import PrayerStrip from "@/components/PrayerStrip";
 import RadioQuranButton from "@/components/RadioQuranButton";
+import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 import { getLevelInfo, loadState } from "@/lib/gamification";
 import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
 import { cn } from "@/lib/utils";
-import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
 
 /** Primary routes (Home is rendered first, before Read). Library & Goals live under Settings. */
 const PRIMARY_NAV = [
@@ -166,11 +166,14 @@ function UserButton() {
     const startedAt = Number(startedAtRaw);
     if (!Number.isFinite(startedAt)) return;
 
-    const id = window.setTimeout(() => {
-      if (sessionStorage.getItem(OAUTH_RECOVERED_KEY) === "1") return;
-      sessionStorage.setItem(OAUTH_RECOVERED_KEY, "1");
-      window.location.reload();
-    }, Math.max(0, 4500 - (Date.now() - startedAt)));
+    const id = window.setTimeout(
+      () => {
+        if (sessionStorage.getItem(OAUTH_RECOVERED_KEY) === "1") return;
+        sessionStorage.setItem(OAUTH_RECOVERED_KEY, "1");
+        window.location.reload();
+      },
+      Math.max(0, 4500 - (Date.now() - startedAt)),
+    );
 
     return () => window.clearTimeout(id);
   }, [status]);
@@ -345,7 +348,11 @@ export default function Navigation() {
               >
                 <BookOpen size={16} aria-hidden />
                 Read
-                <ChevronDown size={14} className={cn("transition-transform", readMenuOpen && "rotate-180")} aria-hidden />
+                <ChevronDown
+                  size={14}
+                  className={cn("transition-transform", readMenuOpen && "rotate-180")}
+                  aria-hidden
+                />
               </button>
               {readMenuOpen ? (
                 <div
@@ -416,7 +423,7 @@ export default function Navigation() {
       </header>
 
       {/* Mobile tab bar — compact primary flows + profile; settings in header */}
-          <nav
+      <nav
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden border-t border-border/45 bg-background/92 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
         aria-label="Mobile primary"
       >
@@ -447,7 +454,11 @@ export default function Navigation() {
                 : "text-muted-foreground active:opacity-80",
             )}
           >
-            <BookOpen size={21} strokeWidth={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? 2.35 : 1.75} aria-hidden />
+            <BookOpen
+              size={21}
+              strokeWidth={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? 2.35 : 1.75}
+              aria-hidden
+            />
             <span className="text-[10px] font-medium">Read</span>
             {(navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")) && (
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />

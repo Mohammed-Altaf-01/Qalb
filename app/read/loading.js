@@ -13,10 +13,7 @@ export default function ReadLoading() {
       </div>
       <div className="space-y-1.5">
         {Array.from({ length: 14 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/25"
-          >
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-card/25">
             <div className="h-9 w-9 rounded-full shrink-0 animate-shimmer" />
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="h-3.5 rounded-md animate-shimmer w-[36%]" />

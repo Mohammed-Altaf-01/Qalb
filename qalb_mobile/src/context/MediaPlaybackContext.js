@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 
 const MediaPlaybackContext = createContext(null);
 
@@ -9,7 +10,7 @@ const MediaPlaybackContext = createContext(null);
  */
 export function MediaPlaybackProvider({ children }) {
   const player = useAudioPlayer(null, { updateInterval: 500 });
-  const [label, setLabel] = useState('');
+  const [label, setLabel] = useState("");
 
   const stopAudio = useCallback(async () => {
     try {
@@ -18,7 +19,7 @@ export function MediaPlaybackProvider({ children }) {
     } catch {
       /* ignore */
     }
-    setLabel('');
+    setLabel("");
   }, [player]);
 
   const playFromUri = useCallback(
@@ -28,7 +29,7 @@ export function MediaPlaybackProvider({ children }) {
         await setAudioModeAsync({
           playsInSilentMode: true,
           shouldPlayInBackground: false,
-          interruptionMode: 'duckOthers',
+          interruptionMode: "duckOthers",
         });
       } catch {
         /* ignore */
@@ -41,7 +42,7 @@ export function MediaPlaybackProvider({ children }) {
       }
       player.replace({ uri });
       player.play();
-      setLabel(title ?? '');
+      setLabel(title ?? "");
     },
     [player],
   );
@@ -60,6 +61,6 @@ export function MediaPlaybackProvider({ children }) {
 
 export function useMediaPlayback() {
   const ctx = useContext(MediaPlaybackContext);
-  if (!ctx) throw new Error('useMediaPlayback must be used within MediaPlaybackProvider');
+  if (!ctx) throw new Error("useMediaPlayback must be used within MediaPlaybackProvider");
   return ctx;
 }

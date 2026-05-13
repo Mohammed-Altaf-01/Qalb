@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import { ALargeSmall, BookMarked, ChevronRight, Palette, Target, User } from "lucide-react";
+import Link from "next/link";
 
 import ReadingScaleControl from "@/components/ReadingScaleControl";
 import ThemeToggle from "@/components/ThemeToggle";

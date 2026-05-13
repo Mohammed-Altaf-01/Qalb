@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, MessageCircle, ScrollText, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-import { JOURNEY_LOCAL_UPDATED_EVENT } from "@/lib/qalb-journey-events";
 import { LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
+import { JOURNEY_LOCAL_UPDATED_EVENT } from "@/lib/qalb-journey-events";
 import { LS_READ_KEY_THEMES } from "@/lib/qalb-storage-keys";
 import { LS_VERSE_CHAT, LS_VERSE_REFLECTIONS } from "@/lib/qalb-verse-local-keys";
 import { ACCOUNT_STORAGE_SYNCED_EVENT } from "@/lib/user-app-sync-bridge";
@@ -94,19 +94,17 @@ export default function UserJourneyHistory() {
       .slice(0, 20);
   }, [bump]);
 
-  const empty =
-    keyThemes.length === 0 && discovers.length === 0 && reflections.length === 0 && chats.length === 0;
+  const empty = keyThemes.length === 0 && discovers.length === 0 && reflections.length === 0 && chats.length === 0;
 
   if (empty) {
     return (
       <div className="rounded-2xl border border-border/30 bg-card/25 px-4 py-10 text-center space-y-3">
         <p className="text-sm font-medium text-foreground">No history yet</p>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          When you finish generating{" "}
-          <span className="text-foreground/90">Key themes</span> on Read, complete a{" "}
+          When you finish generating <span className="text-foreground/90">Key themes</span> on Read, complete a{" "}
           <span className="text-foreground/90">Discover</span> search, or finish{" "}
-          <span className="text-foreground/90">Reflect</span> or <span className="text-foreground/90">Chat</span> on a verse,
-          your entries will show up here automatically.
+          <span className="text-foreground/90">Reflect</span> or <span className="text-foreground/90">Chat</span> on a
+          verse, your entries will show up here automatically.
         </p>
         <div className="pt-2 flex flex-wrap justify-center gap-2">
           <Link

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
-import { apiLog } from "@/lib/logger";
 import { normalizeLiveTvStreamUrl } from "@/lib/live-tv-stream-url";
+import { apiLog } from "@/lib/logger";
 
 const MP3QURAN_BASE = "https://www.mp3quran.net/api/v3";
 

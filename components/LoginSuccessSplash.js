@@ -61,7 +61,8 @@ export default function LoginSuccessSplash() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "radial-gradient(circle at center, rgba(200,169,81,0.12) 0%, rgba(0,0,0,0.35) 52%, rgba(0,0,0,0.6) 100%)",
+          background:
+            "radial-gradient(circle at center, rgba(200,169,81,0.12) 0%, rgba(0,0,0,0.35) 52%, rgba(0,0,0,0.6) 100%)",
           animation: leaving ? "qalb-login-fade-out 0.55s ease forwards" : "qalb-login-fade-in 0.5s ease both",
         }}
       >
@@ -69,7 +70,9 @@ export default function LoginSuccessSplash() {
           className="rounded-2xl border border-accent/35 bg-card/92 px-6 py-5 shadow-2xl text-center"
           style={{ backdropFilter: "blur(4px)" }}
         >
-          <p className="arabic-text arabic-text-display text-gradient-gold text-center leading-[1.8]">مرحبا {displayName}</p>
+          <p className="arabic-text arabic-text-display text-gradient-gold text-center leading-[1.8]">
+            مرحبا {displayName}
+          </p>
         </div>
       </div>
     </>

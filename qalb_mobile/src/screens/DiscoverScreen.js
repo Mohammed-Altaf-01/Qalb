@@ -6,8 +6,7 @@
  *  - Calls Vercel /api/ai/discover (Claude + Quran Foundation Search)
  *  - Shows 3 VerseCard results with AI explanation + audio + navigation
  */
-
-import { useState } from 'react';
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,31 +17,31 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { appendDiscoverHistory } from '../../../lib/qalb-discover-history';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { isVercelConfigured } from '../config';
-import { aiService } from '../lib/claude';
-import { emitJourneyLocalUpdated } from '../lib/qalb-events';
-import useGamification from '../lib/useGamification';
-import { QuranRepository } from '../lib/quran-api';
-import { schedulePushLibraryBookmarks } from '../lib/user-app-sync';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import VerseCard from '../components/VerseCard';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { appendDiscoverHistory } from "../../../lib/qalb-discover-history";
+import VerseCard from "../components/VerseCard";
+import { isVercelConfigured } from "../config";
+import { aiService } from "../lib/claude";
+import { emitJourneyLocalUpdated } from "../lib/qalb-events";
+import { QuranRepository } from "../lib/quran-api";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import useGamification from "../lib/useGamification";
+import { schedulePushLibraryBookmarks } from "../lib/user-app-sync";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 const EXAMPLE_PROMPTS = [
-  'I feel anxious about the future',
-  'I lost someone dear to me',
-  'I want to be more grateful',
-  'I am struggling with patience',
-  'I need strength to keep going',
+  "I feel anxious about the future",
+  "I lost someone dear to me",
+  "I want to be more grateful",
+  "I am struggling with patience",
+  "I need strength to keep going",
 ];
 
 export default function DiscoverScreen({ navigation }) {
   const { award } = useGamification();
-  const [situation, setSituation] = useState('');
+  const [situation, setSituation] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
@@ -59,7 +58,7 @@ export default function DiscoverScreen({ navigation }) {
 
     if (!isVercelConfigured()) {
       setError(
-        'AI Discover requires the Vercel backend. Update API_BASE_URL in src/config.js to your deployed Vercel URL.',
+        "AI Discover requires the Vercel backend. Update API_BASE_URL in src/config.js to your deployed Vercel URL.",
       );
       return;
     }
@@ -71,7 +70,7 @@ export default function DiscoverScreen({ navigation }) {
     try {
       const { verses, success, error: aiError } = await aiService.discoverVerses(trimmed);
       if (!success || !verses?.length) {
-        setError(aiError ?? 'No verses found. Try a different description.');
+        setError(aiError ?? "No verses found. Try a different description.");
         return;
       }
 
@@ -80,15 +79,10 @@ export default function DiscoverScreen({ navigation }) {
         verses.map(async (v) => {
           try {
             const data = await QuranRepository.getVerseByKey(v.verse_key);
-            const chapter = await QuranRepository.getChapter(
-              v.verse_key.split(':')[0],
-            ).catch(() => null);
+            const chapter = await QuranRepository.getChapter(v.verse_key.split(":")[0]).catch(() => null);
             return {
               verse: data.verse,
-              chapterName:
-                chapter?.chapter?.name_simple ??
-                chapter?.chapter?.translated_name?.name ??
-                '',
+              chapterName: chapter?.chapter?.name_simple ?? chapter?.chapter?.translated_name?.name ?? "",
               explanation: v.relevance_explanation,
               theme: v.theme,
             };
@@ -99,7 +93,7 @@ export default function DiscoverScreen({ navigation }) {
       );
 
       setResults(verseData.filter(Boolean));
-      award('discover_search');
+      award("discover_search");
       const existingHist = await storage.get(STORAGE_KEYS.DISCOVER_HISTORY);
       const nextHist = appendDiscoverHistory(
         {
@@ -113,7 +107,7 @@ export default function DiscoverScreen({ navigation }) {
       emitJourneyLocalUpdated();
       await loadBookmarks();
     } catch (e) {
-      setError('Something went wrong. Please check your connection and try again.');
+      setError("Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -133,11 +127,8 @@ export default function DiscoverScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -172,11 +163,7 @@ export default function DiscoverScreen({ navigation }) {
                 <Text style={styles.examplesLabel}>Try an example:</Text>
                 <View style={styles.examplesGrid}>
                   {EXAMPLE_PROMPTS.map((p) => (
-                    <TouchableOpacity
-                      key={p}
-                      style={styles.exampleChip}
-                      onPress={() => setSituation(p)}
-                    >
+                    <TouchableOpacity key={p} style={styles.exampleChip} onPress={() => setSituation(p)}>
                       <Text style={styles.exampleText}>{p}</Text>
                     </TouchableOpacity>
                   ))}
@@ -185,10 +172,7 @@ export default function DiscoverScreen({ navigation }) {
             )}
 
             <TouchableOpacity
-              style={[
-                styles.findBtn,
-                (!situation.trim() || loading) && styles.findBtnDisabled,
-              ]}
+              style={[styles.findBtn, (!situation.trim() || loading) && styles.findBtnDisabled]}
               onPress={handleDiscover}
               disabled={!situation.trim() || loading}
             >
@@ -198,7 +182,7 @@ export default function DiscoverScreen({ navigation }) {
                   <Text style={styles.findBtnText}>Searching…</Text>
                 </View>
               ) : (
-                <Text style={styles.findBtnText}>◎  Find Verses</Text>
+                <Text style={styles.findBtnText}>◎ Find Verses</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -214,7 +198,7 @@ export default function DiscoverScreen({ navigation }) {
           {results.length > 0 && (
             <View style={styles.results}>
               <Text style={styles.resultsLabel}>
-                {results.length} verse{results.length !== 1 ? 's' : ''} found for you
+                {results.length} verse{results.length !== 1 ? "s" : ""} found for you
               </Text>
               {results.map((r) => (
                 <VerseCard
@@ -226,7 +210,7 @@ export default function DiscoverScreen({ navigation }) {
                   isBookmarked={!!bookmarks[r.verse?.verse_key]}
                   onBookmark={() => toggleBookmark(r.verse, r.chapterName)}
                   onPress={() =>
-                    navigation.navigate('VerseDetail', {
+                    navigation.navigate("VerseDetail", {
                       verseKey: r.verse?.verse_key,
                       chapterName: r.chapterName,
                     })
@@ -253,7 +237,7 @@ const styles = StyleSheet.create({
   title: {
     color: COLORS.text,
     fontSize: FONT_SIZE.xxl + 4,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1,
   },
   subtitle: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 4 },
@@ -270,8 +254,8 @@ const styles = StyleSheet.create({
   inputLabel: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   input: {
@@ -288,11 +272,11 @@ const styles = StyleSheet.create({
   charCount: {
     color: COLORS.textFaint,
     fontSize: FONT_SIZE.xs,
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   examples: { gap: SPACING.xs },
   examplesLabel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs },
-  examplesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.xs },
+  examplesGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.xs },
   exampleChip: {
     backgroundColor: COLORS.muted,
     borderRadius: RADIUS.full,
@@ -307,11 +291,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.sm + 4,
-    alignItems: 'center',
+    alignItems: "center",
   },
   findBtnDisabled: { opacity: 0.45 },
-  findBtnText: { color: COLORS.white, fontSize: FONT_SIZE.md, fontWeight: '700' },
-  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  findBtnText: { color: COLORS.white, fontSize: FONT_SIZE.md, fontWeight: "700" },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
 
   errorBox: {
     backgroundColor: `${COLORS.danger}15`,
@@ -327,8 +311,8 @@ const styles = StyleSheet.create({
   resultsLabel: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: SPACING.sm,
   },

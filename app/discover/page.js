@@ -29,8 +29,8 @@ import { toast } from "sonner";
 import VerseCard from "@/components/VerseCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { LS_DISCOVER_HISTORY, appendDiscoverHistory } from "@/lib/qalb-discover-history";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
-import { appendDiscoverHistory, LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
 import { useGamification } from "@/lib/useGamification";
 
 // ─────────────────────────────────────────────────────────────────────────────

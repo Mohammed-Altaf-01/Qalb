@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { ChevronRight, ScrollText } from "lucide-react";
+import Link from "next/link";
 
 import { getHomeAhadithPreview } from "@/lib/constants/ahadith";
 

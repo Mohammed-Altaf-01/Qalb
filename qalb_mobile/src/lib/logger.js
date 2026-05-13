@@ -7,7 +7,7 @@ export function mobileDebug(scope, msg, extra = {}) {
     console.log(
       JSON.stringify({
         ts: new Date().toISOString(),
-        level: 'debug',
+        level: "debug",
         scope,
         msg,
         ...extra,

@@ -8,8 +8,7 @@
  *  - Real streaming via ReadableStream (RN 0.73+ / Expo SDK 51+)
  *  - Chat history persisted in AsyncStorage per verseKey
  */
-
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -20,24 +19,25 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import Markdown from 'react-native-markdown-display';
-import { aiService } from '../lib/claude';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { schedulePushVerseChat } from '../lib/user-app-sync';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
-import { isVercelConfigured } from '../config';
+} from "react-native";
+import Markdown from "react-native-markdown-display";
+
+import { isVercelConfigured } from "../config";
+import { aiService } from "../lib/claude";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { schedulePushVerseChat } from "../lib/user-app-sync";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 const QUICK_STARTERS = [
-  'What does this verse mean?',
-  'How do I apply this today?',
-  'What did scholars say?',
-  'Find a related verse',
-  'Why was this revealed?',
+  "What does this verse mean?",
+  "How do I apply this today?",
+  "What did scholars say?",
+  "Find a related verse",
+  "Why was this revealed?",
 ];
 
 function ChatBubble({ message, isStreaming }) {
-  const isUser = message.role === 'user';
+  const isUser = message.role === "user";
   return (
     <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAI]}>
       {!isUser && (
@@ -45,12 +45,7 @@ function ChatBubble({ message, isStreaming }) {
           <Text style={styles.aiAvatarText}>✦</Text>
         </View>
       )}
-      <View
-        style={[
-          styles.bubble,
-          isUser ? styles.bubbleUser : styles.bubbleAI,
-        ]}
-      >
+      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
         {isUser ? (
           <Text style={styles.bubbleUserText}>{message.content}</Text>
         ) : (
@@ -81,9 +76,9 @@ function ThinkingDots() {
 
 export default function VerseChat({ verseKey, arabicText, translation, tafsirText, chapterName }) {
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
+  const [streamingText, setStreamingText] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const listRef = useRef(null);
 
@@ -112,23 +107,23 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
 
     if (!isVercelConfigured()) {
       const errMsg = {
-        role: 'assistant',
+        role: "assistant",
         content:
-          'AI chat requires the Vercel backend to be configured. Update `API_BASE_URL` in `src/config.js` to your deployed Vercel URL.',
+          "AI chat requires the Vercel backend to be configured. Update `API_BASE_URL` in `src/config.js` to your deployed Vercel URL.",
       };
-      const newMsgs = [...messages, { role: 'user', content: trimmed }, errMsg];
+      const newMsgs = [...messages, { role: "user", content: trimmed }, errMsg];
       setMessages(newMsgs);
       await persistHistory(newMsgs);
       return;
     }
 
-    const userMsg = { role: 'user', content: trimmed };
+    const userMsg = { role: "user", content: trimmed };
     const updated = [...messages, userMsg];
     setMessages(updated);
-    setInput('');
+    setInput("");
     setStreaming(true);
     setIsThinking(true);
-    setStreamingText('');
+    setStreamingText("");
     scrollToBottom();
 
     try {
@@ -141,9 +136,9 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
           scrollToBottom();
         },
         async (finalText) => {
-          const final = [...updated, { role: 'assistant', content: finalText }];
+          const final = [...updated, { role: "assistant", content: finalText }];
           setMessages(final);
-          setStreamingText('');
+          setStreamingText("");
           setStreaming(false);
           setIsThinking(false);
           await persistHistory(final);
@@ -151,10 +146,7 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
         },
       );
     } catch (e) {
-      const errMsgs = [
-        ...updated,
-        { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
-      ];
+      const errMsgs = [...updated, { role: "assistant", content: "Sorry, something went wrong. Please try again." }];
       setMessages(errMsgs);
       setStreaming(false);
       setIsThinking(false);
@@ -173,23 +165,21 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
   // Build the data array for FlatList
   const listData = [
     ...messages,
-    ...(isThinking ? [{ role: '__thinking__', content: '' }] : []),
-    ...(streaming && streamingText
-      ? [{ role: '__streaming__', content: streamingText }]
-      : []),
+    ...(isThinking ? [{ role: "__thinking__", content: "" }] : []),
+    ...(streaming && streamingText ? [{ role: "__streaming__", content: streamingText }] : []),
   ];
 
   const renderItem = ({ item }) => {
-    if (item.role === '__thinking__') return <ThinkingDots />;
-    if (item.role === '__streaming__')
-      return <ChatBubble message={{ role: 'assistant', content: item.content }} isStreaming />;
+    if (item.role === "__thinking__") return <ThinkingDots />;
+    if (item.role === "__streaming__")
+      return <ChatBubble message={{ role: "assistant", content: item.content }} isStreaming />;
     return <ChatBubble message={item} />;
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={120}
     >
       {/* Header */}
@@ -215,11 +205,7 @@ export default function VerseChat({ verseKey, arabicText, translation, tafsirTex
             <Text style={styles.emptyText}>Ask anything about this verse</Text>
             <View style={styles.startersGrid}>
               {QUICK_STARTERS.map((q) => (
-                <TouchableOpacity
-                  key={q}
-                  style={styles.starterChip}
-                  onPress={() => sendMessage(q)}
-                >
+                <TouchableOpacity key={q} style={styles.starterChip} onPress={() => sendMessage(q)}>
                   <Text style={styles.starterText}>{q}</Text>
                 </TouchableOpacity>
               ))}
@@ -266,12 +252,12 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
@@ -281,7 +267,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: COLORS.accent,
     fontSize: FONT_SIZE.sm,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   clearBtn: {},
   clearText: {
@@ -297,7 +283,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: SPACING.lg,
     gap: SPACING.md,
   },
@@ -306,10 +292,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
   },
   startersGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: SPACING.xs,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   starterChip: {
     paddingHorizontal: SPACING.sm + 2,
@@ -324,16 +310,16 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
   },
   bubbleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     marginBottom: SPACING.xs,
     gap: SPACING.xs,
   },
   bubbleRowUser: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   bubbleRowAI: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   aiAvatar: {
     width: 24,
@@ -342,8 +328,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 2,
   },
   aiAvatarText: {
@@ -351,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   bubble: {
-    maxWidth: '82%',
+    maxWidth: "82%",
     borderRadius: RADIUS.lg,
     padding: SPACING.sm + 2,
   },
@@ -380,9 +366,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   dotsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 4,
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: SPACING.xs,
   },
   dot: {
@@ -392,8 +378,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
   },
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     padding: SPACING.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
@@ -414,8 +400,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryDim,
     borderWidth: 1,
     borderColor: `${COLORS.primary}40`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendBtnDisabled: {
     opacity: 0.35,
@@ -428,8 +414,8 @@ const styles = StyleSheet.create({
 
 const markdownStyles = {
   body: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 20 },
-  strong: { color: COLORS.text, fontWeight: '700' },
-  em: { fontStyle: 'italic' },
+  strong: { color: COLORS.text, fontWeight: "700" },
+  em: { fontStyle: "italic" },
   bullet_list: { marginTop: 4 },
   list_item: { marginBottom: 2 },
   blockquote: {

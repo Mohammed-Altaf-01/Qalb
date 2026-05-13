@@ -2,12 +2,16 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
+import { isAppUserStorageNamespace, validateAppUserStoragePayload } from "@/lib/app-user-storage";
 import { authOptions } from "@/lib/auth";
 import { apiLog } from "@/lib/logger";
-import { isAppUserStorageNamespace, validateAppUserStoragePayload } from "@/lib/app-user-storage";
 import { verifyMobileBearerUserId } from "@/lib/mobile-jwt";
+import {
+  getAppUserStoragePayload,
+  touchAppUserProfile,
+  upsertAppUserStoragePayload,
+} from "@/lib/supabase-app-user-repository";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
-import { getAppUserStoragePayload, touchAppUserProfile, upsertAppUserStoragePayload } from "@/lib/supabase-app-user-repository";
 
 async function resolveUserId(request) {
   const session = await getServerSession(authOptions);

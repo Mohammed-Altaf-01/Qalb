@@ -19,10 +19,7 @@ export default function AhadithSectionLoading() {
         <div className="h-3 w-48 rounded-md animate-shimmer" />
         <ol className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <li
-              key={i}
-              className="rounded-2xl border border-border/35 bg-card/25 px-4 py-4 md:px-5 space-y-3"
-            >
+            <li key={i} className="rounded-2xl border border-border/35 bg-card/25 px-4 py-4 md:px-5 space-y-3">
               <div className="h-3 w-24 rounded-md animate-shimmer" />
               <div className="h-16 rounded-xl animate-shimmer w-full opacity-90" />
               <div className="h-3 rounded-md animate-shimmer w-full" />

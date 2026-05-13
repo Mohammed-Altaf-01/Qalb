@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Pause, Play } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   getQuranAudioState,
@@ -12,7 +13,6 @@ import {
   subscribeQuranAudio,
 } from "@/lib/quran-audio-player";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 export default function RadioQuranButton() {
   const [player, setPlayer] = useState(getQuranAudioState());
@@ -57,7 +57,9 @@ export default function RadioQuranButton() {
     });
   }
 
-  const active = player.mode === "radio" && (player.status === "playing" || player.status === "paused" || player.status === "loading");
+  const active =
+    player.mode === "radio" &&
+    (player.status === "playing" || player.status === "paused" || player.status === "loading");
 
   return (
     <button
@@ -67,9 +69,7 @@ export default function RadioQuranButton() {
       title={active ? player.label || "Quran radio" : "Play random Quran radio stream"}
       className={cn(
         "group relative flex items-center justify-center w-10 h-10 rounded-lg transition-colors",
-        active
-          ? "text-accent hover:bg-muted/35"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+        active ? "text-accent hover:bg-muted/35" : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
       )}
     >
       {active && player.status === "playing" ? (

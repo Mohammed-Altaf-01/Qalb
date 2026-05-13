@@ -8,8 +8,7 @@
  *  - AI page summary via Vercel /api/ai/read-summary
  *  - Reading progress saved in AsyncStorage
  */
-
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,38 +18,40 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import Markdown from 'react-native-markdown-display';
-import { CONFIG, isVercelConfigured } from '../config';
-import { aiService } from '../lib/claude';
-import { getTextSizePreset } from '../lib/text-settings';
-import useGamification from '../lib/useGamification';
-import { QuranRepository } from '../lib/quran-api';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { touchQuranLastReadChapter } from '../lib/quran-last-read-touch';
-import AudioPlayer from '../components/AudioPlayer';
-import WordByWordArabic from '../components/WordByWordArabic';
-import MushafPageReader from './MushafPageReader';
-import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
-import { schedulePushReadingProgress } from '../lib/user-app-sync';
+} from "react-native";
+import Markdown from "react-native-markdown-display";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useFocusEffect } from "@react-navigation/native";
+
+import AudioPlayer from "../components/AudioPlayer";
+import WordByWordArabic from "../components/WordByWordArabic";
+import { CONFIG, isVercelConfigured } from "../config";
+import { aiService } from "../lib/claude";
+import { QuranRepository } from "../lib/quran-api";
+import { touchQuranLastReadChapter } from "../lib/quran-last-read-touch";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { getTextSizePreset } from "../lib/text-settings";
+import useGamification from "../lib/useGamification";
+import { schedulePushReadingProgress } from "../lib/user-app-sync";
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
+import MushafPageReader from "./MushafPageReader";
 
 const TRANSLATIONS = [
-  { id: 20, name: 'Saheeh International', lang: 'EN' },
-  { id: 22, name: 'The Clear Quran', lang: 'EN' },
-  { id: 85, name: 'Mufti Taqi Usmani', lang: 'UR' },
-  { id: 234, name: 'Dr. Farhat Hashmi', lang: 'UR' },
-  { id: 162, name: 'Turkish Diyanet', lang: 'TR' },
-  { id: 31, name: 'French Hamidullah', lang: 'FR' },
+  { id: 20, name: "Saheeh International", lang: "EN" },
+  { id: 22, name: "The Clear Quran", lang: "EN" },
+  { id: 85, name: "Mufti Taqi Usmani", lang: "UR" },
+  { id: 234, name: "Dr. Farhat Hashmi", lang: "UR" },
+  { id: 162, name: "Turkish Diyanet", lang: "TR" },
+  { id: 31, name: "French Hamidullah", lang: "FR" },
 ];
 
-function stripHtml(text = '') {
+function stripHtml(text = "") {
   return text
-    .replace(/<[^>]*>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .trim();
 }
 
@@ -88,9 +89,9 @@ function SurahGrid({
           <View>
             <Text style={styles.resumeLabel}>Continue reading</Text>
             <Text style={styles.resumeDetail}>
-              {progress?.readingLayout === 'mushaf'
+              {progress?.readingLayout === "mushaf"
                 ? `Mushaf · Page ${progress?.mushafPage ?? 1}`
-                : `${progress?.surahName ?? 'Surah'} · Page ${progress?.page ?? 1}`}
+                : `${progress?.surahName ?? "Surah"} · Page ${progress?.page ?? 1}`}
             </Text>
           </View>
           <Text style={styles.resumeArrow}>→</Text>
@@ -113,7 +114,7 @@ function SurahGrid({
           placeholderTextColor={COLORS.textFaint}
         />
         {searchQuery ? (
-          <TouchableOpacity onPress={() => onSearch('')}>
+          <TouchableOpacity onPress={() => onSearch("")}>
             <Text style={styles.searchClear}>✕</Text>
           </TouchableOpacity>
         ) : null}
@@ -124,11 +125,7 @@ function SurahGrid({
         keyExtractor={(c) => String(c.id)}
         numColumns={3}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.surahTile}
-            onPress={() => onSelect(item)}
-            activeOpacity={0.75}
-          >
+          <TouchableOpacity style={styles.surahTile} onPress={() => onSelect(item)} activeOpacity={0.75}>
             <Text style={styles.surahNumber}>{item.id}</Text>
             <Text style={styles.surahName} numberOfLines={1}>
               {item.name_simple}
@@ -156,9 +153,9 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
   const [translationId, setTranslationId] = useState(CONFIG.DEFAULT_TRANSLATION_ID);
   const [loading, setLoading] = useState(true);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
-  const [summary, setSummary] = useState('');
+  const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [priorSummary, setPriorSummary] = useState('');
+  const [priorSummary, setPriorSummary] = useState("");
   const [highlightEnabled, setHighlightEnabled] = useState(true);
   const [activePlayback, setActivePlayback] = useState({ verseKey: null, playing: false, progress: 0 });
   const [autoPlayTarget, setAutoPlayTarget] = useState({ verseKey: null, token: 0 });
@@ -204,7 +201,7 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
         verseNum: firstVerseNum,
         surahName: chapter.name_simple,
         page,
-        readingLayout: 'verses',
+        readingLayout: "verses",
         translationId,
         lastRead: Date.now(),
         updatedAt: Date.now(),
@@ -216,13 +213,13 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
         ...history.filter((h) => h.chapterId !== chapter.id),
       ].slice(0, 5);
       await storage.set(STORAGE_KEYS.READING_HISTORY, nextHistory);
-      const todayKey = new Date().toISOString().split('T')[0];
-      const readTrack = (await storage.get('qalb_read_tracking')) ?? {};
+      const todayKey = new Date().toISOString().split("T")[0];
+      const readTrack = (await storage.get("qalb_read_tracking")) ?? {};
       const readId = `${chapter.id}:${todayKey}`;
       if (!readTrack[readId]) {
         readTrack[readId] = true;
-        await storage.set('qalb_read_tracking', readTrack);
-        award('read_verse_page');
+        await storage.set("qalb_read_tracking", readTrack);
+        award("read_verse_page");
       }
     } catch {
     } finally {
@@ -232,17 +229,17 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
 
   const generateSummary = async () => {
     if (!isVercelConfigured()) {
-      setSummary('Configure API_BASE_URL in src/config.js to use AI summaries.');
+      setSummary("Configure API_BASE_URL in src/config.js to use AI summaries.");
       return;
     }
     setSummaryLoading(true);
     try {
       const versesText = verses
         .map((v) => {
-          const t = stripHtml(v.translations?.[0]?.text ?? '');
+          const t = stripHtml(v.translations?.[0]?.text ?? "");
           return `[${v.verse_key}] ${t}`;
         })
-        .join('\n');
+        .join("\n");
 
       const text = await aiService.readSummary({
         surahName: chapter.name_simple,
@@ -255,7 +252,7 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
         setPriorSummary(text);
       }
     } catch {
-      setSummary('Could not generate summary. Please try again.');
+      setSummary("Could not generate summary. Please try again.");
     } finally {
       setSummaryLoading(false);
     }
@@ -278,11 +275,8 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
           <Text style={styles.surahTitle}>{chapter.name_simple}</Text>
           <Text style={styles.surahTitleArabic}>{chapter.name_arabic}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.translationPickerBtn}
-          onPress={() => setShowTranslationPicker((v) => !v)}
-        >
-          <Text style={styles.translationPickerText}>{currentTranslation?.lang ?? 'EN'} ▾</Text>
+        <TouchableOpacity style={styles.translationPickerBtn} onPress={() => setShowTranslationPicker((v) => !v)}>
+          <Text style={styles.translationPickerText}>{currentTranslation?.lang ?? "EN"} ▾</Text>
         </TouchableOpacity>
       </View>
 
@@ -293,9 +287,14 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
             <TouchableOpacity
               key={t.id}
               style={[styles.translationOption, t.id === translationId && styles.translationOptionActive]}
-              onPress={() => { setTranslationId(t.id); setShowTranslationPicker(false); }}
+              onPress={() => {
+                setTranslationId(t.id);
+                setShowTranslationPicker(false);
+              }}
             >
-              <Text style={[styles.translationOptionLang, t.id === translationId && styles.translationOptionLangActive]}>
+              <Text
+                style={[styles.translationOptionLang, t.id === translationId && styles.translationOptionLangActive]}
+              >
                 {t.lang}
               </Text>
               <Text style={styles.translationOptionName}>{t.name}</Text>
@@ -324,15 +323,17 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
         <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: SPACING.xl }} />
       ) : (
         verses.map((v) => {
-          const translation = stripHtml(v.translations?.[0]?.text ?? '');
+          const translation = stripHtml(v.translations?.[0]?.text ?? "");
           return (
             <TouchableOpacity
               key={v.verse_key}
               style={styles.verseItem}
-              onPress={() => navigation.navigate('VerseDetail', {
-                verseKey: v.verse_key,
-                chapterName: chapter.name_simple,
-              })}
+              onPress={() =>
+                navigation.navigate("VerseDetail", {
+                  verseKey: v.verse_key,
+                  chapterName: chapter.name_simple,
+                })
+              }
               activeOpacity={0.85}
             >
               <View style={styles.verseItemHeader}>
@@ -374,7 +375,7 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
                   { fontSize: FONT_SIZE.sm * textPreset.body, lineHeight: 22 * textPreset.body },
                 ]}
               >
-                {translation || 'Translation unavailable for selected language.'}
+                {translation || "Translation unavailable for selected language."}
               </Text>
               <View style={styles.audioInline}>
                 <AudioPlayer
@@ -429,11 +430,7 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
               <Markdown style={mdStyles}>{summary}</Markdown>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.summaryBtn}
-              onPress={generateSummary}
-              disabled={summaryLoading}
-            >
+            <TouchableOpacity style={styles.summaryBtn} onPress={generateSummary} disabled={summaryLoading}>
               {summaryLoading ? (
                 <ActivityIndicator size="small" color={COLORS.accent} />
               ) : (
@@ -449,7 +446,10 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
         <View style={styles.pagination}>
           <TouchableOpacity
             style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-            onPress={() => { setPage((p) => Math.max(1, p - 1)); setSummary(''); }}
+            onPress={() => {
+              setPage((p) => Math.max(1, p - 1));
+              setSummary("");
+            }}
             disabled={page <= 1}
           >
             <Text style={styles.pageBtnText}>← Previous</Text>
@@ -459,7 +459,10 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
           </Text>
           <TouchableOpacity
             style={[styles.pageBtn, page >= pagination.total_pages && styles.pageBtnDisabled]}
-            onPress={() => { setPage((p) => Math.min(pagination.total_pages, p + 1)); setSummary(''); }}
+            onPress={() => {
+              setPage((p) => Math.min(pagination.total_pages, p + 1));
+              setSummary("");
+            }}
             disabled={page >= pagination.total_pages}
           >
             <Text style={styles.pageBtnText}>Next →</Text>
@@ -473,7 +476,7 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
           onPress={() => setHighlightEnabled((v) => !v)}
         >
           <Text style={[styles.highlightToggleText, highlightEnabled && styles.highlightToggleTextActive]}>
-            {highlightEnabled ? 'Word Highlight: ON' : 'Word Highlight: OFF'}
+            {highlightEnabled ? "Word Highlight: ON" : "Word Highlight: OFF"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -486,23 +489,23 @@ function VerseReader({ chapter, onBack, navigation, textPreset }) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function ReadScreen({ navigation, route }) {
-  const [view, setView] = useState('surahList');
+  const [view, setView] = useState("surahList");
   const [chapters, setChapters] = useState([]);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [progress, setProgress] = useState(null);
   const [mushafStartPage, setMushafStartPage] = useState(1);
   const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
 
   useEffect(() => {
-    Promise.all([
-      QuranRepository.getChapters(),
-      storage.get(STORAGE_KEYS.READING_PROGRESS),
-    ]).then(([data, prog]) => {
-      setChapters(data.chapters ?? []);
-      setProgress(prog);
-    }).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([QuranRepository.getChapters(), storage.get(STORAGE_KEYS.READING_PROGRESS)])
+      .then(([data, prog]) => {
+        setChapters(data.chapters ?? []);
+        setProgress(prog);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useFocusEffect(
@@ -518,7 +521,7 @@ export default function ReadScreen({ navigation, route }) {
     if (chapter) {
       void touchQuranLastReadChapter(chapter);
       setSelectedChapter(chapter);
-      setView('verseReader');
+      setView("verseReader");
       navigation.setParams?.({ initialChapterId: undefined });
     }
   }, [route?.params?.initialChapterId, chapters, navigation]);
@@ -534,9 +537,9 @@ export default function ReadScreen({ navigation, route }) {
   );
 
   const handleResumeReading = useCallback(async () => {
-    if (progress?.readingLayout === 'mushaf' && progress?.mushafPage != null) {
+    if (progress?.readingLayout === "mushaf" && progress?.mushafPage != null) {
       setMushafStartPage(Number(progress.mushafPage) || 1);
-      setView('mushaf');
+      setView("mushaf");
       return;
     }
     const cid = progress?.chapterId ?? progress?.surahId;
@@ -545,51 +548,47 @@ export default function ReadScreen({ navigation, route }) {
     if (chapter) {
       void touchQuranLastReadChapter(chapter);
       setSelectedChapter(chapter);
-      setView('verseReader');
+      setView("verseReader");
     }
   }, [progress, chapters]);
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ActivityIndicator size="large" color={COLORS.accent} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {view === 'surahList' ? (
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      {view === "surahList" ? (
         <SurahGrid
           chapters={chapters}
           onSelect={async (ch) => {
             await touchQuranLastReadChapter(ch);
             setSelectedChapter(ch);
-            setView('verseReader');
+            setView("verseReader");
           }}
           onOpenMushaf={() => {
             const p = Number(progress?.mushafPage);
             setMushafStartPage(Number.isFinite(p) && p >= 1 ? p : 1);
-            setView('mushaf');
+            setView("mushaf");
           }}
           searchQuery={searchQuery}
           onSearch={setSearchQuery}
-          onBack={() => setView('surahList')}
+          onBack={() => setView("surahList")}
           hasProgress={!!(progress?.chapterId ?? progress?.surahId ?? progress?.mushafPage)}
           progress={progress}
           onResumeReading={handleResumeReading}
         />
-      ) : view === 'mushaf' ? (
-        <MushafPageReader
-          navigation={navigation}
-          onBack={() => setView('surahList')}
-          initialPage={mushafStartPage}
-        />
+      ) : view === "mushaf" ? (
+        <MushafPageReader navigation={navigation} onBack={() => setView("surahList")} initialPage={mushafStartPage} />
       ) : (
         <VerseReader
-          key={selectedChapter?.id ?? 'none'}
+          key={selectedChapter?.id ?? "none"}
           chapter={selectedChapter}
-          onBack={() => setView('surahList')}
+          onBack={() => setView("surahList")}
           navigation={navigation}
           textPreset={textPreset}
         />
@@ -603,7 +602,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 
   readerHeader: { paddingHorizontal: SPACING.md, paddingTop: SPACING.sm, paddingBottom: SPACING.md },
-  readerTitle: { color: COLORS.text, fontSize: FONT_SIZE.xxl + 4, fontWeight: '800', letterSpacing: 1 },
+  readerTitle: { color: COLORS.text, fontSize: FONT_SIZE.xxl + 4, fontWeight: "800", letterSpacing: 1 },
   readerSubtitle: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 4 },
 
   resumeBanner: {
@@ -612,13 +611,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     borderRadius: RADIUS.md,
     padding: SPACING.sm + 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
   },
-  resumeLabel: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '600' },
+  resumeLabel: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: "600" },
   resumeDetail: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 2 },
   resumeArrow: { color: COLORS.accent, fontSize: 18 },
 
@@ -631,12 +630,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${COLORS.accent}35`,
   },
-  mushafEntryTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  mushafEntryTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: "700" },
   mushafEntrySub: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 4 },
 
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,
     marginHorizontal: SPACING.md,
@@ -659,25 +658,25 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 2,
   },
-  surahNumber: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700' },
-  surahName: { color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: '600', textAlign: 'center' },
-  surahArabic: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs + 1, textAlign: 'center' },
+  surahNumber: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: "700" },
+  surahName: { color: COLORS.text, fontSize: FONT_SIZE.xs, fontWeight: "600", textAlign: "center" },
+  surahArabic: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs + 1, textAlign: "center" },
   surahVerses: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs - 1 },
 
   verseReaderContent: { padding: SPACING.md },
   verseReaderHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: SPACING.md,
     gap: SPACING.sm,
   },
   backBtn: { padding: SPACING.xs, marginRight: SPACING.xs },
   backIcon: { color: COLORS.text, fontSize: 22 },
   verseReaderTitle: { flex: 1 },
-  surahTitle: { color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: '700' },
+  surahTitle: { color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: "700" },
   surahTitleArabic: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
   translationPickerBtn: {
     backgroundColor: COLORS.muted,
@@ -695,11 +694,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: SPACING.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   translationOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: SPACING.sm,
     gap: SPACING.sm,
     borderBottomWidth: 1,
@@ -709,7 +708,7 @@ const styles = StyleSheet.create({
   translationOptionLang: {
     color: COLORS.textFaint,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '700',
+    fontWeight: "700",
     width: 28,
   },
   translationOptionLangActive: { color: COLORS.accent },
@@ -718,8 +717,8 @@ const styles = StyleSheet.create({
   basmala: {
     fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact,
     color: COLORS.accent,
-    textAlign: 'center',
-    writingDirection: 'rtl',
+    textAlign: "center",
+    writingDirection: "rtl",
     lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact,
     marginBottom: SPACING.md,
     paddingHorizontal: SPACING.md,
@@ -734,7 +733,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     gap: SPACING.sm,
   },
-  verseItemHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  verseItemHeader: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
   verseNumBadge: {
     width: 28,
     height: 28,
@@ -742,17 +741,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     borderWidth: 1,
     borderColor: `${COLORS.accent}50`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  verseNumText: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700' },
+  verseNumText: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: "700" },
   verseKeyLabel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs },
   verseArabic: {
     fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay,
     color: COLORS.text,
-    textAlign: 'right',
+    textAlign: "right",
     lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay,
-    writingDirection: 'rtl',
+    writingDirection: "rtl",
   },
   verseTranslation: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22 },
   audioInline: { marginTop: SPACING.xs },
@@ -762,11 +761,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
   },
-  summaryBtnText: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '600' },
+  summaryBtnText: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: "600" },
   summaryCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
@@ -777,19 +776,19 @@ const styles = StyleSheet.create({
   summaryLabel: {
     color: COLORS.accent,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: SPACING.sm,
   },
 
   pagination: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: SPACING.md,
   },
-  readerOptions: { marginTop: SPACING.sm, alignItems: 'flex-end' },
+  readerOptions: { marginTop: SPACING.sm, alignItems: "flex-end" },
   highlightToggle: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -802,7 +801,7 @@ const styles = StyleSheet.create({
     borderColor: `${COLORS.accent}40`,
     backgroundColor: COLORS.accentDim,
   },
-  highlightToggleText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: '600' },
+  highlightToggleText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: "600" },
   highlightToggleTextActive: { color: COLORS.accent },
   pageBtn: {
     backgroundColor: COLORS.card,
@@ -819,7 +818,7 @@ const styles = StyleSheet.create({
 
 const mdStyles = {
   body: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22 },
-  strong: { color: COLORS.text, fontWeight: '700' },
+  strong: { color: COLORS.text, fontWeight: "700" },
   bullet_list: { marginTop: 4 },
   list_item: { marginBottom: 2 },
 };

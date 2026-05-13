@@ -1,9 +1,8 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowLeft } from "lucide-react";
 import HadithChaptersList from "@/components/HadithChaptersList";
-
 import { getHadithChaptersForBook } from "@/lib/hadith-catalog";
 
 export async function generateMetadata({ params }) {

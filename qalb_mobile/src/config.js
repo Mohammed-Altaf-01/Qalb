@@ -7,12 +7,12 @@
  * Quran content and AI are proxied through your Next app — no Content API OAuth secrets on device.
  */
 
-const PLACEHOLDER_API_BASE = 'https://your-app.vercel.app';
+const PLACEHOLDER_API_BASE = "https://your-app.vercel.app";
 
 function normalizeBaseUrl(url) {
-  return String(url ?? '')
+  return String(url ?? "")
     .trim()
-    .replace(/\/$/, '');
+    .replace(/\/$/, "");
 }
 
 function readApiBaseUrlFromEnv() {
@@ -20,7 +20,7 @@ function readApiBaseUrlFromEnv() {
     const raw = process.env.EXPO_PUBLIC_API_BASE_URL;
     return normalizeBaseUrl(raw);
   } catch {
-    return '';
+    return "";
   }
 }
 

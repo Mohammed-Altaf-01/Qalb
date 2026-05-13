@@ -3,10 +3,10 @@
  * @param {string} text
  * @param {'en' | 'ar'} lang
  */
-export function splitHadithSanad(text, lang = 'en') {
-  const source = String(text ?? '').trim();
-  if (!source) return { sanad: null, body: '' };
-  if (lang === 'ar') {
+export function splitHadithSanad(text, lang = "en") {
+  const source = String(text ?? "").trim();
+  if (!source) return { sanad: null, body: "" };
+  if (lang === "ar") {
     const m = source.match(/^(.*?)(?:(?:قال|فقال|أن)\s)/u);
     if (m && m[1] && m[1].length > 12) {
       const sanad = m[1].trim();

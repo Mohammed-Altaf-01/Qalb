@@ -23,9 +23,9 @@ import Link from "next/link";
 import UserJourneyHistory from "@/components/UserJourneyHistory";
 import { Button } from "@/components/ui/button";
 import { buildHeatmapDayCells, heatmapToneClass, todayLocalDayKey } from "@/lib/activity-heatmap";
-import { bucketDayKeyLocal, toLocalDayKey } from "@/lib/local-calendar-day";
-import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
 import { QURAN_FOUNDATION_PROVIDER_ID } from "@/lib/constants/auth";
+import { BADGES, DEEDS, LEVELS, getDailyChallenge, getLevelInfo } from "@/lib/gamification";
+import { bucketDayKeyLocal, toLocalDayKey } from "@/lib/local-calendar-day";
 import { LS_APP_ACTIVE_DAY, QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
 import { useGamification } from "@/lib/useGamification";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, LS_TIME_TRACKING } from "@/lib/user-app-sync-bridge";
@@ -348,7 +348,9 @@ function MinutesTrendChart({ events, localByDay }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Engagement trend (minutes)</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Engagement trend (minutes)
+        </p>
         <div className="flex items-center gap-1 rounded-lg border border-border/35 bg-muted/25 p-0.5">
           {["daily", "weekly", "monthly"].map((m) => (
             <button

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getTextSizePreset } from '../lib/text-settings';
-import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+import { getTextSizePreset } from "../lib/text-settings";
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from "../theme";
 
 /**
  * Reusable verse display card.
@@ -27,11 +28,10 @@ export default function VerseCard({
   compact = false,
 }) {
   const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
-  const arabicText = verse?.text_uthmani ?? '';
-  const translation =
-    verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, '').trim() ?? '';
-  const verseKey = verse?.verse_key ?? '';
-  const verseNum = verse?.verse_number ?? '';
+  const arabicText = verse?.text_uthmani ?? "";
+  const translation = verse?.translations?.[0]?.text?.replace(/<[^>]*>/g, "").trim() ?? "";
+  const verseKey = verse?.verse_key ?? "";
+  const verseNum = verse?.verse_number ?? "";
 
   useEffect(() => {
     getTextSizePreset().then((p) => setTextPreset({ arabic: p.arabic, body: p.body }));
@@ -59,9 +59,7 @@ export default function VerseCard({
             onPress={onBookmark}
             hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
           >
-            <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>
-              {isBookmarked ? '★' : '☆'}
-            </Text>
+            <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>{isBookmarked ? "★" : "☆"}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -73,8 +71,10 @@ export default function VerseCard({
             styles.arabic,
             compact && styles.arabicCompact,
             {
-              fontSize: (compact ? ARABIC_TYPOGRAPHY.fontSizeCompact : ARABIC_TYPOGRAPHY.fontSizeBody) * textPreset.arabic,
-              lineHeight: (compact ? ARABIC_TYPOGRAPHY.lineHeightCompact : ARABIC_TYPOGRAPHY.lineHeightBody) * textPreset.arabic,
+              fontSize:
+                (compact ? ARABIC_TYPOGRAPHY.fontSizeCompact : ARABIC_TYPOGRAPHY.fontSizeBody) * textPreset.arabic,
+              lineHeight:
+                (compact ? ARABIC_TYPOGRAPHY.lineHeightCompact : ARABIC_TYPOGRAPHY.lineHeightBody) * textPreset.arabic,
             },
           ]}
         >
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     padding: SPACING.sm + 4,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: SPACING.sm,
     gap: SPACING.sm,
   },
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   verseKeyText: {
     color: COLORS.primary,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
   chapterName: {
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
   },
   bookmarkBtn: {
-    marginLeft: 'auto',
+    marginLeft: "auto",
     paddingLeft: SPACING.sm,
   },
   bookmarkIcon: {
@@ -168,12 +168,11 @@ const styles = StyleSheet.create({
   arabic: {
     fontFamily: undefined, // system Arabic font (Geeza Pro on iOS, Noto Naskh on Android)
     color: COLORS.text,
-    textAlign: 'right',
+    textAlign: "right",
     marginBottom: SPACING.sm,
-    writingDirection: 'rtl',
+    writingDirection: "rtl",
   },
-  arabicCompact: {
-  },
+  arabicCompact: {},
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
@@ -182,8 +181,7 @@ const styles = StyleSheet.create({
   translation: {
     color: COLORS.textMuted,
   },
-  translationCompact: {
-  },
+  translationCompact: {},
   explanationBox: {
     marginTop: SPACING.sm,
     backgroundColor: COLORS.accentDim,
@@ -193,7 +191,7 @@ const styles = StyleSheet.create({
     borderColor: `${COLORS.accent}30`,
   },
   themeBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: `${COLORS.accent}25`,
     borderRadius: RADIUS.full,
     paddingHorizontal: SPACING.sm,
@@ -205,14 +203,14 @@ const styles = StyleSheet.create({
   themeText: {
     color: COLORS.accent,
     fontSize: FONT_SIZE.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   explanationText: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs + 1,
     lineHeight: 19,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
 });

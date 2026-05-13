@@ -6,7 +6,9 @@ import { ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 
 function normalize(text) {
-  return String(text ?? "").toLowerCase().trim();
+  return String(text ?? "")
+    .toLowerCase()
+    .trim();
 }
 
 export default function HadithBooksList({ books }) {

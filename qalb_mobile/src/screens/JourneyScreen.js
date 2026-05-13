@@ -1,31 +1,24 @@
 /**
  * Journey — mirrors web UserJourneyHistory: key themes, discover, reflect, chat.
  */
+import { useCallback, useEffect, useState } from "react";
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useCallback, useEffect, useState } from 'react';
-import {
-  DeviceEventEmitter,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from "@react-navigation/native";
 
-import { ACCOUNT_STORAGE_SYNCED_EVENT, JOURNEY_LOCAL_UPDATED_EVENT } from '../lib/qalb-events';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { ACCOUNT_STORAGE_SYNCED_EVENT, JOURNEY_LOCAL_UPDATED_EVENT } from "../lib/qalb-events";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 function readKeyThemes(doc) {
-  const map = doc?.themesBySurahId && typeof doc.themesBySurahId === 'object' ? doc.themesBySurahId : {};
+  const map = doc?.themesBySurahId && typeof doc.themesBySurahId === "object" ? doc.themesBySurahId : {};
   return Object.entries(map)
     .map(([surahId, row]) => ({
       surahId,
-      surahName: typeof row?.surahName === 'string' ? row.surahName : `Surah ${surahId}`,
-      updatedAt: typeof row?.updatedAt === 'number' ? row.updatedAt : 0,
-      hasMarkdown: typeof row?.markdown === 'string' && row.markdown.length > 0,
+      surahName: typeof row?.surahName === "string" ? row.surahName : `Surah ${surahId}`,
+      updatedAt: typeof row?.updatedAt === "number" ? row.updatedAt : 0,
+      hasMarkdown: typeof row?.markdown === "string" && row.markdown.length > 0,
     }))
     .filter((r) => r.hasMarkdown)
     .sort((a, b) => b.updatedAt - a.updatedAt)
@@ -85,7 +78,7 @@ export default function JourneyScreen({ navigation }) {
   }, [bump]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Journey</Text>
         <Text style={styles.sub}>Your reading, discovery, and reflection trail</Text>
@@ -98,8 +91,8 @@ export default function JourneyScreen({ navigation }) {
                 key={r.surahId}
                 style={styles.row}
                 onPress={() =>
-                  navigation.navigate('Main', {
-                    screen: 'Read',
+                  navigation.navigate("Main", {
+                    screen: "Read",
                     params: { initialChapterId: Number(r.surahId) },
                   })
                 }
@@ -119,14 +112,18 @@ export default function JourneyScreen({ navigation }) {
                 <Text style={styles.snippet}>{d.situationSnippet}</Text>
                 <View style={styles.chips}>
                   {(d.verseKeys ?? []).map((k) => (
-                    <TouchableOpacity key={k} style={styles.chip} onPress={() => navigation.navigate('VerseDetail', { verseKey: k })}>
+                    <TouchableOpacity
+                      key={k}
+                      style={styles.chip}
+                      onPress={() => navigation.navigate("VerseDetail", { verseKey: k })}
+                    >
                       <Text style={styles.chipTxt}>{k}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             ))}
-            <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Discover' })}>
+            <TouchableOpacity onPress={() => navigation.navigate("Main", { screen: "Discover" })}>
               <Text style={styles.link}>New search →</Text>
             </TouchableOpacity>
           </View>
@@ -137,7 +134,11 @@ export default function JourneyScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Reflect</Text>
             <View style={styles.wrap}>
               {reflections.map(({ verseKey }) => (
-                <TouchableOpacity key={verseKey} style={styles.pill} onPress={() => navigation.navigate('VerseDetail', { verseKey })}>
+                <TouchableOpacity
+                  key={verseKey}
+                  style={styles.pill}
+                  onPress={() => navigation.navigate("VerseDetail", { verseKey })}
+                >
                   <Text style={styles.pillTxt}>{verseKey}</Text>
                 </TouchableOpacity>
               ))}
@@ -150,7 +151,11 @@ export default function JourneyScreen({ navigation }) {
             <Text style={styles.sectionTitle}>Verse chat</Text>
             <View style={styles.wrap}>
               {chats.map(({ verseKey }) => (
-                <TouchableOpacity key={verseKey} style={styles.pill} onPress={() => navigation.navigate('VerseDetail', { verseKey })}>
+                <TouchableOpacity
+                  key={verseKey}
+                  style={styles.pill}
+                  onPress={() => navigation.navigate("VerseDetail", { verseKey })}
+                >
                   <Text style={styles.pillTxt}>{verseKey}</Text>
                 </TouchableOpacity>
               ))}
@@ -169,14 +174,14 @@ export default function JourneyScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SPACING.md, paddingBottom: SPACING.xl * 2 },
-  title: { fontSize: FONT_SIZE.xxl + 2, fontWeight: '800', color: COLORS.text },
+  title: { fontSize: FONT_SIZE.xxl + 2, fontWeight: "800", color: COLORS.text },
   sub: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: 6, marginBottom: SPACING.lg },
   section: { marginBottom: SPACING.lg },
   sectionTitle: {
     fontSize: FONT_SIZE.xs,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.accent,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: SPACING.sm,
   },
@@ -188,7 +193,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  rowMain: { color: COLORS.text, fontWeight: '600', fontSize: FONT_SIZE.sm },
+  rowMain: { color: COLORS.text, fontWeight: "600", fontSize: FONT_SIZE.sm },
   rowSub: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, marginTop: 2 },
   card: {
     backgroundColor: COLORS.card,
@@ -199,7 +204,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   snippet: { color: COLORS.text, fontSize: FONT_SIZE.xs, lineHeight: 18 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: SPACING.sm },
   chip: {
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
@@ -207,9 +212,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  chipTxt: { fontSize: 10, color: COLORS.accent, fontWeight: '600' },
-  link: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '600', marginTop: SPACING.xs },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipTxt: { fontSize: 10, color: COLORS.accent, fontWeight: "600" },
+  link: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: "600", marginTop: SPACING.xs },
+  wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pill: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -218,6 +223,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: COLORS.muted,
   },
-  pillTxt: { fontSize: FONT_SIZE.xs, color: COLORS.text, fontWeight: '600' },
+  pillTxt: { fontSize: FONT_SIZE.xs, color: COLORS.text, fontWeight: "600" },
   empty: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22, marginTop: SPACING.md },
 });

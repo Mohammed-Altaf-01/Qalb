@@ -8,11 +8,7 @@ const GLOBAL_LIMIT = 180;
 const AI_LIMIT = 24;
 
 function clientIp(request) {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown"
-  );
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
 }
 
 function allow(ip, limit) {

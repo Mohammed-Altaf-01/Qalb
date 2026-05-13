@@ -28,12 +28,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-audio",
-      "expo-secure-store",
-      "expo-web-browser",
-      "expo-video",
-      "expo-asset"
-    ]
+    "plugins": ["expo-audio", "expo-secure-store", "expo-web-browser", "expo-video", "expo-asset"]
   }
 }

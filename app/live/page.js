@@ -1,11 +1,5 @@
-import {
-  LIVE_STREAM_FALLBACK_MADINAH,
-  LIVE_STREAM_FALLBACK_MAKKAH,
-} from "@/lib/live-stream-defaults";
-import {
-  getInternalAppOrigin,
-  shouldDeferLoopbackSelfFetchDuringBuild,
-} from "@/lib/internal-app-url";
+import { getInternalAppOrigin, shouldDeferLoopbackSelfFetchDuringBuild } from "@/lib/internal-app-url";
+import { LIVE_STREAM_FALLBACK_MADINAH, LIVE_STREAM_FALLBACK_MAKKAH } from "@/lib/live-stream-defaults";
 
 import LiveClient from "./LiveClient";
 

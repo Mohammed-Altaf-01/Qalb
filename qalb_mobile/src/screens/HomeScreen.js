@@ -2,34 +2,27 @@
  * HomeScreen — mirrors web `app/HomeClient.js` (no Hadith strip on mobile per product choice).
  * Recent reading chips, search, full surah list.
  */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { BookOpen, ChevronRight, Clock, Search, X } from 'lucide-react-native';
+import { useFocusEffect } from "@react-navigation/native";
+import { BookOpen, ChevronRight, Clock, Search, X } from "lucide-react-native";
 
-import { dedupeLastReadsByHref, MAX_QURAN_LAST_READS } from '../../../lib/qalb-last-reads';
-import { QuranRepository } from '../lib/quran-api';
-import { touchQuranLastReadChapter } from '../lib/quran-last-read-touch';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import useGamification from '../lib/useGamification';
-import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { MAX_QURAN_LAST_READS, dedupeLastReadsByHref } from "../../../lib/qalb-last-reads";
+import { QuranRepository } from "../lib/quran-api";
+import { touchQuranLastReadChapter } from "../lib/quran-last-read-touch";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import useGamification from "../lib/useGamification";
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 function normalizeTerm(value) {
-  return String(value ?? '')
+  return String(value ?? "")
     .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\u0600-\u06ff\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\u0600-\u06ff\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -43,9 +36,9 @@ export default function HomeScreen({ navigation }) {
   const { award } = useGamification();
   const [chapters, setChapters] = useState([]);
   const [lastReads, setLastReads] = useState([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const lastAwardedSearchRef = useRef('');
+  const lastAwardedSearchRef = useRef("");
   const awardRef = useRef(award);
   awardRef.current = award;
 
@@ -81,12 +74,12 @@ export default function HomeScreen({ navigation }) {
   const filtered = useMemo(() => {
     const q = normalizeTerm(search);
     if (!q) return chapters;
-    const tokens = q.split(' ').filter(Boolean);
+    const tokens = q.split(" ").filter(Boolean);
     return [...chapters]
       .map((ch) => {
         const nameSimple = normalizeTerm(ch.name_simple);
-        const translated = normalizeTerm(ch.translated_name?.name ?? '');
-        const arabic = String(ch.name_arabic ?? '').trim();
+        const translated = normalizeTerm(ch.translated_name?.name ?? "");
+        const arabic = String(ch.name_arabic ?? "").trim();
         const id = String(ch.id);
         let score = 0;
         if (id === q) score += 120;
@@ -112,12 +105,12 @@ export default function HomeScreen({ navigation }) {
     if (q.length < 2 || filtered.length === 0) return;
     if (lastAwardedSearchRef.current === q) return;
     lastAwardedSearchRef.current = q;
-    awardRef.current('thematic_search', { query: q });
+    awardRef.current("thematic_search", { query: q });
   }, [search, filtered.length]);
 
   const onOpenChapter = async (chapter) => {
     await touchQuranLastReadChapter(chapter);
-    navigation.navigate('Read', { initialChapterId: chapter.id });
+    navigation.navigate("Read", { initialChapterId: chapter.id });
   };
 
   const onOpenLastRead = async (r) => {
@@ -125,13 +118,13 @@ export default function HomeScreen({ navigation }) {
     if (id) {
       const ch = chapters.find((c) => c.id === id);
       if (ch) await touchQuranLastReadChapter(ch);
-      navigation.navigate('Read', { initialChapterId: id });
+      navigation.navigate("Read", { initialChapterId: id });
     }
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <View style={styles.loadingWrap}>
           <Text style={styles.loadingTxt}>Loading…</Text>
         </View>
@@ -140,7 +133,7 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -156,7 +149,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.chipWrap}>
               {lastReads.map((r, i) => (
                 <TouchableOpacity
-                  key={`${r.href}#${r.type ?? 'read'}#${r.timestamp ?? i}`}
+                  key={`${r.href}#${r.type ?? "read"}#${r.timestamp ?? i}`}
                   style={styles.chip}
                   onPress={() => onOpenLastRead(r)}
                   activeOpacity={0.75}
@@ -190,7 +183,7 @@ export default function HomeScreen({ navigation }) {
             autoCapitalize="none"
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')} hitSlop={12}>
+            <TouchableOpacity onPress={() => setSearch("")} hitSlop={12}>
               <X size={14} color={COLORS.textFaint} />
             </TouchableOpacity>
           ) : null}
@@ -214,7 +207,7 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.surahName}>{chapter.name_simple}</Text>
                 </View>
                 <Text style={styles.surahTranslated} numberOfLines={1}>
-                  {chapter.translated_name?.name ?? ''}
+                  {chapter.translated_name?.name ?? ""}
                 </Text>
               </View>
               <View style={styles.surahRight}>
@@ -231,7 +224,7 @@ export default function HomeScreen({ navigation }) {
         {filtered.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyTxt}>No surahs found for &quot;{search}&quot;</Text>
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <TouchableOpacity onPress={() => setSearch("")}>
               <Text style={styles.emptyLink}>Clear search</Text>
             </TouchableOpacity>
           </View>
@@ -247,16 +240,16 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
   content: { paddingHorizontal: SPACING.md, paddingTop: SPACING.md, paddingBottom: SPACING.lg },
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingTxt: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
 
   mb: { marginBottom: SPACING.md + 4 },
-  rowTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SPACING.sm },
-  recentLabel: { fontSize: FONT_SIZE.xs, fontWeight: '500', color: COLORS.textMuted },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  rowTitle: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: SPACING.sm },
+  recentLabel: { fontSize: FONT_SIZE.xs, fontWeight: "500", color: COLORS.textMuted },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
@@ -264,16 +257,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.card,
-    maxWidth: '100%',
+    maxWidth: "100%",
   },
   chipIcon: { flexShrink: 0 },
   chipTextCol: { minWidth: 0, maxWidth: 220 },
-  chipLabel: { fontSize: FONT_SIZE.xs, fontWeight: '600', color: COLORS.text },
+  chipLabel: { fontSize: FONT_SIZE.xs, fontWeight: "600", color: COLORS.text },
   chipSub: { fontSize: FONT_SIZE.xs - 2, color: COLORS.textFaint, marginTop: 2 },
 
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
     backgroundColor: COLORS.card,
     borderWidth: 1,
@@ -301,14 +294,14 @@ const styles = StyleSheet.create({
 
   list: { gap: 2 },
   surahRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md - 2,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   idBadge: {
     width: 36,
@@ -317,28 +310,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${COLORS.accent}4d`,
     backgroundColor: `${COLORS.accent}14`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
-  idBadgeTxt: { fontSize: FONT_SIZE.xs, fontWeight: '600', color: COLORS.accent },
+  idBadgeTxt: { fontSize: FONT_SIZE.xs, fontWeight: "600", color: COLORS.accent },
   surahMid: { flex: 1, minWidth: 0 },
-  nameRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  surahName: { fontSize: FONT_SIZE.sm, fontWeight: '600', color: COLORS.text },
+  nameRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  surahName: { fontSize: FONT_SIZE.sm, fontWeight: "600", color: COLORS.text },
   surahTranslated: { fontSize: FONT_SIZE.xs, color: COLORS.textMuted, opacity: 0.55, marginTop: 2 },
-  surahRight: { alignItems: 'flex-end', flexShrink: 0, maxWidth: '38%' },
+  surahRight: { alignItems: "flex-end", flexShrink: 0, maxWidth: "38%" },
   surahArabic: {
     fontSize: ARABIC_TYPOGRAPHY.fontSizeCompact - 2,
     lineHeight: ARABIC_TYPOGRAPHY.lineHeightCompact - 6,
     color: COLORS.text,
     opacity: 0.8,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   verseCount: { fontSize: FONT_SIZE.xs - 2, color: COLORS.textMuted, opacity: 0.45, marginTop: 2 },
   chevron: { flexShrink: 0 },
 
-  empty: { alignItems: 'center', paddingVertical: 48 },
-  emptyTxt: { fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: 'center' },
+  empty: { alignItems: "center", paddingVertical: 48 },
+  emptyTxt: { fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: "center" },
   emptyLink: { marginTop: SPACING.sm, fontSize: FONT_SIZE.xs, color: COLORS.accent },
 });

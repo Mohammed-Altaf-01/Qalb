@@ -1,22 +1,21 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { mergeHadithVisit } from '../../../lib/last-hadith-reads';
-
-import { CONFIG, isVercelConfigured } from '../config';
-import { attachArabicToHadiths } from '../lib/hadith-arabic';
-import { splitHadithSanad } from '../lib/hadith-sanad';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { schedulePushReadingHistory } from '../lib/user-app-sync';
-import useGamification from '../lib/useGamification';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { mergeHadithVisit } from "../../../lib/last-hadith-reads";
+import { CONFIG, isVercelConfigured } from "../config";
+import { attachArabicToHadiths } from "../lib/hadith-arabic";
+import { splitHadithSanad } from "../lib/hadith-sanad";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import useGamification from "../lib/useGamification";
+import { schedulePushReadingHistory } from "../lib/user-app-sync";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 export default function AhadithSectionScreen({ navigation, route }) {
   const { book, section, bookName, sectionTitle } = route.params ?? {};
   const { award } = useGamification();
   const [hadiths, setHadiths] = useState([]);
-  const [title, setTitle] = useState(sectionTitle ?? '');
+  const [title, setTitle] = useState(sectionTitle ?? "");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [awarded, setAwarded] = useState(false);
@@ -25,23 +24,27 @@ export default function AhadithSectionScreen({ navigation, route }) {
     let cancelled = false;
     (async () => {
       if (!book || section == null || !isVercelConfigured()) {
-        setErr('Missing params or API_BASE_URL');
+        setErr("Missing params or API_BASE_URL");
         setLoading(false);
         return;
       }
       try {
-        const base = CONFIG.API_BASE_URL.replace(/\/$/, '');
+        const base = CONFIG.API_BASE_URL.replace(/\/$/, "");
         const editionEn = `eng-${book}`;
         const editionAr = `ara-${book}`;
         const [resEn, resAr] = await Promise.all([
-          fetch(`${base}/api/hadith/section?edition=${encodeURIComponent(editionEn)}&section=${encodeURIComponent(String(section))}`),
-          fetch(`${base}/api/hadith/section?edition=${encodeURIComponent(editionAr)}&section=${encodeURIComponent(String(section))}`),
+          fetch(
+            `${base}/api/hadith/section?edition=${encodeURIComponent(editionEn)}&section=${encodeURIComponent(String(section))}`,
+          ),
+          fetch(
+            `${base}/api/hadith/section?edition=${encodeURIComponent(editionAr)}&section=${encodeURIComponent(String(section))}`,
+          ),
         ]);
         const en = await resEn.json();
         const ar = resAr.ok ? await resAr.json() : null;
         if (cancelled) return;
         if (!en?.hadiths?.length) {
-          setErr('Section not found');
+          setErr("Section not found");
           setHadiths([]);
           return;
         }
@@ -50,7 +53,7 @@ export default function AhadithSectionScreen({ navigation, route }) {
         const st = en.metadata?.section?.[String(section)] ?? sectionTitle;
         if (st) setTitle(st);
       } catch (e) {
-        if (!cancelled) setErr(e?.message ?? 'Failed');
+        if (!cancelled) setErr(e?.message ?? "Failed");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -76,7 +79,7 @@ export default function AhadithSectionScreen({ navigation, route }) {
       schedulePushReadingHistory();
       if (!cancelled) {
         setAwarded(true);
-        award('hadith_explore');
+        award("hadith_explore");
       }
     })();
     return () => {
@@ -86,14 +89,14 @@ export default function AhadithSectionScreen({ navigation, route }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <ActivityIndicator size="large" color={COLORS.accent} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
         <Text style={styles.backTxt}>← Chapters</Text>
       </TouchableOpacity>
@@ -104,10 +107,10 @@ export default function AhadithSectionScreen({ navigation, route }) {
       {err ? <Text style={styles.err}>{err}</Text> : null}
       <ScrollView contentContainerStyle={styles.list}>
         {hadiths.map((h) => {
-          const english = splitHadithSanad(h.text, 'en');
-          const arabic = splitHadithSanad(h.textArabic, 'ar');
+          const english = splitHadithSanad(h.text, "en");
+          const arabic = splitHadithSanad(h.textArabic, "ar");
           return (
-            <View key={`${h.hadithnumber}-${h.reference?.hadith ?? ''}`} style={styles.card}>
+            <View key={`${h.hadithnumber}-${h.reference?.hadith ?? ""}`} style={styles.card}>
               <Text style={styles.num}>Hadith {h.hadithnumber}</Text>
               {arabic.sanad ? (
                 <Text style={styles.sanadAr} dir="rtl">
@@ -121,9 +124,7 @@ export default function AhadithSectionScreen({ navigation, route }) {
               ) : null}
               {english.sanad ? <Text style={styles.sanadEn}>{english.sanad}</Text> : null}
               <Text style={styles.bodyEn}>{english.body}</Text>
-              {h.grades?.length > 0 ? (
-                <Text style={styles.grade}>Grade: {h.grades.join(', ')}</Text>
-              ) : null}
+              {h.grades?.length > 0 ? <Text style={styles.grade}>Grade: {h.grades.join(", ")}</Text> : null}
             </View>
           );
         })}
@@ -136,9 +137,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   back: { paddingHorizontal: SPACING.md, paddingTop: SPACING.xs },
   backTxt: { color: COLORS.accent, fontSize: FONT_SIZE.sm },
-  title: { fontSize: FONT_SIZE.lg, fontWeight: '700', color: COLORS.text, paddingHorizontal: SPACING.md },
+  title: { fontSize: FONT_SIZE.lg, fontWeight: "700", color: COLORS.text, paddingHorizontal: SPACING.md },
   sub: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, paddingHorizontal: SPACING.md, marginBottom: SPACING.md },
-  err: { color: '#f87171', paddingHorizontal: SPACING.md },
+  err: { color: "#f87171", paddingHorizontal: SPACING.md },
   list: { padding: SPACING.md, paddingBottom: SPACING.xl * 2 },
   card: {
     backgroundColor: COLORS.card,
@@ -148,10 +149,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  num: { fontSize: FONT_SIZE.xs, fontWeight: '700', color: COLORS.accent, marginBottom: SPACING.sm },
-  sanadAr: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, textAlign: 'right', marginBottom: SPACING.xs, fontStyle: 'italic' },
-  bodyAr: { color: COLORS.text, fontSize: FONT_SIZE.md, textAlign: 'right', marginBottom: SPACING.md, lineHeight: 24 },
-  sanadEn: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginBottom: SPACING.xs, fontStyle: 'italic' },
+  num: { fontSize: FONT_SIZE.xs, fontWeight: "700", color: COLORS.accent, marginBottom: SPACING.sm },
+  sanadAr: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.sm,
+    textAlign: "right",
+    marginBottom: SPACING.xs,
+    fontStyle: "italic",
+  },
+  bodyAr: { color: COLORS.text, fontSize: FONT_SIZE.md, textAlign: "right", marginBottom: SPACING.md, lineHeight: 24 },
+  sanadEn: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginBottom: SPACING.xs, fontStyle: "italic" },
   bodyEn: { color: COLORS.text, fontSize: FONT_SIZE.sm, lineHeight: 22 },
   grade: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, marginTop: SPACING.sm },
 });

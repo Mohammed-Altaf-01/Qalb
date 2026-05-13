@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
 import { authOptions } from "@/lib/auth";
-import { apiLog } from "@/lib/logger";
 import { GAMIFICATION_SYNC_MAX_BODY_BYTES } from "@/lib/constants/gamification";
 import { normalizeGamificationState } from "@/lib/gamification";
+import { apiLog } from "@/lib/logger";
 import { verifyMobileBearerUserId } from "@/lib/mobile-jwt";
-import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { touchAppUserProfile } from "@/lib/supabase-app-user-repository";
+import { getSupabaseServiceRole } from "@/lib/supabase-server";
 
 async function resolveUserId(request) {
   const session = await getServerSession(authOptions);

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Loader2 } from "lucide-react";
 
-import { GRADES, scheduleReview } from "@/lib/spaced-repetition";
 import { toLocalDayKey } from "@/lib/local-calendar-day";
+import { GRADES, scheduleReview } from "@/lib/spaced-repetition";
 import { cn } from "@/lib/utils";
 
 const LS_HIFZ = "qalb_hifz_progress_v1";
@@ -89,7 +89,9 @@ export default function HifzClient() {
         </div>
         {audioUrl ? <audio controls className="w-full mt-2" src={audioUrl} /> : null}
 
-        <p className="text-[11px] text-muted-foreground">Grade recall after listening — spaced repetition adjusts the next due day.</p>
+        <p className="text-[11px] text-muted-foreground">
+          Grade recall after listening — spaced repetition adjusts the next due day.
+        </p>
         <div className="flex flex-wrap gap-2">
           {[
             ["Again", GRADES.AGAIN],
@@ -110,8 +112,7 @@ export default function HifzClient() {
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Next due:{" "}
-          <span className="text-foreground">{cards[key]?.scheduling?.dueDayKey ?? "—"}</span> · interval{" "}
+          Next due: <span className="text-foreground">{cards[key]?.scheduling?.dueDayKey ?? "—"}</span> · interval{" "}
           {cards[key]?.scheduling?.intervalDays ?? "—"}d · reps {cards[key]?.scheduling?.reps ?? "—"}
         </p>
       </div>

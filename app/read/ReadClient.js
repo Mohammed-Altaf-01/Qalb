@@ -1,14 +1,15 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 import {
-  Bookmark,
   BookOpen,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
-  LayoutList,
   Layers,
+  LayoutList,
   Loader2,
   MessageCircle,
   Pause,
@@ -20,19 +21,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
-import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
-import { paginationHasNextPage } from "@/lib/read-pagination";
-import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
-import { LS_READ_KEY_THEMES, LS_READING_PROGRESS_KEY } from "@/lib/qalb-storage-keys";
 import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
-import { minVerseKeyFromMapping } from "@/lib/verse-key-compare";
+import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
+import { LS_READING_PROGRESS_KEY, LS_READ_KEY_THEMES } from "@/lib/qalb-storage-keys";
+import { paginationHasNextPage } from "@/lib/read-pagination";
 import { READ_RECITERS } from "@/lib/read-reciters";
 import { cleanTranslationText } from "@/lib/translation-utils";
+import { useGamification } from "@/lib/useGamification";
 import {
   schedulePushLibraryBookmarks,
   schedulePushPreferences,
@@ -40,8 +40,8 @@ import {
   schedulePushReadingHistory,
   schedulePushReadingProgress,
 } from "@/lib/user-app-sync-bridge";
-import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
+import { minVerseKeyFromMapping } from "@/lib/verse-key-compare";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Translation catalogue
@@ -603,7 +603,11 @@ function SummaryPanel({ verses, surahId, surahName, onClose }) {
               Refresh
             </button>
           )}
-          <button type="button" onClick={onClose} className="text-muted-foreground/60 hover:text-foreground transition-colors p-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground/60 hover:text-foreground transition-colors p-1"
+          >
             <X size={15} />
           </button>
         </div>
@@ -886,7 +890,10 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   useEffect(() => {
     if (!selectedChapter) return;
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({ surahId: selectedChapter.id, translationId, updatedAt: Date.now() }));
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({ surahId: selectedChapter.id, translationId, updatedAt: Date.now() }),
+      );
       schedulePushReadingProgress();
     } catch {
       /* quota exceeded */

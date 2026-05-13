@@ -64,12 +64,12 @@ export default function BismillahHeader() {
               />
               <div className="relative w-full h-full rounded-xl overflow-hidden bg-background/60">
                 {/* Fallback only before the rotating scene is mounted */}
-                {!sceneReady && <div className="absolute inset-0 grid place-items-center text-5xl opacity-45 pointer-events-none">🕋</div>}
-                {sceneReady ? (
-                  <KaabaScene />
-                ) : (
-                  <div className="w-full h-full" />
+                {!sceneReady && (
+                  <div className="absolute inset-0 grid place-items-center text-5xl opacity-45 pointer-events-none">
+                    🕋
+                  </div>
                 )}
+                {sceneReady ? <KaabaScene /> : <div className="w-full h-full" />}
               </div>
             </div>
           </div>
@@ -96,7 +96,9 @@ export default function BismillahHeader() {
               )}
             </div>
 
-            <p className="text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-accent/80 mb-1.5">Begin with remembrance</p>
+            <p className="text-[10px] md:text-[11px] uppercase tracking-[0.16em] text-accent/80 mb-1.5">
+              Begin with remembrance
+            </p>
             <h1
               className={cn(
                 "arabic-text arabic-text-display text-gradient-gold font-bold relative text-center md:text-left",

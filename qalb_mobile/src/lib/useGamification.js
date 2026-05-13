@@ -1,21 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert } from "react-native";
+
 import {
   GAMIFICATION_REMOTE_SYNC_DEBOUNCE_MS,
   MINUTE_TICK_MS,
   TIME_SPENT_INCREMENT_MINUTES,
-} from '../constants/gamification';
-import { useAuth } from '../context/AuthContext';
-import { apiFetch } from './api-with-auth';
-import { mergeInitialGamificationSyncMobile } from './gamification-remote-sync';
-import storage, { STORAGE_KEYS } from './storage';
+} from "../constants/gamification";
+import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "./api-with-auth";
 import {
   awardTimeSpent,
   awardXP,
   defaultGamificationState,
   getLevelInfo,
   normalizeGamificationState,
-} from './gamification';
+} from "./gamification";
+import { mergeInitialGamificationSyncMobile } from "./gamification-remote-sync";
+import storage, { STORAGE_KEYS } from "./storage";
 
 export default function useGamification() {
   const { isSignedIn, hydrated } = useAuth();
@@ -26,9 +27,9 @@ export default function useGamification() {
   const flushRemote = useCallback(async (st) => {
     if (!syncEnabledRef.current) return;
     try {
-      await apiFetch('/api/user/gamification', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      await apiFetch("/api/user/gamification", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ state: st }),
       });
     } catch {
@@ -66,7 +67,7 @@ export default function useGamification() {
     }
 
     try {
-      const res = await apiFetch('/api/user/gamification');
+      const res = await apiFetch("/api/user/gamification");
       const data = await res.json();
       if (!res.ok || data.enabled !== true) {
         syncEnabledRef.current = false;
@@ -102,10 +103,7 @@ export default function useGamification() {
         void storage.set(STORAGE_KEYS.GAMIFICATION, draft);
         scheduleRemoteSave(draft);
         if ((result.newDeeds?.length ?? 0) > 0) {
-          Alert.alert(
-            'Deed earned',
-            result.newDeeds.map((d) => `${d.icon} ${d.title}`).join('\n'),
-          );
+          Alert.alert("Deed earned", result.newDeeds.map((d) => `${d.icon} ${d.title}`).join("\n"));
         }
         return draft;
       });

@@ -17,7 +17,7 @@ by connecting its wisdom to their daily life experiences.
 - All Arabic text must be accurate — use only what is provided in the conversation context.
 </RULES>`;
 
-export function buildDiscoverSystemPrompt(candidatesSection = '') {
+export function buildDiscoverSystemPrompt(candidatesSection = "") {
   return `${BASE_SYSTEM_PROMPT}
 <TASK>
 You are given a list of Quran verse candidates retrieved from the Quran Foundation API.
@@ -67,21 +67,19 @@ Return ONLY a JSON array of 3 strings: ["question 1", "question 2", "question 3"
 </OUTPUT_FORMAT>`;
 }
 
-export function buildReflectionUserMessage(verseKey, translation, tafsirSnippet = '') {
-  const tafsirContext = tafsirSnippet ? `\nTafsir context: ${tafsirSnippet}` : '';
+export function buildReflectionUserMessage(verseKey, translation, tafsirSnippet = "") {
+  const tafsirContext = tafsirSnippet ? `\nTafsir context: ${tafsirSnippet}` : "";
   return `Verse ${verseKey}: "${translation}"${tafsirContext}\n\nGenerate 3 personal reflection questions for this verse.`;
 }
 
 export function buildVersechatSystemPrompt(ctx) {
-  const tafsirSection = ctx.tafsirText
-    ? `\n\nTafsir (Ibn Kathir — excerpt):\n${ctx.tafsirText.slice(0, 800)}`
-    : '';
+  const tafsirSection = ctx.tafsirText ? `\n\nTafsir (Ibn Kathir — excerpt):\n${ctx.tafsirText.slice(0, 800)}` : "";
 
   return `${BASE_SYSTEM_PROMPT}
 
 VERSE BEING DISCUSSED
 ─────────────────────
-Reference  : ${ctx.verseKey} (${ctx.chapterName ?? ''})
+Reference  : ${ctx.verseKey} (${ctx.chapterName ?? ""})
 Arabic     : ${ctx.arabicText}
 Translation: ${ctx.translation}${tafsirSection}
 
@@ -94,9 +92,7 @@ YOUR ROLE IN THIS CONVERSATION
 }
 
 export function buildReadSummaryPrompt({ surahName, pageNumber, versesText, priorSummary }) {
-  const priorSection = priorSummary
-    ? `\n\nJourney so far (pages 1–${pageNumber - 1}):\n${priorSummary}`
-    : '';
+  const priorSection = priorSummary ? `\n\nJourney so far (pages 1–${pageNumber - 1}):\n${priorSummary}` : "";
 
   return `
 <ROLE>
@@ -121,7 +117,7 @@ Write a concise, warm summary in this exact format:
 
 **Reflection**
 [1–2 sentences connecting these verses to the reader's daily life or heart]
-${priorSummary ? '\n**Journey So Far**\n[1 sentence — how this page deepens or expands what came before]' : ''}
+${priorSummary ? "\n**Journey So Far**\n[1 sentence — how this page deepens or expands what came before]" : ""}
 
 Keep it heartfelt and accessible. No academic jargon.
 </TASK>`;

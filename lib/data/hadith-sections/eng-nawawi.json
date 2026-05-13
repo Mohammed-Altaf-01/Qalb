@@ -1,1 +1,10 @@
-{"book":"nawawi","edition":"eng-nawawi","name":"Forty Hadith of an-Nawawi","sections":{"0":"","1":"Forty Hadith of an-Nawawi"},"section_details":{"0":{"hadithnumber_first":0,"hadithnumber_last":0,"arabicnumber_first":0,"arabicnumber_last":0},"1":{"hadithnumber_first":1,"hadithnumber_last":42,"arabicnumber_first":1,"arabicnumber_last":42}}}
+{
+  "book": "nawawi",
+  "edition": "eng-nawawi",
+  "name": "Forty Hadith of an-Nawawi",
+  "sections": { "0": "", "1": "Forty Hadith of an-Nawawi" },
+  "section_details": {
+    "0": { "hadithnumber_first": 0, "hadithnumber_last": 0, "arabicnumber_first": 0, "arabicnumber_last": 0 },
+    "1": { "hadithnumber_first": 1, "hadithnumber_last": 42, "arabicnumber_first": 1, "arabicnumber_last": 42 }
+  }
+}

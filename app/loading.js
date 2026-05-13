@@ -18,10 +18,7 @@ export default function RootLoading() {
       </div>
       <div className="space-y-1.5">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 px-3 py-3 rounded-xl border border-border/25 bg-card/20"
-          >
+          <div key={i} className="flex items-center gap-3 px-3 py-3 rounded-xl border border-border/25 bg-card/20">
             <div className="h-9 w-9 rounded-full shrink-0 animate-shimmer" />
             <div className="flex-1 min-w-0 space-y-1.5">
               <div className="h-3.5 rounded-md animate-shimmer w-[40%]" />

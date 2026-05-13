@@ -12,8 +12,7 @@
  *  - reflections (qalb_reflections)
  *  - notes (qalb_notes)
  */
-
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,70 +24,71 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { CONFIG, isVercelConfigured } from '../config';
-import { aiService } from '../lib/claude';
-import { getTextSizePreset } from '../lib/text-settings';
-import useGamification from '../lib/useGamification';
-import { QuranRepository } from '../lib/quran-api';
-import storage, { STORAGE_KEYS } from '../lib/storage';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { useFocusEffect } from "@react-navigation/native";
+
+import AudioPlayer from "../components/AudioPlayer";
+import VerseChat from "../components/VerseChat";
+import WordByWordArabic from "../components/WordByWordArabic";
+import { CONFIG, isVercelConfigured } from "../config";
+import { aiService } from "../lib/claude";
+import { QuranRepository } from "../lib/quran-api";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { getTextSizePreset } from "../lib/text-settings";
+import useGamification from "../lib/useGamification";
 import {
   schedulePushLibraryBookmarks,
   schedulePushVerseNotes,
   schedulePushVerseReflections,
-} from '../lib/user-app-sync';
-import AudioPlayer from '../components/AudioPlayer';
-import VerseChat from '../components/VerseChat';
-import WordByWordArabic from '../components/WordByWordArabic';
-import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from '../theme';
+} from "../lib/user-app-sync";
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SHADOW, SPACING } from "../theme";
 
-const TABS = ['Overview', 'Tafsir', 'Reflect', 'Chat'];
+const TABS = ["Overview", "Tafsir", "Reflect", "Chat"];
 
 const TAFSIRS = [
-  { id: 169, name: 'Ibn Kathir', lang: 'EN' },
-  { id: 168, name: "Ma'arif al-Qur'an", lang: 'EN' },
-  { id: 817, name: 'Tazkirul Quran', lang: 'EN' },
-  { id: 160, name: 'Ibn Kathir', lang: 'UR' },
-  { id: 159, name: 'Bayan ul Quran', lang: 'UR' },
-  { id: 157, name: 'Fi Zilal al-Quran', lang: 'UR' },
-  { id: 14, name: 'Ibn Kathir', lang: 'AR' },
-  { id: 91, name: "Al-Sa'di", lang: 'AR' },
+  { id: 169, name: "Ibn Kathir", lang: "EN" },
+  { id: 168, name: "Ma'arif al-Qur'an", lang: "EN" },
+  { id: 817, name: "Tazkirul Quran", lang: "EN" },
+  { id: 160, name: "Ibn Kathir", lang: "UR" },
+  { id: 159, name: "Bayan ul Quran", lang: "UR" },
+  { id: 157, name: "Fi Zilal al-Quran", lang: "UR" },
+  { id: 14, name: "Ibn Kathir", lang: "AR" },
+  { id: 91, name: "Al-Sa'di", lang: "AR" },
 ];
 
 const TRANSLATIONS = [
-  { id: 20, name: 'Saheeh International', lang: 'EN' },
-  { id: 22, name: 'The Clear Quran', lang: 'EN' },
-  { id: 97, name: 'Abdullah Yusuf Ali', lang: 'EN' },
-  { id: 85, name: 'Mufti Taqi Usmani', lang: 'UR' },
-  { id: 234, name: 'Dr. Farhat Hashmi', lang: 'UR' },
-  { id: 162, name: 'Turkish Diyanet', lang: 'TR' },
-  { id: 31, name: 'French Hamidullah', lang: 'FR' },
+  { id: 20, name: "Saheeh International", lang: "EN" },
+  { id: 22, name: "The Clear Quran", lang: "EN" },
+  { id: 97, name: "Abdullah Yusuf Ali", lang: "EN" },
+  { id: 85, name: "Mufti Taqi Usmani", lang: "UR" },
+  { id: 234, name: "Dr. Farhat Hashmi", lang: "UR" },
+  { id: 162, name: "Turkish Diyanet", lang: "TR" },
+  { id: 31, name: "French Hamidullah", lang: "FR" },
 ];
 
 // ── Helper: strip HTML tags ───────────────────────────────────────────────────
-function stripHtml(html = '') {
-  return html.replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+function stripHtml(html = "") {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
 }
 
 // ── Tab: Overview ─────────────────────────────────────────────────────────────
 function OverviewTab({ verse, chapterName, onTranslationChange, translationId, textPreset }) {
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [playback, setPlayback] = useState({ playing: false, progress: 0 });
-  const arabicText = verse?.text_uthmani ?? '';
-  const translation = verse?.translations?.[0]?.text
-    ? stripHtml(verse.translations[0].text)
-    : '';
+  const arabicText = verse?.text_uthmani ?? "";
+  const translation = verse?.translations?.[0]?.text ? stripHtml(verse.translations[0].text) : "";
 
   const currentTranslation = TRANSLATIONS.find((t) => t.id === translationId);
 
   return (
-    <ScrollView
-      style={styles.tabScroll}
-      contentContainerStyle={styles.tabContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
       {/* Arabic */}
       <View style={styles.arabicCard}>
         <WordByWordArabic
@@ -108,12 +108,9 @@ function OverviewTab({ verse, chapterName, onTranslationChange, translationId, t
       {/* Translation header */}
       <View style={styles.translationHeader}>
         <Text style={styles.translationLabel}>Translation</Text>
-        <TouchableOpacity
-          style={styles.translationPickerBtn}
-          onPress={() => setShowTranslationPicker((v) => !v)}
-        >
+        <TouchableOpacity style={styles.translationPickerBtn} onPress={() => setShowTranslationPicker((v) => !v)}>
           <Text style={styles.translationPickerText}>
-            {currentTranslation?.name ?? 'Saheeh Int.'} · {currentTranslation?.lang ?? 'EN'} ▾
+            {currentTranslation?.name ?? "Saheeh Int."} · {currentTranslation?.lang ?? "EN"} ▾
           </Text>
         </TouchableOpacity>
       </View>
@@ -130,9 +127,7 @@ function OverviewTab({ verse, chapterName, onTranslationChange, translationId, t
                 setShowTranslationPicker(false);
               }}
             >
-              <Text style={[styles.pickerLang, t.id === translationId && styles.pickerLangActive]}>
-                {t.lang}
-              </Text>
+              <Text style={[styles.pickerLang, t.id === translationId && styles.pickerLangActive]}>{t.lang}</Text>
               <Text style={styles.pickerName}>{t.name}</Text>
             </TouchableOpacity>
           ))}
@@ -164,7 +159,7 @@ function OverviewTab({ verse, chapterName, onTranslationChange, translationId, t
 // ── Tab: Tafsir ───────────────────────────────────────────────────────────────
 function TafsirTab({ verseKey }) {
   const [tafsirId, setTafsirId] = useState(CONFIG.DEFAULT_TAFSIR_ID);
-  const [tafsirText, setTafsirText] = useState('');
+  const [tafsirText, setTafsirText] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -175,13 +170,13 @@ function TafsirTab({ verseKey }) {
 
   const loadTafsir = async () => {
     setLoading(true);
-    setTafsirText('');
+    setTafsirText("");
     try {
       const data = await QuranRepository.getTafsirByVerse(verseKey, tafsirId);
-      const raw = data?.tafsir?.text ?? data?.tafsirs?.[0]?.text ?? '';
+      const raw = data?.tafsir?.text ?? data?.tafsirs?.[0]?.text ?? "";
       setTafsirText(stripHtml(raw));
     } catch {
-      setTafsirText('Tafsir unavailable for this verse.');
+      setTafsirText("Tafsir unavailable for this verse.");
     } finally {
       setLoading(false);
     }
@@ -190,20 +185,13 @@ function TafsirTab({ verseKey }) {
   const current = TAFSIRS.find((t) => t.id === tafsirId);
 
   return (
-    <ScrollView
-      style={styles.tabScroll}
-      contentContainerStyle={styles.tabContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
       {/* Tafsir selector */}
-      <TouchableOpacity
-        style={styles.selectorBtn}
-        onPress={() => setShowPicker((v) => !v)}
-      >
+      <TouchableOpacity style={styles.selectorBtn} onPress={() => setShowPicker((v) => !v)}>
         <View>
           <Text style={styles.selectorLabel}>Tafsir Source</Text>
           <Text style={styles.selectorValue}>
-            {current?.name ?? 'Ibn Kathir'} · {current?.lang ?? 'EN'} ▾
+            {current?.name ?? "Ibn Kathir"} · {current?.lang ?? "EN"} ▾
           </Text>
         </View>
       </TouchableOpacity>
@@ -214,11 +202,13 @@ function TafsirTab({ verseKey }) {
             <TouchableOpacity
               key={t.id}
               style={[styles.pickerOption, t.id === tafsirId && styles.pickerOptionActive]}
-              onPress={() => { setTafsirId(t.id); setShowPicker(false); setExpanded(false); }}
+              onPress={() => {
+                setTafsirId(t.id);
+                setShowPicker(false);
+                setExpanded(false);
+              }}
             >
-              <Text style={[styles.pickerLang, t.id === tafsirId && styles.pickerLangActive]}>
-                {t.lang}
-              </Text>
+              <Text style={[styles.pickerLang, t.id === tafsirId && styles.pickerLangActive]}>{t.lang}</Text>
               <Text style={styles.pickerName}>{t.name}</Text>
             </TouchableOpacity>
           ))}
@@ -237,13 +227,8 @@ function TafsirTab({ verseKey }) {
             >
               {tafsirText}
             </Text>
-            <TouchableOpacity
-              style={styles.expandBtn}
-              onPress={() => setExpanded((v) => !v)}
-            >
-              <Text style={styles.expandBtnText}>
-                {expanded ? '▲ Show less' : '▼ Read more'}
-              </Text>
+            <TouchableOpacity style={styles.expandBtn} onPress={() => setExpanded((v) => !v)}>
+              <Text style={styles.expandBtnText}>{expanded ? "▲ Show less" : "▼ Read more"}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -257,7 +242,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
   const { award } = useGamification();
   const [questions, setQuestions] = useState([]);
   const [generatingQ, setGeneratingQ] = useState(false);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
   const saveTimer = useRef(null);
 
@@ -270,56 +255,49 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
     if (allQ[verseKey]) setQuestions(allQ[verseKey]);
 
     const allNotes = (await storage.get(STORAGE_KEYS.NOTES)) ?? {};
-    if (allNotes[verseKey]) setNote(allNotes[verseKey].text ?? '');
+    if (allNotes[verseKey]) setNote(allNotes[verseKey].text ?? "");
   };
 
   const generateQuestions = async () => {
     if (!isVercelConfigured()) {
-      Alert.alert(
-        'Setup Required',
-        'Configure API_BASE_URL in src/config.js to use AI reflection.',
-      );
+      Alert.alert("Setup Required", "Configure API_BASE_URL in src/config.js to use AI reflection.");
       return;
     }
     setGeneratingQ(true);
     try {
-      const arabicText = verse?.text_uthmani ?? '';
-      const translation = verse?.translations?.[0]?.text
-        ? stripHtml(verse.translations[0].text)
-        : '';
-      const q = await aiService.generateReflectionPrompts(
-        verseKey,
-        arabicText,
-        translation,
-        tafsirSnippet,
-      );
+      const arabicText = verse?.text_uthmani ?? "";
+      const translation = verse?.translations?.[0]?.text ? stripHtml(verse.translations[0].text) : "";
+      const q = await aiService.generateReflectionPrompts(verseKey, arabicText, translation, tafsirSnippet);
       setQuestions(q);
       const allQ = (await storage.get(STORAGE_KEYS.REFLECTIONS)) ?? {};
       await storage.set(STORAGE_KEYS.REFLECTIONS, { ...allQ, [verseKey]: q });
       schedulePushVerseReflections();
-      award('generate_reflection');
+      award("generate_reflection");
     } catch {
-      Alert.alert('Error', 'Could not generate questions. Please try again.');
+      Alert.alert("Error", "Could not generate questions. Please try again.");
     } finally {
       setGeneratingQ(false);
     }
   };
 
-  const handleNoteChange = useCallback(async (text) => {
-    setNote(text);
-    setNoteSaved(false);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      const allNotes = (await storage.get(STORAGE_KEYS.NOTES)) ?? {};
-      await storage.set(STORAGE_KEYS.NOTES, {
-        ...allNotes,
-        [verseKey]: { text, savedAt: Date.now() },
-      });
-      schedulePushVerseNotes();
-      award('save_note');
-      setNoteSaved(true);
-    }, 800);
-  }, [verseKey]);
+  const handleNoteChange = useCallback(
+    async (text) => {
+      setNote(text);
+      setNoteSaved(false);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(async () => {
+        const allNotes = (await storage.get(STORAGE_KEYS.NOTES)) ?? {};
+        await storage.set(STORAGE_KEYS.NOTES, {
+          ...allNotes,
+          [verseKey]: { text, savedAt: Date.now() },
+        });
+        schedulePushVerseNotes();
+        award("save_note");
+        setNoteSaved(true);
+      }, 800);
+    },
+    [verseKey],
+  );
 
   return (
     <ScrollView
@@ -355,11 +333,7 @@ function ReflectTab({ verse, tafsirSnippet, verseKey }) {
           </TouchableOpacity>
         )}
         {questions.length > 0 && (
-          <TouchableOpacity
-            style={styles.regenerateBtn}
-            onPress={generateQuestions}
-            disabled={generatingQ}
-          >
+          <TouchableOpacity style={styles.regenerateBtn} onPress={generateQuestions} disabled={generatingQ}>
             <Text style={styles.regenerateBtnText}>↺ Regenerate</Text>
           </TouchableOpacity>
         )}
@@ -391,12 +365,12 @@ export default function VerseDetailScreen({ route, navigation }) {
   const { verseKey, chapterName: initialChapterName } = route.params ?? {};
 
   const [verse, setVerse] = useState(null);
-  const [chapterName, setChapterName] = useState(initialChapterName ?? '');
+  const [chapterName, setChapterName] = useState(initialChapterName ?? "");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState("Overview");
   const [translationId, setTranslationId] = useState(CONFIG.DEFAULT_TRANSLATION_ID);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [tafsirSnippet, setTafsirSnippet] = useState('');
+  const [tafsirSnippet, setTafsirSnippet] = useState("");
   const [textPreset, setTextPreset] = useState({ arabic: 1, body: 1 });
 
   useEffect(() => {
@@ -421,19 +395,16 @@ export default function VerseDetailScreen({ route, navigation }) {
     try {
       const [verseData, chapterData] = await Promise.all([
         QuranRepository.getVerseByKey(verseKey, { translationId }),
-        QuranRepository.getChapter(verseKey.split(':')[0]).catch(() => null),
+        QuranRepository.getChapter(verseKey.split(":")[0]).catch(() => null),
       ]);
       setVerse(verseData.verse);
-      const name =
-        chapterData?.chapter?.name_simple ??
-        chapterData?.chapter?.translated_name?.name ??
-        chapterName;
+      const name = chapterData?.chapter?.name_simple ?? chapterData?.chapter?.translated_name?.name ?? chapterName;
       if (name) setChapterName(name);
 
       // Pre-load tafsir snippet for reflect tab
       QuranRepository.getTafsirByVerse(verseKey)
         .then((data) => {
-          const raw = data?.tafsir?.text ?? '';
+          const raw = data?.tafsir?.text ?? "";
           setTafsirSnippet(stripHtml(raw).slice(0, 500));
         })
         .catch(() => {});
@@ -470,14 +441,14 @@ export default function VerseDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <ActivityIndicator size="large" color={COLORS.accent} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       {/* Sticky header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -486,13 +457,13 @@ export default function VerseDetailScreen({ route, navigation }) {
         <View style={styles.headerInfo}>
           <Text style={styles.headerKey}>{verseKey}</Text>
           {chapterName ? (
-            <Text style={styles.headerChapter} numberOfLines={1}>{chapterName}</Text>
+            <Text style={styles.headerChapter} numberOfLines={1}>
+              {chapterName}
+            </Text>
           ) : null}
         </View>
         <TouchableOpacity onPress={toggleBookmark} style={styles.bookmarkBtn}>
-          <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>
-            {isBookmarked ? '★' : '☆'}
-          </Text>
+          <Text style={[styles.bookmarkIcon, isBookmarked && styles.bookmarkActive]}>{isBookmarked ? "★" : "☆"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -504,9 +475,7 @@ export default function VerseDetailScreen({ route, navigation }) {
             style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>
-              {tab}
-            </Text>
+            <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -514,10 +483,10 @@ export default function VerseDetailScreen({ route, navigation }) {
       {/* Tab content */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={100}
       >
-        {activeTab === 'Overview' && verse && (
+        {activeTab === "Overview" && verse && (
           <OverviewTab
             verse={verse}
             chapterName={chapterName}
@@ -527,24 +496,18 @@ export default function VerseDetailScreen({ route, navigation }) {
           />
         )}
 
-        {activeTab === 'Tafsir' && (
-          <TafsirTab verseKey={verseKey} />
+        {activeTab === "Tafsir" && <TafsirTab verseKey={verseKey} />}
+
+        {activeTab === "Reflect" && verse && (
+          <ReflectTab verse={verse} tafsirSnippet={tafsirSnippet} verseKey={verseKey} />
         )}
 
-        {activeTab === 'Reflect' && verse && (
-          <ReflectTab
-            verse={verse}
-            tafsirSnippet={tafsirSnippet}
-            verseKey={verseKey}
-          />
-        )}
-
-        {activeTab === 'Chat' && verse && (
+        {activeTab === "Chat" && verse && (
           <View style={styles.chatContainer}>
             <VerseChat
               verseKey={verseKey}
-              arabicText={verse?.text_uthmani ?? ''}
-              translation={stripHtml(verse?.translations?.[0]?.text ?? '')}
+              arabicText={verse?.text_uthmani ?? ""}
+              translation={stripHtml(verse?.translations?.[0]?.text ?? "")}
               tafsirText={tafsirSnippet}
               chapterName={chapterName}
             />
@@ -560,8 +523,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
@@ -572,14 +535,14 @@ const styles = StyleSheet.create({
   backBtn: { padding: SPACING.xs },
   backIcon: { color: COLORS.text, fontSize: 22 },
   headerInfo: { flex: 1 },
-  headerKey: { color: COLORS.accent, fontSize: FONT_SIZE.md, fontWeight: '700' },
+  headerKey: { color: COLORS.accent, fontSize: FONT_SIZE.md, fontWeight: "700" },
   headerChapter: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 1 },
   bookmarkBtn: { paddingLeft: SPACING.sm },
   bookmarkIcon: { fontSize: 22, color: COLORS.textFaint },
   bookmarkActive: { color: COLORS.accent },
 
   tabBar: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: COLORS.card,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -588,13 +551,13 @@ const styles = StyleSheet.create({
   tabBtn: {
     flex: 1,
     paddingVertical: SPACING.sm,
-    alignItems: 'center',
+    alignItems: "center",
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomColor: "transparent",
   },
   tabBtnActive: { borderBottomColor: COLORS.accent },
-  tabBtnText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: '500' },
-  tabBtnTextActive: { color: COLORS.accent, fontWeight: '700' },
+  tabBtnText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: "500" },
+  tabBtnTextActive: { color: COLORS.accent, fontWeight: "700" },
 
   tabScroll: { flex: 1 },
   tabContent: { padding: SPACING.md, gap: SPACING.md, paddingBottom: SPACING.xxl },
@@ -605,23 +568,29 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    alignItems: 'center',
+    alignItems: "center",
   },
   arabic: {
     fontSize: ARABIC_TYPOGRAPHY.fontSizeDisplay,
     color: COLORS.text,
-    textAlign: 'right',
+    textAlign: "right",
     lineHeight: ARABIC_TYPOGRAPHY.lineHeightDisplay,
-    writingDirection: 'rtl',
-    width: '100%',
+    writingDirection: "rtl",
+    width: "100%",
   },
 
   translationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  translationLabel: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  translationLabel: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
   translationPickerBtn: {
     backgroundColor: COLORS.muted,
     borderRadius: RADIUS.sm,
@@ -637,18 +606,18 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pickerOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: SPACING.sm,
     gap: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   pickerOptionActive: { backgroundColor: COLORS.accentDim },
-  pickerLang: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: '700', width: 28 },
+  pickerLang: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, fontWeight: "700", width: 28 },
   pickerLangActive: { color: COLORS.accent },
   pickerName: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
 
@@ -670,8 +639,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  selectorLabel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, textTransform: 'uppercase', letterSpacing: 1 },
-  selectorValue: { color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: '600', marginTop: 2 },
+  selectorLabel: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs, textTransform: "uppercase", letterSpacing: 1 },
+  selectorValue: { color: COLORS.text, fontSize: FONT_SIZE.sm, fontWeight: "600", marginTop: 2 },
 
   tafsirCard: {
     backgroundColor: COLORS.card,
@@ -682,13 +651,13 @@ const styles = StyleSheet.create({
   },
   tafsirText: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22 },
   tafsirCollapsed: {},
-  expandBtn: { marginTop: SPACING.sm, alignSelf: 'center' },
+  expandBtn: { marginTop: SPACING.sm, alignSelf: "center" },
   expandBtnText: { color: COLORS.accent, fontSize: FONT_SIZE.xs },
 
   reflectSection: { gap: SPACING.sm },
-  reflectSectionTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  reflectSectionTitle: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: "700" },
   questionCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
@@ -699,7 +668,7 @@ const styles = StyleSheet.create({
   questionNum: {
     color: COLORS.accent,
     fontSize: FONT_SIZE.sm,
-    fontWeight: '700',
+    fontWeight: "700",
     width: 20,
   },
   questionText: { flex: 1, color: COLORS.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 22 },
@@ -708,18 +677,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentDim,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: `${COLORS.accent}40`,
   },
   generateBtnDisabled: { opacity: 0.5 },
-  generateBtnText: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: '600' },
-  regenerateBtn: { alignSelf: 'flex-start' },
+  generateBtnText: { color: COLORS.accent, fontSize: FONT_SIZE.sm, fontWeight: "600" },
+  regenerateBtn: { alignSelf: "flex-start" },
   regenerateBtnText: { color: COLORS.textFaint, fontSize: FONT_SIZE.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  row: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
 
   journalSection: { gap: SPACING.sm },
-  journalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  journalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   savedLabel: { color: COLORS.success, fontSize: FONT_SIZE.xs },
   journalInput: {
     backgroundColor: COLORS.card,
@@ -731,7 +700,7 @@ const styles = StyleSheet.create({
     minHeight: 140,
     borderWidth: 1,
     borderColor: COLORS.border,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
 
   chatContainer: {

@@ -1,20 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { CONFIG, isVercelConfigured } from '../config';
-import { useMediaPlayback } from '../context/MediaPlaybackContext';
-import useGamification from '../lib/useGamification';
-import { QuranRepository } from '../lib/quran-api';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { CONFIG, isVercelConfigured } from "../config";
+import { useMediaPlayback } from "../context/MediaPlaybackContext";
+import { QuranRepository } from "../lib/quran-api";
+import useGamification from "../lib/useGamification";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 export default function ListenScreen() {
   const { award } = useGamification();
@@ -24,18 +16,18 @@ export default function ListenScreen() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!isVercelConfigured()) {
-        setErr('Set API_BASE_URL');
+        setErr("Set API_BASE_URL");
         setLoading(false);
         return;
       }
       try {
-        const base = CONFIG.API_BASE_URL.replace(/\/$/, '');
+        const base = CONFIG.API_BASE_URL.replace(/\/$/, "");
         const [chRes, recRes] = await Promise.all([
           QuranRepository.getChapters(),
           fetch(`${base}/api/audio/reciters?language=eng`),
@@ -48,19 +40,19 @@ export default function ListenScreen() {
           .map((r) => {
             const moshaf = Array.isArray(r?.moshaf) ? r.moshaf : [];
             const preferred = moshaf.find((m) => Number(m?.moshaf_type) === 0) || moshaf[0];
-            let server = String(preferred?.server ?? '').trim();
-            if (server && !server.endsWith('/')) server = `${server}/`;
+            let server = String(preferred?.server ?? "").trim();
+            if (server && !server.endsWith("/")) server = `${server}/`;
             const surahIds = Array.from(
               new Set(
-                String(preferred?.surah_list ?? '')
-                  .split(',')
+                String(preferred?.surah_list ?? "")
+                  .split(",")
                   .map((s) => parseInt(s.trim(), 10))
                   .filter((n) => Number.isFinite(n) && n >= 1 && n <= 114),
               ),
             ).sort((a, b) => a - b);
             return {
               id: Number(r?.id),
-              name: String(r?.name ?? '').trim(),
+              name: String(r?.name ?? "").trim(),
               server,
               surahIds,
             };
@@ -70,7 +62,7 @@ export default function ListenScreen() {
         setReciters(parsed);
         if (parsed[0]) setSelectedId(parsed[0].id);
       } catch (e) {
-        if (!cancelled) setErr(e?.message ?? 'Failed to load');
+        if (!cancelled) setErr(e?.message ?? "Failed to load");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -80,7 +72,10 @@ export default function ListenScreen() {
     };
   }, []);
 
-  const selected = useMemo(() => reciters.find((r) => r.id === selectedId) ?? reciters[0] ?? null, [reciters, selectedId]);
+  const selected = useMemo(
+    () => reciters.find((r) => r.id === selectedId) ?? reciters[0] ?? null,
+    [reciters, selectedId],
+  );
 
   const playable = useMemo(() => {
     if (!selected) return [];
@@ -96,22 +91,22 @@ export default function ListenScreen() {
 
   async function playSurah(ch) {
     if (!selected) return;
-    const filename = String(ch.id).padStart(3, '0');
+    const filename = String(ch.id).padStart(3, "0");
     const url = `${selected.server}${filename}.mp3`;
     await playFromUri({ url, title: `${ch.name_simple} · ${selected.name}` });
-    award('play_audio');
+    award("play_audio");
   }
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={["top"]}>
         <ActivityIndicator size="large" color={COLORS.accent} style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <Text style={styles.title}>Listen</Text>
       <Text style={styles.sub}>Full surah MP3 by reciter</Text>
       {err ? <Text style={styles.err}>{err}</Text> : null}
@@ -174,13 +169,13 @@ export default function ListenScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: SPACING.md },
-  title: { fontSize: FONT_SIZE.xxl, fontWeight: '800', color: COLORS.text, marginTop: SPACING.sm },
+  title: { fontSize: FONT_SIZE.xxl, fontWeight: "800", color: COLORS.text, marginTop: SPACING.sm },
   sub: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginBottom: SPACING.md },
-  err: { color: '#f87171', marginBottom: SPACING.sm },
+  err: { color: "#f87171", marginBottom: SPACING.sm },
   nowBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: COLORS.card,
     padding: SPACING.sm,
     borderRadius: RADIUS.md,
@@ -189,8 +184,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   nowTxt: { flex: 1, color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
-  stopTxt: { color: COLORS.accent, fontWeight: '700', fontSize: FONT_SIZE.sm },
-  h2: { color: COLORS.accent, fontSize: FONT_SIZE.xs, fontWeight: '700', marginBottom: SPACING.xs, textTransform: 'uppercase' },
+  stopTxt: { color: COLORS.accent, fontWeight: "700", fontSize: FONT_SIZE.sm },
+  h2: {
+    color: COLORS.accent,
+    fontSize: FONT_SIZE.xs,
+    fontWeight: "700",
+    marginBottom: SPACING.xs,
+    textTransform: "uppercase",
+  },
   search: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
   },
   recChipOn: { borderColor: COLORS.accent, backgroundColor: COLORS.accentDim },
   recName: { fontSize: FONT_SIZE.xs, color: COLORS.textMuted },
-  recNameOn: { color: COLORS.accent, fontWeight: '700' },
+  recNameOn: { color: COLORS.accent, fontWeight: "700" },
   grid: { paddingBottom: SPACING.xl * 3, gap: 6 },
   tile: {
     flex: 1,
@@ -224,6 +225,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     minHeight: 72,
   },
-  tileNum: { color: COLORS.accent, fontWeight: '800', fontSize: FONT_SIZE.xs },
+  tileNum: { color: COLORS.accent, fontWeight: "800", fontSize: FONT_SIZE.xs },
   tileName: { color: COLORS.text, fontSize: FONT_SIZE.xs - 1, marginTop: 4 },
 });

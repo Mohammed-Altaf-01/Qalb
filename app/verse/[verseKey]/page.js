@@ -18,10 +18,7 @@
  */
 import { Suspense } from "react";
 
-import {
-  getInternalAppOrigin,
-  shouldDeferLoopbackSelfFetchDuringBuild,
-} from "@/lib/internal-app-url";
+import { getInternalAppOrigin, shouldDeferLoopbackSelfFetchDuringBuild } from "@/lib/internal-app-url";
 
 import VerseDetailClient from "./VerseDetailClient";
 
@@ -41,13 +38,10 @@ async function fetchVerseData(verseKey) {
     if (shouldDeferLoopbackSelfFetchDuringBuild(baseUrl)) {
       return null;
     }
-    const res = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/api/verse/by-key?key=${encodeURIComponent(verseKey)}`,
-      {
-        next: { revalidate: 3600 },
-        signal: AbortSignal.timeout(20_000),
-      },
-    );
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/verse/by-key?key=${encodeURIComponent(verseKey)}`, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(20_000),
+    });
     if (!res.ok) return null;
     return res.json();
   } catch {

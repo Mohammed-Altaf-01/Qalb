@@ -75,7 +75,8 @@ export default function KhatmClient() {
       </div>
 
       <p className="text-[11px] text-muted-foreground">
-        Toggle Madinah mushaf pages you have meaningfully covered (listening counts). Stored per device ({toLocalDayKey()}
+        Toggle Madinah mushaf pages you have meaningfully covered (listening counts). Stored per device (
+        {toLocalDayKey()}
         ).
       </p>
 

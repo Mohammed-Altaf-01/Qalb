@@ -2,34 +2,28 @@
  * Tier-1 mushaf: readable RTL continuous flow + ayah markers (not web CSS parity).
  * Tier-2: refined badges / spacing toward web mushaf polish.
  */
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { CONFIG, isVercelConfigured } from '../config';
-import { getTextSizePreset } from '../lib/text-settings';
-import { QuranRepository } from '../lib/quran-api';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { schedulePushReadingProgress } from '../lib/user-app-sync';
-import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { CONFIG, isVercelConfigured } from "../config";
+import { QuranRepository } from "../lib/quran-api";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { getTextSizePreset } from "../lib/text-settings";
+import { schedulePushReadingProgress } from "../lib/user-app-sync";
+import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 const TRANSLATIONS = [
-  { id: 20, name: 'Saheeh International', lang: 'EN' },
-  { id: 22, name: 'The Clear Quran', lang: 'EN' },
-  { id: 85, name: 'Mufti Taqi Usmani', lang: 'UR' },
-  { id: 234, name: 'Dr. Farhat Hashmi', lang: 'UR' },
+  { id: 20, name: "Saheeh International", lang: "EN" },
+  { id: 22, name: "The Clear Quran", lang: "EN" },
+  { id: 85, name: "Mufti Taqi Usmani", lang: "UR" },
+  { id: 234, name: "Dr. Farhat Hashmi", lang: "UR" },
 ];
 
-function stripEndMarker(t = '') {
-  return String(t).replace(/\u06dd[\d\u0660-\u0669]+\u06dd/g, '').trim();
+function stripEndMarker(t = "") {
+  return String(t)
+    .replace(/\u06dd[\d\u0660-\u0669]+\u06dd/g, "")
+    .trim();
 }
 
 export default function MushafPageReader({ navigation, onBack, initialPage = 1 }) {
@@ -51,7 +45,7 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
 
   const load = useCallback(async () => {
     if (!isVercelConfigured()) {
-      setErr('Set API_BASE_URL for mushaf pages.');
+      setErr("Set API_BASE_URL for mushaf pages.");
       setLoading(false);
       return;
     }
@@ -68,14 +62,14 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
           chapterId: first.chapter_id,
           verseNum: first.verse_number ?? 1,
           mushafPage: page,
-          readingLayout: 'mushaf',
+          readingLayout: "mushaf",
           translationId,
           updatedAt: Date.now(),
         });
         schedulePushReadingProgress();
       }
     } catch (e) {
-      setErr(e?.message ?? 'Failed to load page');
+      setErr(e?.message ?? "Failed to load page");
       setVerses([]);
     } finally {
       setLoading(false);
@@ -89,7 +83,7 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
   const curTrans = TRANSLATIONS.find((t) => t.id === translationId);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backIcon}>←</Text>
@@ -99,7 +93,7 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
           <Text style={styles.sub}>Page {page} / 604</Text>
         </View>
         <TouchableOpacity style={styles.pickerBtn} onPress={() => setShowTransPicker((v) => !v)}>
-          <Text style={styles.pickerTxt}>{curTrans?.lang ?? 'EN'} ▾</Text>
+          <Text style={styles.pickerTxt}>{curTrans?.lang ?? "EN"} ▾</Text>
         </TouchableOpacity>
       </View>
 
@@ -146,12 +140,12 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
           <View style={styles.flow} accessibilityRole="text">
             {verses.map((verse, idx) => {
               const key = verse.verse_key ?? String(idx);
-              const arabic = stripEndMarker(verse.text_uthmani ?? '');
+              const arabic = stripEndMarker(verse.text_uthmani ?? "");
               return (
                 <TouchableOpacity
                   key={key}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('VerseDetail', { verseKey: verse.verse_key })}
+                  onPress={() => navigation.navigate("VerseDetail", { verseKey: verse.verse_key })}
                   style={styles.verseWrap}
                 >
                   <Text
@@ -167,7 +161,7 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
                   </Text>
                   {/* Tier-2: clearer ayah badge */}
                   <View style={styles.ayahBadge}>
-                    <Text style={styles.ayahBadgeTxt}>{verse.verse_number ?? ''}</Text>
+                    <Text style={styles.ayahBadgeTxt}>{verse.verse_number ?? ""}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -182,8 +176,8 @@ export default function MushafPageReader({ navigation, onBack, initialPage = 1 }
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     gap: SPACING.sm,
@@ -191,7 +185,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: SPACING.xs },
   backIcon: { color: COLORS.text, fontSize: 22 },
   headerMid: { flex: 1 },
-  title: { color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: '700' },
+  title: { color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: "700" },
   sub: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: 2 },
   pickerBtn: {
     backgroundColor: COLORS.muted,
@@ -209,22 +203,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: SPACING.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: SPACING.sm,
     gap: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   pickerRowOn: { backgroundColor: COLORS.accentDim },
-  pickerLang: { width: 28, fontWeight: '700', fontSize: FONT_SIZE.xs, color: COLORS.textFaint },
+  pickerLang: { width: 28, fontWeight: "700", fontSize: FONT_SIZE.xs, color: COLORS.textFaint },
   pickerName: { fontSize: FONT_SIZE.xs, color: COLORS.textMuted },
   pageNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
   },
@@ -238,27 +232,27 @@ const styles = StyleSheet.create({
   },
   navBtnOff: { opacity: 0.35 },
   navBtnTxt: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
-  err: { color: '#f87171', paddingHorizontal: SPACING.md, marginBottom: SPACING.sm },
+  err: { color: "#f87171", paddingHorizontal: SPACING.md, marginBottom: SPACING.sm },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
   flow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    alignItems: 'flex-start',
-    writingDirection: 'rtl',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    alignItems: "flex-start",
+    writingDirection: "rtl",
   },
   verseWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-    maxWidth: '100%',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "flex-end",
+    maxWidth: "100%",
     marginBottom: 2,
   },
   arabic: {
     color: COLORS.text,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   ayahBadge: {
     marginHorizontal: 4,
@@ -269,12 +263,12 @@ const styles = StyleSheet.create({
     backgroundColor: `${COLORS.accent}22`,
     borderWidth: 1,
     borderColor: `${COLORS.accent}55`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   ayahBadgeTxt: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
     color: COLORS.accent,
   },
 });

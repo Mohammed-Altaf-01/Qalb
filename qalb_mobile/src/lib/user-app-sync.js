@@ -2,7 +2,7 @@
  * Supabase-backed storage sync (parity with web lib/user-app-sync-bridge.js).
  * Pull/push via Next /api/user/app-storage/* with Bearer mobile JWT.
  */
-
+import { LS_LAST_HADITH_READS, MAX_LAST_HADITH_READS } from "../../../lib/last-hadith-reads";
 import {
   mergeBookmarksMap,
   mergeKeyThemesPayload,
@@ -12,16 +12,14 @@ import {
   mergeRecentByHref,
   mergeTimeTracking,
   mergeVerseKeyedBlob,
-} from '../../../lib/merge-user-app-storage';
-import { LS_LAST_HADITH_READS, MAX_LAST_HADITH_READS } from '../../../lib/last-hadith-reads';
-import { LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from '../../../lib/qalb-last-reads';
-import { normalizeQuranScript, parseTajweedPreference } from '../../../lib/quran-text-preferences';
-import { normalizeReadingScale } from '../../../lib/reading-scale';
-
-import { apiFetch } from './api-with-auth';
-import { getStoredMobileJwt } from './mobile-auth';
-import { emitAccountStorageSynced } from './qalb-events';
-import storage, { STORAGE_KEYS } from './storage';
+} from "../../../lib/merge-user-app-storage";
+import { LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "../../../lib/qalb-last-reads";
+import { normalizeQuranScript, parseTajweedPreference } from "../../../lib/quran-text-preferences";
+import { normalizeReadingScale } from "../../../lib/reading-scale";
+import { apiFetch } from "./api-with-auth";
+import { getStoredMobileJwt } from "./mobile-auth";
+import { emitAccountStorageSynced } from "./qalb-events";
+import storage, { STORAGE_KEYS } from "./storage";
 
 const DEBOUNCE_MS = 1800;
 const PULL_PATCH_SUPPRESS_MS = 2800;
@@ -59,8 +57,8 @@ async function patchNamespace(namespace, payload) {
   if (lastKnownCloudEnabled === false) return;
   try {
     const res = await apiFetch(`/api/user/app-storage/${namespace}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ payload }),
     });
     if (res.status === 503) lastKnownCloudEnabled = false;
@@ -71,12 +69,12 @@ async function patchNamespace(namespace, payload) {
 }
 
 async function applyPreferencesFromServer(payload) {
-  if (!payload || typeof payload !== 'object') return;
+  if (!payload || typeof payload !== "object") return;
   const rawTheme = await storage.getRaw(STORAGE_KEYS.THEME);
-  const localTheme = rawTheme === 'light' || rawTheme === 'dark' ? rawTheme : 'dark';
+  const localTheme = rawTheme === "light" || rawTheme === "dark" ? rawTheme : "dark";
   const localScale = normalizeReadingScale(await storage.get(STORAGE_KEYS.READING_SCALE));
   const recRaw = await storage.get(STORAGE_KEYS.RECITER_ID);
-  const localRec = typeof recRaw === 'number' ? recRaw : parseInt(String(recRaw ?? '7'), 10);
+  const localRec = typeof recRaw === "number" ? recRaw : parseInt(String(recRaw ?? "7"), 10);
   const localScript = normalizeQuranScript(await storage.getRaw(STORAGE_KEYS.QURAN_SCRIPT));
   const localTajweed = parseTajweedPreference(await storage.getRaw(STORAGE_KEYS.QURAN_TAJWEED));
   const merged = mergePreferencesPayload(
@@ -89,9 +87,9 @@ async function applyPreferencesFromServer(payload) {
   );
   await storage.set(STORAGE_KEYS.RECITER_ID, merged.reciterId);
   await storage.set(STORAGE_KEYS.READING_SCALE, merged.readingScale);
-  await storage.setRaw(STORAGE_KEYS.THEME, merged.theme === 'light' ? 'light' : 'dark');
+  await storage.setRaw(STORAGE_KEYS.THEME, merged.theme === "light" ? "light" : "dark");
   await storage.setRaw(STORAGE_KEYS.QURAN_SCRIPT, normalizeQuranScript(merged.quranScript));
-  await storage.setRaw(STORAGE_KEYS.QURAN_TAJWEED, merged.tajweedEnabled ? '1' : '0');
+  await storage.setRaw(STORAGE_KEYS.QURAN_TAJWEED, merged.tajweedEnabled ? "1" : "0");
 }
 
 /**
@@ -104,16 +102,16 @@ export async function pullAccountScopedStorageIntoDevice() {
 
   try {
     const [pr, pg, ph, jref, jchat, jnotes, jthemes, jgoals, prLibBm, prLibCol] = await Promise.all([
-      apiFetch('/api/user/app-storage/preferences'),
-      apiFetch('/api/user/app-storage/reading_progress'),
-      apiFetch('/api/user/app-storage/reading_history'),
-      apiFetch('/api/user/app-storage/verse_reflections'),
-      apiFetch('/api/user/app-storage/verse_chat'),
-      apiFetch('/api/user/app-storage/verse_notes'),
-      apiFetch('/api/user/app-storage/read_key_themes'),
-      apiFetch('/api/user/app-storage/goals_local'),
-      apiFetch('/api/user/app-storage/library_bookmarks'),
-      apiFetch('/api/user/app-storage/library_collections'),
+      apiFetch("/api/user/app-storage/preferences"),
+      apiFetch("/api/user/app-storage/reading_progress"),
+      apiFetch("/api/user/app-storage/reading_history"),
+      apiFetch("/api/user/app-storage/verse_reflections"),
+      apiFetch("/api/user/app-storage/verse_chat"),
+      apiFetch("/api/user/app-storage/verse_notes"),
+      apiFetch("/api/user/app-storage/read_key_themes"),
+      apiFetch("/api/user/app-storage/goals_local"),
+      apiFetch("/api/user/app-storage/library_bookmarks"),
+      apiFetch("/api/user/app-storage/library_collections"),
     ]);
 
     const jp = await pr.json();
@@ -140,7 +138,7 @@ export async function pullAccountScopedStorageIntoDevice() {
       libCol.enabled === true;
     lastKnownCloudEnabled = cloudEnabled;
 
-    if (jp.enabled === true && jp.payload && typeof jp.payload === 'object') {
+    if (jp.enabled === true && jp.payload && typeof jp.payload === "object") {
       await applyPreferencesFromServer(jp.payload);
       wrote = true;
     }
@@ -148,10 +146,10 @@ export async function pullAccountScopedStorageIntoDevice() {
     if (jg.enabled === true) {
       const localProg = await storage.get(STORAGE_KEYS.READING_PROGRESS);
       const localNorm =
-        localProg && typeof localProg === 'object' && localProg.surahId == null && localProg.chapterId != null
+        localProg && typeof localProg === "object" && localProg.surahId == null && localProg.chapterId != null
           ? { ...localProg, surahId: localProg.chapterId }
           : localProg;
-      const merged = jg.payload && typeof jg.payload === 'object' ? mergeReadingProgress(jg.payload, localNorm) : null;
+      const merged = jg.payload && typeof jg.payload === "object" ? mergeReadingProgress(jg.payload, localNorm) : null;
       if (merged) {
         await storage.set(STORAGE_KEYS.READING_PROGRESS, {
           ...merged,
@@ -162,7 +160,7 @@ export async function pullAccountScopedStorageIntoDevice() {
     }
 
     if (jh.enabled === true) {
-      const payload = jh.payload && typeof jh.payload === 'object' ? jh.payload : {};
+      const payload = jh.payload && typeof jh.payload === "object" ? jh.payload : {};
       const mergedQ = mergeRecentByHref(payload.lastQuranReads, [], MAX_QURAN_LAST_READS);
       const mergedH = mergeRecentByHref(payload.lastHadithReads, [], MAX_LAST_HADITH_READS);
       await storage.set(STORAGE_KEYS.QALB_LAST_READS, mergedQ);
@@ -170,68 +168,80 @@ export async function pullAccountScopedStorageIntoDevice() {
       wrote = true;
     }
 
-    if (vref.enabled === true && vref.payload && typeof vref.payload === 'object') {
+    if (vref.enabled === true && vref.payload && typeof vref.payload === "object") {
       const local = (await storage.get(STORAGE_KEYS.REFLECTIONS)) ?? {};
-      const merged = mergeVerseKeyedBlob(vref.payload, typeof local === 'object' && local && !Array.isArray(local) ? local : {});
+      const merged = mergeVerseKeyedBlob(
+        vref.payload,
+        typeof local === "object" && local && !Array.isArray(local) ? local : {},
+      );
       await storage.set(STORAGE_KEYS.REFLECTIONS, merged);
       wrote = true;
     }
 
-    if (vchat.enabled === true && vchat.payload && typeof vchat.payload === 'object') {
+    if (vchat.enabled === true && vchat.payload && typeof vchat.payload === "object") {
       const local = (await storage.get(STORAGE_KEYS.CHAT)) ?? {};
-      const merged = mergeVerseKeyedBlob(vchat.payload, typeof local === 'object' && local && !Array.isArray(local) ? local : {});
+      const merged = mergeVerseKeyedBlob(
+        vchat.payload,
+        typeof local === "object" && local && !Array.isArray(local) ? local : {},
+      );
       await storage.set(STORAGE_KEYS.CHAT, merged);
       wrote = true;
     }
 
-    if (vnotes.enabled === true && vnotes.payload && typeof vnotes.payload === 'object') {
+    if (vnotes.enabled === true && vnotes.payload && typeof vnotes.payload === "object") {
       const local = (await storage.get(STORAGE_KEYS.NOTES)) ?? {};
-      const merged = mergeVerseKeyedBlob(vnotes.payload, typeof local === 'object' && local && !Array.isArray(local) ? local : {});
+      const merged = mergeVerseKeyedBlob(
+        vnotes.payload,
+        typeof local === "object" && local && !Array.isArray(local) ? local : {},
+      );
       await storage.set(STORAGE_KEYS.NOTES, merged);
       wrote = true;
     }
 
-    if (kthemes.enabled === true && kthemes.payload && typeof kthemes.payload === 'object') {
+    if (kthemes.enabled === true && kthemes.payload && typeof kthemes.payload === "object") {
       const localDoc = (await storage.get(STORAGE_KEYS.READ_KEY_THEMES)) ?? { themesBySurahId: {} };
       const merged = mergeKeyThemesPayload(
         kthemes.payload,
-        typeof localDoc === 'object' && localDoc ? localDoc : { themesBySurahId: {} },
+        typeof localDoc === "object" && localDoc ? localDoc : { themesBySurahId: {} },
       );
       await storage.set(STORAGE_KEYS.READ_KEY_THEMES, merged);
       wrote = true;
     }
 
-    if (goals.enabled === true && goals.payload && typeof goals.payload === 'object') {
+    if (goals.enabled === true && goals.payload && typeof goals.payload === "object") {
       const payload = goals.payload.timeTracking;
-      if (payload && typeof payload === 'object') {
+      if (payload && typeof payload === "object") {
         const localTT = (await storage.get(STORAGE_KEYS.TIME_TRACKING)) ?? {};
-        const mergedTT = mergeTimeTracking(payload, typeof localTT === 'object' && localTT && !Array.isArray(localTT) ? localTT : {});
+        const mergedTT = mergeTimeTracking(
+          payload,
+          typeof localTT === "object" && localTT && !Array.isArray(localTT) ? localTT : {},
+        );
         await storage.set(STORAGE_KEYS.TIME_TRACKING, mergedTT);
         wrote = true;
       }
     }
 
-    if (libBm.enabled === true && libBm.payload && typeof libBm.payload === 'object') {
+    if (libBm.enabled === true && libBm.payload && typeof libBm.payload === "object") {
       const localMap = (await storage.get(STORAGE_KEYS.BOOKMARKS)) ?? {};
       const p = libBm.payload;
       const remoteMap =
-        p.bookmarks && typeof p.bookmarks === 'object' && !Array.isArray(p.bookmarks) ? p.bookmarks : {};
+        p.bookmarks && typeof p.bookmarks === "object" && !Array.isArray(p.bookmarks) ? p.bookmarks : {};
       const mergedBm = mergeBookmarksMap(
         remoteMap,
-        typeof localMap === 'object' && localMap && !Array.isArray(localMap) ? localMap : {},
+        typeof localMap === "object" && localMap && !Array.isArray(localMap) ? localMap : {},
       );
       await storage.set(STORAGE_KEYS.BOOKMARKS, mergedBm);
       wrote = true;
     }
 
-    if (libCol.enabled === true && libCol.payload && typeof libCol.payload === 'object') {
+    if (libCol.enabled === true && libCol.payload && typeof libCol.payload === "object") {
       const localDoc = (await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS)) ?? {
         collections: [],
         updatedAt: 0,
       };
       const mergedC = mergeLibraryCollectionsPayload(
         libCol.payload,
-        typeof localDoc === 'object' && localDoc ? localDoc : { collections: [], updatedAt: 0 },
+        typeof localDoc === "object" && localDoc ? localDoc : { collections: [], updatedAt: 0 },
       );
       await storage.set(STORAGE_KEYS.LIBRARY_COLLECTIONS, mergedC);
       wrote = true;
@@ -247,16 +257,16 @@ export async function pullAccountScopedStorageIntoDevice() {
 }
 
 export function schedulePushPreferences() {
-  debounce('preferences', async () => {
+  debounce("preferences", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const rawTheme = await storage.getRaw(STORAGE_KEYS.THEME);
-    const localTheme = rawTheme === 'light' ? 'light' : 'dark';
+    const localTheme = rawTheme === "light" ? "light" : "dark";
     const scale = normalizeReadingScale(await storage.get(STORAGE_KEYS.READING_SCALE));
     const recRaw = await storage.get(STORAGE_KEYS.RECITER_ID);
-    const rec = parseInt(String(recRaw ?? '7'), 10);
+    const rec = parseInt(String(recRaw ?? "7"), 10);
     const script = normalizeQuranScript(await storage.getRaw(STORAGE_KEYS.QURAN_SCRIPT));
     const tajweedEnabled = parseTajweedPreference(await storage.getRaw(STORAGE_KEYS.QURAN_TAJWEED));
-    await patchNamespace('preferences', {
+    await patchNamespace("preferences", {
       theme: localTheme,
       readingScale: scale,
       reciterId: Number.isFinite(rec) ? rec : 7,
@@ -268,12 +278,12 @@ export function schedulePushPreferences() {
 }
 
 export function schedulePushReadingProgress() {
-  debounce('reading_progress', async () => {
+  debounce("reading_progress", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const cur = await storage.get(STORAGE_KEYS.READING_PROGRESS);
     if (!cur?.surahId && !cur?.chapterId) return;
     const surahId = cur.surahId ?? cur.chapterId;
-    await patchNamespace('reading_progress', {
+    await patchNamespace("reading_progress", {
       surahId: Number(surahId),
       verseNum: cur.verseNum != null ? Number(cur.verseNum) : 1,
       translationId: cur.translationId != null ? Number(cur.translationId) : 20,
@@ -284,11 +294,11 @@ export function schedulePushReadingProgress() {
 }
 
 export function schedulePushReadingHistory() {
-  debounce('reading_history', async () => {
+  debounce("reading_history", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const lastQuranReads = (await storage.get(STORAGE_KEYS.QALB_LAST_READS)) ?? [];
     const lastHadithReads = (await storage.get(STORAGE_KEYS.LAST_HADITH_READS)) ?? [];
-    await patchNamespace('reading_history', {
+    await patchNamespace("reading_history", {
       lastQuranReads: Array.isArray(lastQuranReads) ? lastQuranReads : [],
       lastHadithReads: Array.isArray(lastHadithReads) ? lastHadithReads : [],
       updatedAt: Date.now(),
@@ -297,38 +307,38 @@ export function schedulePushReadingHistory() {
 }
 
 export function schedulePushVerseReflections() {
-  debounce('verse_reflections', async () => {
+  debounce("verse_reflections", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const blob = (await storage.get(STORAGE_KEYS.REFLECTIONS)) ?? {};
-    await patchNamespace('verse_reflections', typeof blob === 'object' && blob && !Array.isArray(blob) ? blob : {});
+    await patchNamespace("verse_reflections", typeof blob === "object" && blob && !Array.isArray(blob) ? blob : {});
   });
 }
 
 export function schedulePushVerseChat() {
-  debounce('verse_chat', async () => {
+  debounce("verse_chat", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const blob = (await storage.get(STORAGE_KEYS.CHAT)) ?? {};
-    await patchNamespace('verse_chat', typeof blob === 'object' && blob && !Array.isArray(blob) ? blob : {});
+    await patchNamespace("verse_chat", typeof blob === "object" && blob && !Array.isArray(blob) ? blob : {});
   });
 }
 
 export function schedulePushVerseNotes() {
-  debounce('verse_notes', async () => {
+  debounce("verse_notes", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const blob = (await storage.get(STORAGE_KEYS.NOTES)) ?? {};
-    await patchNamespace('verse_notes', typeof blob === 'object' && blob && !Array.isArray(blob) ? blob : {});
+    await patchNamespace("verse_notes", typeof blob === "object" && blob && !Array.isArray(blob) ? blob : {});
   });
 }
 
 export function schedulePushReadKeyThemes() {
-  debounce('read_key_themes', async () => {
+  debounce("read_key_themes", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const doc = (await storage.get(STORAGE_KEYS.READ_KEY_THEMES)) ?? { themesBySurahId: {} };
     const themesBySurahId =
-      doc && typeof doc === 'object' && doc.themesBySurahId && typeof doc.themesBySurahId === 'object'
+      doc && typeof doc === "object" && doc.themesBySurahId && typeof doc.themesBySurahId === "object"
         ? doc.themesBySurahId
         : {};
-    await patchNamespace('read_key_themes', {
+    await patchNamespace("read_key_themes", {
       themesBySurahId,
       updatedAt: Date.now(),
     });
@@ -336,39 +346,38 @@ export function schedulePushReadKeyThemes() {
 }
 
 export function schedulePushGoalsLocal() {
-  debounce('goals_local', async () => {
+  debounce("goals_local", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const timeTracking = (await storage.get(STORAGE_KEYS.TIME_TRACKING)) ?? {};
-    await patchNamespace('goals_local', {
-      timeTracking: typeof timeTracking === 'object' && timeTracking && !Array.isArray(timeTracking) ? timeTracking : {},
+    await patchNamespace("goals_local", {
+      timeTracking:
+        typeof timeTracking === "object" && timeTracking && !Array.isArray(timeTracking) ? timeTracking : {},
       updatedAt: Date.now(),
     });
   });
 }
 
 export function schedulePushLibraryBookmarks() {
-  debounce('library_bookmarks', async () => {
+  debounce("library_bookmarks", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const blob = (await storage.get(STORAGE_KEYS.BOOKMARKS)) ?? {};
-    await patchNamespace('library_bookmarks', {
-      bookmarks: typeof blob === 'object' && blob && !Array.isArray(blob) ? blob : {},
+    await patchNamespace("library_bookmarks", {
+      bookmarks: typeof blob === "object" && blob && !Array.isArray(blob) ? blob : {},
       updatedAt: Date.now(),
     });
   });
 }
 
 export function schedulePushLibraryCollections() {
-  debounce('library_collections', async () => {
+  debounce("library_collections", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
-    const doc =
-      (await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS)) ??
-      ({
-        collections: [],
-        updatedAt: 0,
-      });
-    await patchNamespace('library_collections', {
+    const doc = (await storage.get(STORAGE_KEYS.LIBRARY_COLLECTIONS)) ?? {
+      collections: [],
+      updatedAt: 0,
+    };
+    await patchNamespace("library_collections", {
       collections: Array.isArray(doc.collections) ? doc.collections : [],
-      updatedAt: typeof doc.updatedAt === 'number' ? doc.updatedAt : Date.now(),
+      updatedAt: typeof doc.updatedAt === "number" ? doc.updatedAt : Date.now(),
     });
   });
 }

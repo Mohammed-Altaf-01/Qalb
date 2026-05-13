@@ -1,43 +1,34 @@
-import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { CONFIG } from '../config';
-import { QuranRepository } from '../lib/quran-api';
-import storage, { STORAGE_KEYS } from '../lib/storage';
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from '../theme';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+
+import { CONFIG } from "../config";
+import { QuranRepository } from "../lib/quran-api";
+import storage, { STORAGE_KEYS } from "../lib/storage";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 const RECITERS = [
-  { id: 7, name: 'Mishari Alafasy' },
-  { id: 3, name: 'Abdul Rahman Al-Sudais' },
-  { id: 2, name: 'AbdulBaset (Murattal)' },
-  { id: 1, name: 'AbdulBaset (Mujawwad)' },
-  { id: 6, name: 'Mahmoud Al-Husary' },
-  { id: 10, name: 'Saud Al-Shuraym' },
+  { id: 7, name: "Mishari Alafasy" },
+  { id: 3, name: "Abdul Rahman Al-Sudais" },
+  { id: 2, name: "AbdulBaset (Murattal)" },
+  { id: 1, name: "AbdulBaset (Mujawwad)" },
+  { id: 6, name: "Mahmoud Al-Husary" },
+  { id: 10, name: "Saud Al-Shuraym" },
 ];
 
 const FALLBACK_IDS = [7, 2, 1];
 
 function fmtTime(secs) {
-  if (!secs || isNaN(secs)) return '0:00';
+  if (!secs || isNaN(secs)) return "0:00";
   const s = Math.floor(secs);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export default function AudioPlayer({
-  verseKey,
-  onPlaybackStatusChange,
-  compact = false,
-  autoPlayToken = 0,
-}) {
+export default function AudioPlayer({ verseKey, onPlaybackStatusChange, compact = false, autoPlayToken = 0 }) {
   const player = useAudioPlayer(null, { updateInterval: 120 });
   const status = useAudioPlayerStatus(player);
-  const [loadStatus, setLoadStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
+  const [loadStatus, setLoadStatus] = useState("loading"); // 'loading' | 'ready' | 'error'
   const [reciterId, setReciterId] = useState(CONFIG.DEFAULT_RECITER_ID);
   const [showPicker, setShowPicker] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
@@ -61,7 +52,7 @@ export default function AudioPlayer({
     let cancelled = false;
 
     async function loadAudio() {
-      setLoadStatus('loading');
+      setLoadStatus("loading");
 
       const tryIds = [reciterId, ...FALLBACK_IDS.filter((id) => id !== reciterId)];
       let audioUrl = null;
@@ -79,11 +70,11 @@ export default function AudioPlayer({
           if (raw) {
             const u = String(raw).trim();
             audioUrl =
-              u.startsWith('http://') || u.startsWith('https://')
+              u.startsWith("http://") || u.startsWith("https://")
                 ? u
-                : u.startsWith('//')
+                : u.startsWith("//")
                   ? `https:${u}`
-                  : `https://verses.quran.com/${u.replace(/^\/+/, '')}`;
+                  : `https://verses.quran.com/${u.replace(/^\/+/, "")}`;
             break;
           }
         } catch {}
@@ -91,7 +82,7 @@ export default function AudioPlayer({
 
       if (cancelled) return;
       if (!audioUrl) {
-        setLoadStatus('error');
+        setLoadStatus("error");
         setIsSwapping(false);
         return;
       }
@@ -100,19 +91,21 @@ export default function AudioPlayer({
         await setAudioModeAsync({ playsInSilentMode: true });
         player.replace({ uri: audioUrl });
         if (!cancelled) {
-          setLoadStatus('ready');
+          setLoadStatus("ready");
           setIsSwapping(false);
         }
       } catch {
         if (!cancelled) {
-          setLoadStatus('error');
+          setLoadStatus("error");
           setIsSwapping(false);
         }
       }
     }
 
     loadAudio();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [verseKey, reciterId]);
 
   // Seek back to start when playback finishes
@@ -123,7 +116,7 @@ export default function AudioPlayer({
   }, [status.didJustFinish]);
 
   const handlePlayPause = useCallback(() => {
-    if (loadStatus !== 'ready') return;
+    if (loadStatus !== "ready") return;
     if (status.playing) {
       player.pause();
     } else {
@@ -154,36 +147,34 @@ export default function AudioPlayer({
   useEffect(() => {
     if (!autoPlayToken || autoPlayToken === lastAutoPlayTokenRef.current) return;
     lastAutoPlayTokenRef.current = autoPlayToken;
-    if (loadStatus !== 'ready') return;
+    if (loadStatus !== "ready") return;
     player.seekTo(0);
     player.play();
   }, [autoPlayToken, loadStatus]);
 
   return (
     <View style={[styles.container, compact && styles.containerCompact]}>
-      {loadStatus === 'loading' && (
+      {loadStatus === "loading" && (
         <View style={styles.row}>
           <ActivityIndicator size="small" color={COLORS.accent} />
           <Text style={styles.loadingText}>Loading recitation…</Text>
         </View>
       )}
 
-      {loadStatus === 'error' && (
-        <Text style={styles.errorText}>Audio unavailable for this verse.</Text>
-      )}
+      {loadStatus === "error" && <Text style={styles.errorText}>Audio unavailable for this verse.</Text>}
 
-      {(loadStatus === 'ready' || isSwapping) && (
+      {(loadStatus === "ready" || isSwapping) && (
         <>
           <View style={[styles.controls, compact && styles.controlsCompact]}>
             <TouchableOpacity
               style={[styles.playBtn, compact && styles.playBtnCompact]}
               onPress={handlePlayPause}
-              disabled={isSwapping || loadStatus !== 'ready'}
+              disabled={isSwapping || loadStatus !== "ready"}
             >
               {isSwapping ? (
                 <ActivityIndicator size="small" color={COLORS.white} />
               ) : (
-                <Text style={[styles.playIcon, compact && styles.playIconCompact]}>{status.playing ? '⏸' : '▶'}</Text>
+                <Text style={[styles.playIcon, compact && styles.playIconCompact]}>{status.playing ? "⏸" : "▶"}</Text>
               )}
             </TouchableOpacity>
 
@@ -198,12 +189,9 @@ export default function AudioPlayer({
           </View>
 
           {!compact && (
-            <TouchableOpacity
-              style={styles.reciterRow}
-              onPress={() => setShowPicker((v) => !v)}
-            >
+            <TouchableOpacity style={styles.reciterRow} onPress={() => setShowPicker((v) => !v)}>
               <Text style={styles.reciterName}>
-                {currentReciter?.name ?? 'Reciter'} {'▾'}
+                {currentReciter?.name ?? "Reciter"} {"▾"}
               </Text>
             </TouchableOpacity>
           )}
@@ -231,7 +219,7 @@ export default function AudioPlayer({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: RADIUS.lg,
     padding: SPACING.sm + 4,
     borderWidth: 1,
@@ -242,10 +230,10 @@ const styles = StyleSheet.create({
     padding: SPACING.xs + 2,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingVertical: SPACING.xs,
   },
   loadingText: {
@@ -255,12 +243,12 @@ const styles = StyleSheet.create({
   errorText: {
     color: COLORS.textFaint,
     fontSize: FONT_SIZE.xs,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: SPACING.xs,
   },
   controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: SPACING.sm,
   },
   controlsCompact: {
@@ -271,8 +259,8 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   playBtnCompact: {
     width: 28,
@@ -290,9 +278,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    flexDirection: 'row',
-    overflow: 'hidden',
+    backgroundColor: "rgba(255,255,255,0.12)",
+    flexDirection: "row",
+    overflow: "hidden",
   },
   progressFill: {
     backgroundColor: COLORS.primary,
@@ -302,7 +290,7 @@ const styles = StyleSheet.create({
     color: COLORS.textFaint,
     fontSize: FONT_SIZE.xs - 1,
     minWidth: 70,
-    textAlign: 'right',
+    textAlign: "right",
   },
   timeCompact: {
     minWidth: 58,
@@ -316,8 +304,8 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
   },
   pickerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: SPACING.xs,
     paddingTop: SPACING.xs,
   },

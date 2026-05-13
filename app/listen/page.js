@@ -1,8 +1,5 @@
+import { getInternalAppOrigin, shouldDeferLoopbackSelfFetchDuringBuild } from "@/lib/internal-app-url";
 import { QuranRepository } from "@/lib/quran-api";
-import {
-  getInternalAppOrigin,
-  shouldDeferLoopbackSelfFetchDuringBuild,
-} from "@/lib/internal-app-url";
 
 import ListenClient from "./ListenClient";
 

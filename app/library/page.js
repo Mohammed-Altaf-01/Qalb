@@ -301,7 +301,8 @@ export default function LibraryPage() {
               <p className="text-4xl mb-4">🔖</p>
               <p className="font-semibold text-foreground mb-1">No bookmarks yet</p>
               <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
-                Use <span className="text-foreground/85">Bookmark</span> while reading or on a verse page to save it here.
+                Use <span className="text-foreground/85">Bookmark</span> while reading or on a verse page to save it
+                here.
               </p>
               <Link href="/discover">
                 <Button size="sm" className="text-xs bg-primary hover:bg-primary/80">

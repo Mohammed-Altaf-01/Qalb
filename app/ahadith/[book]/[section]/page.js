@@ -1,10 +1,14 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowLeft } from "lucide-react";
-
 import TrackHadithRead from "@/components/TrackHadithRead";
-import { attachArabicToHadiths, fetchHadithSection, getHadithChaptersForBook, splitHadithSanad } from "@/lib/hadith-catalog";
+import {
+  attachArabicToHadiths,
+  fetchHadithSection,
+  getHadithChaptersForBook,
+  splitHadithSanad,
+} from "@/lib/hadith-catalog";
 
 export async function generateMetadata({ params }) {
   const p = await Promise.resolve(params);
@@ -33,18 +37,11 @@ export default async function AhadithSectionPage({ params }) {
   const hadiths = attachArabicToHadiths(payloadEn.hadiths, payloadAr);
 
   const sectionTitle =
-    payloadEn.metadata?.section?.[p.section] ??
-    bookData.chapters.find((c) => c.id === p.section)?.title ??
-    "Chapter";
+    payloadEn.metadata?.section?.[p.section] ?? bookData.chapters.find((c) => c.id === p.section)?.title ?? "Chapter";
 
   return (
     <div className="pb-24 md:pb-12">
-      <TrackHadithRead
-        book={p.book}
-        section={String(p.section)}
-        bookName={bookData.name}
-        sectionTitle={sectionTitle}
-      />
+      <TrackHadithRead book={p.book} section={String(p.section)} bookName={bookData.name} sectionTitle={sectionTitle} />
       <div className="mx-auto max-w-3xl px-4 md:px-8 pt-6 md:pt-8">
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-6">
           <Link href="/" className="hover:text-foreground transition-colors">
@@ -97,7 +94,9 @@ export default async function AhadithSectionPage({ params }) {
                 ) : null}
                 {english.sanad ? <p className="text-sm text-foreground/55 mb-2 italic">{english.sanad}</p> : null}
                 <p className="reading-prose text-foreground/95">{english.body}</p>
-                {h.grades?.length > 0 && <p className="text-xs text-muted-foreground mt-2">Grade: {h.grades.join(", ")}</p>}
+                {h.grades?.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">Grade: {h.grades.join(", ")}</p>
+                )}
               </li>
             );
           })}

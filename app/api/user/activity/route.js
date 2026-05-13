@@ -2,11 +2,11 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
+import { validateActivityMetadata } from "@/lib/app-user-storage";
 import { authOptions } from "@/lib/auth";
 import { apiLog } from "@/lib/logger";
-import { validateActivityMetadata } from "@/lib/app-user-storage";
-import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { insertUserActivityEvent, listUserActivityEvents } from "@/lib/supabase-app-user-repository";
+import { getSupabaseServiceRole } from "@/lib/supabase-server";
 
 const MAX_EVENT_TYPE_LEN = 120;
 

@@ -1,7 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONT_SIZE, SPACING } from '../theme';
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-export default function LoadingSpinner({ message = 'Loading…', size = 'large', style }) {
+import { COLORS, FONT_SIZE, SPACING } from "../theme";
+
+export default function LoadingSpinner({ message = "Loading…", size = "large", style }) {
   return (
     <View style={[styles.container, style]}>
       <ActivityIndicator size={size} color={COLORS.accent} />
@@ -13,8 +14,8 @@ export default function LoadingSpinner({ message = 'Loading…', size = 'large',
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: SPACING.sm,
     backgroundColor: COLORS.background,
   },

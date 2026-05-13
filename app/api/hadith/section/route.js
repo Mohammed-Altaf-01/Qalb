@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
-import { apiLog } from "@/lib/logger";
 import { fetchHadithSection } from "@/lib/hadith-catalog";
+import { apiLog } from "@/lib/logger";
 
 export const GET = withLoggedRoute(async (request) => {
   const edition = request.nextUrl.searchParams.get("edition");

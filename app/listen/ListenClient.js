@@ -6,8 +6,8 @@ import { Headphones, Play, Search } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { getQuranAudioState, startExternalQuranAudio, subscribeQuranAudio } from "@/lib/quran-audio-player";
 import { preferredMoshafEntry } from "@/lib/mp3quran-moshaf";
+import { getQuranAudioState, startExternalQuranAudio, subscribeQuranAudio } from "@/lib/quran-audio-player";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -186,9 +186,7 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
               Surahs for <span className="text-accent font-medium">{selectedReciter?.name}</span>
             </p>
             {player.mode === "listen" && player.surahId ? (
-              <p className="text-[11px] text-muted-foreground">
-                Playing: Surah {player.surahId}
-              </p>
+              <p className="text-[11px] text-muted-foreground">Playing: Surah {player.surahId}</p>
             ) : null}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[22rem] overflow-y-auto pr-1">

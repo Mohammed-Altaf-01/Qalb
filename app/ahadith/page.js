@@ -1,13 +1,13 @@
+import { ArrowLeft, BookMarked } from "lucide-react";
 import Link from "next/link";
 
-import { ArrowLeft, BookMarked } from "lucide-react";
 import HadithBooksList from "@/components/HadithBooksList";
-
 import { listHadithBooks } from "@/lib/hadith-catalog";
 
 export const metadata = {
   title: "Read Ahadith · Qalb",
-  description: "Browse Sahih Bukhari, Muslim, Sunan an-Nasa'i, Muwatta Malik, and more — by book, chapter, and narration.",
+  description:
+    "Browse Sahih Bukhari, Muslim, Sunan an-Nasa'i, Muwatta Malik, and more — by book, chapter, and narration.",
 };
 
 export default function AhadithPage() {

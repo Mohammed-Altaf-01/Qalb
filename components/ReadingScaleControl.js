@@ -6,9 +6,9 @@ import { ALargeSmall } from "lucide-react";
 
 import {
   LS_READING_SCALE,
-  normalizeReadingScale,
-  applyReadingScaleToDocument,
   READING_SCALE_IDS,
+  applyReadingScaleToDocument,
+  normalizeReadingScale,
 } from "@/lib/reading-scale";
 import { cn } from "@/lib/utils";
 

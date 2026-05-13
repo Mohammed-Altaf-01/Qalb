@@ -3,18 +3,17 @@
  *
  * See /api/quran/chapters, /api/verse/by-chapter, /api/verse/by-key, /api/verse/audio, /api/verse/tafsir, /api/verse/by-page.
  */
-
-import { CONFIG, isVercelConfigured } from '../config';
+import { CONFIG, isVercelConfigured } from "../config";
 
 function baseUrl() {
-  return CONFIG.API_BASE_URL.replace(/\/$/, '');
+  return CONFIG.API_BASE_URL.replace(/\/$/, "");
 }
 
 async function getJson(path, init) {
   if (!isVercelConfigured()) {
-    throw new Error('Configure EXPO_PUBLIC_API_BASE_URL for Quran content');
+    throw new Error("Configure EXPO_PUBLIC_API_BASE_URL for Quran content");
   }
-  const url = `${baseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+  const url = `${baseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, init);
   if (!res.ok) {
     throw new Error(`Quran API proxy error [${res.status}] ${path}: ${res.statusText}`);
@@ -29,35 +28,29 @@ export class QuranTokenManager {
   }
 
   async getToken() {
-    throw new Error('QuranTokenManager is not used on mobile — use Next API routes');
+    throw new Error("QuranTokenManager is not used on mobile — use Next API routes");
   }
 }
 
 /** @deprecated Direct Foundation requests removed from mobile. */
 export class RequestBuilder {
   constructor() {
-    throw new Error('RequestBuilder is not used on mobile — use QuranRepository');
+    throw new Error("RequestBuilder is not used on mobile — use QuranRepository");
   }
 }
 
 export class QuranRepository {
-  static async getChapters(language = 'en') {
+  static async getChapters(language = "en") {
     return getJson(`/api/quran/chapters?language=${encodeURIComponent(language)}`);
   }
 
-  static async getChapter(chapterId, language = 'en') {
-    const id = String(chapterId).includes(':')
-      ? String(chapterId).split(':')[0]
-      : String(chapterId);
+  static async getChapter(chapterId, language = "en") {
+    const id = String(chapterId).includes(":") ? String(chapterId).split(":")[0] : String(chapterId);
     return getJson(`/api/quran/chapters/${encodeURIComponent(id)}?language=${encodeURIComponent(language)}`);
   }
 
   static async getVersesByChapter(chapterId, opts = {}) {
-    const {
-      translationId = CONFIG.DEFAULT_TRANSLATION_ID,
-      perPage = CONFIG.VERSES_PER_PAGE,
-      page = 1,
-    } = opts;
+    const { translationId = CONFIG.DEFAULT_TRANSLATION_ID, perPage = CONFIG.VERSES_PER_PAGE, page = 1 } = opts;
     const q = new URLSearchParams({
       surah: String(chapterId),
       page: String(page),

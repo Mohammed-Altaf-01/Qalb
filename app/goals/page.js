@@ -17,20 +17,19 @@
 
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CheckCircle2, Clock, Loader2, Plus, Target, Trash2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-
-import { aggregateGoalSignals, computeDerivedProgress, normalizeApiGoal } from "@/lib/goal-progress";
-import { QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
-import { useGamification } from "@/lib/useGamification";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { aggregateGoalSignals, computeDerivedProgress, normalizeApiGoal } from "@/lib/goal-progress";
+import { QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
+import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,9 +245,7 @@ export default function GoalsPage() {
       if (gr.ok) {
         const gj = await gr.json().catch(() => ({}));
         const list = Array.isArray(gj?.goals) ? gj.goals : [];
-        nextGoals = list
-          .map((row) => normalizeApiGoal(row, GOAL_TEMPLATES))
-          .filter(Boolean);
+        nextGoals = list.map((row) => normalizeApiGoal(row, GOAL_TEMPLATES)).filter(Boolean);
       }
       let events = [];
       if (ar.ok) {
@@ -444,7 +441,9 @@ export default function GoalsPage() {
             ) : null}
           </p>
           {status === "unauthenticated" ? (
-            <p className="text-[11px] text-amber-500/90 mt-1">Sign in to sync goals with your Quran Foundation account.</p>
+            <p className="text-[11px] text-amber-500/90 mt-1">
+              Sign in to sync goals with your Quran Foundation account.
+            </p>
           ) : null}
         </div>
         <Button size="sm" onClick={() => setIsAdding(!isAdding)} className="h-8 text-xs bg-primary hover:bg-primary/80">

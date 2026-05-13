@@ -10,31 +10,31 @@
  */
 
 export const COLORS = {
-  background: '#0d1a13',
-  card: '#162019',
-  cardAlt: '#1a2d1a',
-  muted: '#1a2a1d',
+  background: "#0d1a13",
+  card: "#162019",
+  cardAlt: "#1a2d1a",
+  muted: "#1a2a1d",
 
-  primary: '#3d8b5c',
-  primaryLight: '#4fa870',
-  primaryDim: 'rgba(61,139,92,0.2)',
+  primary: "#3d8b5c",
+  primaryLight: "#4fa870",
+  primaryDim: "rgba(61,139,92,0.2)",
 
-  accent: '#c4a23a',
-  accentLight: '#d4b24a',
-  accentDim: 'rgba(196,162,58,0.15)',
+  accent: "#c4a23a",
+  accentLight: "#d4b24a",
+  accentDim: "rgba(196,162,58,0.15)",
 
-  text: '#e8f5e9',
-  textMuted: '#9ab9a0',
-  textFaint: '#6b8a72',
+  text: "#e8f5e9",
+  textMuted: "#9ab9a0",
+  textFaint: "#6b8a72",
 
-  border: '#2a3d2a',
-  borderLight: '#3d5c3d',
+  border: "#2a3d2a",
+  borderLight: "#3d5c3d",
 
-  danger: '#e57373',
-  success: '#66bb6a',
-  white: '#ffffff',
-  black: '#000000',
-  overlay: 'rgba(0,0,0,0.6)',
+  danger: "#e57373",
+  success: "#66bb6a",
+  white: "#ffffff",
+  black: "#000000",
+  overlay: "rgba(0,0,0,0.6)",
 };
 
 export const SPACING = {
@@ -76,7 +76,7 @@ export const ARABIC_TYPOGRAPHY = {
 
 /** Reusable shadow style for cards */
 export const SHADOW = {
-  shadowColor: '#000',
+  shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.25,
   shadowRadius: 6,

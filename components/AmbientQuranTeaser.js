@@ -109,7 +109,9 @@ export default function AmbientQuranTeaser() {
         <div
           className={cn(
             "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px]",
-            phase === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border/45 bg-card/80",
+            phase === "error"
+              ? "border-destructive/40 bg-destructive/10 text-destructive"
+              : "border-border/45 bg-card/80",
           )}
         >
           {phase === "loading" ? (

@@ -125,15 +125,29 @@ export default function PresenceMilestones() {
       const TWENTY = 20 * 60 * 1000;
       const HOUR = 60 * 60 * 1000;
 
-      schedule(FIVE, "m5", "A few minutes with the Quran", "These moments matter. Allah sees your heart turning toward Him — keep going, even gently.");
-      schedule(TWENTY, "m20", "Beautiful consistency", "Twenty minutes of presence builds barakah in your day. May this habit draw you closer to Him.");
+      schedule(
+        FIVE,
+        "m5",
+        "A few minutes with the Quran",
+        "These moments matter. Allah sees your heart turning toward Him — keep going, even gently.",
+      );
+      schedule(
+        TWENTY,
+        "m20",
+        "Beautiful consistency",
+        "Twenty minutes of presence builds barakah in your day. May this habit draw you closer to Him.",
+      );
 
       const tHourlyAnchor = setTimeout(() => {
         let n = 0;
         const tick = () => {
           if (cancelled) return;
           n += 1;
-          show(`h${n}`, "Still here with you", "Every hour you spend seeking understanding is charity for your soul. +1 XP for your dedication.");
+          show(
+            `h${n}`,
+            "Still here with you",
+            "Every hour you spend seeking understanding is charity for your soul. +1 XP for your dedication.",
+          );
           const next = setTimeout(tick, HOUR);
           timersRef.current.push(next);
         };

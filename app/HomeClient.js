@@ -8,10 +8,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { pickLatestReadingResume } from "@/lib/continue-reading";
-import { dedupeLastHadithByHref, LS_LAST_HADITH_READS } from "@/lib/last-hadith-reads";
-import { LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
-import { dedupeLastReadsByHref, LS_QALB_LAST_READS, MAX_QURAN_LAST_READS } from "@/lib/qalb-last-reads";
+import { LS_LAST_HADITH_READS, dedupeLastHadithByHref } from "@/lib/last-hadith-reads";
 import { toLocalDayKey } from "@/lib/local-calendar-day";
+import { LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
+import { LS_QALB_LAST_READS, MAX_QURAN_LAST_READS, dedupeLastReadsByHref } from "@/lib/qalb-last-reads";
 import { useGamification } from "@/lib/useGamification";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
 
@@ -38,10 +38,7 @@ function saveLastRead(entry) {
   try {
     const existing = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
     const filtered = existing.filter((r) => r.href !== entry.href);
-    const updated = dedupeLastReadsByHref(
-      [{ ...entry, timestamp: Date.now() }, ...filtered],
-      MAX_QURAN_LAST_READS,
-    );
+    const updated = dedupeLastReadsByHref([{ ...entry, timestamp: Date.now() }, ...filtered], MAX_QURAN_LAST_READS);
     localStorage.setItem(LS_QALB_LAST_READS, JSON.stringify(updated));
     schedulePushReadingHistory();
   } catch {
@@ -175,7 +172,7 @@ function DailyLetterHomeCard() {
     try {
       const dk = typeof window !== "undefined" ? localStorage.getItem("qalb_daily_letter_day") : null;
       setDayBlocked(dk === toLocalDayKey());
-      const txt = typeof window !== "undefined" ? localStorage.getItem("qalb_daily_letter_text") ?? "" : "";
+      const txt = typeof window !== "undefined" ? (localStorage.getItem("qalb_daily_letter_text") ?? "") : "";
       if (dk === toLocalDayKey()) setBody(txt);
     } catch {
       /* ignore */
@@ -188,7 +185,10 @@ function DailyLetterHomeCard() {
     setBody("");
     try {
       const discover = JSON.parse(localStorage.getItem(LS_DISCOVER_HISTORY) ?? "[]");
-      const discoverLines = (Array.isArray(discover) ? discover : []).slice(0, 6).map((r) => r?.situationSnippet).join(" | ");
+      const discoverLines = (Array.isArray(discover) ? discover : [])
+        .slice(0, 6)
+        .map((r) => r?.situationSnippet)
+        .join(" | ");
       const bm = JSON.parse(localStorage.getItem("qalb_bookmarks") ?? "{}");
       const keys = typeof bm === "object" && bm && !Array.isArray(bm) ? Object.keys(bm).slice(0, 40).join(", ") : "";
       const reads = JSON.parse(localStorage.getItem(LS_QALB_LAST_READS) ?? "[]");
@@ -257,7 +257,9 @@ function DailyLetterHomeCard() {
           Generating…
         </div>
       ) : null}
-      {body ? <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap reading-prose">{body}</p> : null}
+      {body ? (
+        <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap reading-prose">{body}</p>
+      ) : null}
     </section>
   );
 }
@@ -319,10 +321,7 @@ export default function HomeClient({ chapters }) {
         if (!pick?.href) return;
 
         continueNudgeShownRef.current = true;
-        const title =
-          pick.kind === "quran"
-            ? "Continue the Quran"
-            : "Continue where you left off";
+        const title = pick.kind === "quran" ? "Continue the Quran" : "Continue where you left off";
         const subtitle =
           pick.kind === "quran"
             ? "Pick up your last surah and draw nearer to Allah with every verse."

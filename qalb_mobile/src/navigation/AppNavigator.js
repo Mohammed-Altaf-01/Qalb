@@ -1,23 +1,23 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import { BookOpen, Compass, Headphones, Home, RadioTower, User } from 'lucide-react-native';
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createStackNavigator } from "@react-navigation/stack";
+import { BookOpen, Compass, Headphones, Home, RadioTower, User } from "lucide-react-native";
 
-import AhadithBooksScreen from '../screens/AhadithBooksScreen';
-import AhadithChaptersScreen from '../screens/AhadithChaptersScreen';
-import AhadithSectionScreen from '../screens/AhadithSectionScreen';
-import DiscoverScreen from '../screens/DiscoverScreen';
-import HomeScreen from '../screens/HomeScreen';
-import JourneyScreen from '../screens/JourneyScreen';
-import LibraryScreen from '../screens/LibraryScreen';
-import GoalsScreen from '../screens/GoalsScreen';
-import ListenScreen from '../screens/ListenScreen';
-import LiveScreen from '../screens/LiveScreen';
-import MenuScreen from '../screens/MenuScreen';
-import ProfileScreen from '../screens/ProfileScreen';
-import ReadScreen from '../screens/ReadScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import VerseDetailScreen from '../screens/VerseDetailScreen';
-import { COLORS, FONT_SIZE } from '../theme';
+import AhadithBooksScreen from "../screens/AhadithBooksScreen";
+import AhadithChaptersScreen from "../screens/AhadithChaptersScreen";
+import AhadithSectionScreen from "../screens/AhadithSectionScreen";
+import DiscoverScreen from "../screens/DiscoverScreen";
+import GoalsScreen from "../screens/GoalsScreen";
+import HomeScreen from "../screens/HomeScreen";
+import JourneyScreen from "../screens/JourneyScreen";
+import LibraryScreen from "../screens/LibraryScreen";
+import ListenScreen from "../screens/ListenScreen";
+import LiveScreen from "../screens/LiveScreen";
+import MenuScreen from "../screens/MenuScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import ReadScreen from "../screens/ReadScreen";
+import SettingsScreen from "../screens/SettingsScreen";
+import VerseDetailScreen from "../screens/VerseDetailScreen";
+import { COLORS, FONT_SIZE } from "../theme";
 
 const Tab = createBottomTabNavigator();
 const RootStack = createStackNavigator();
@@ -35,9 +35,7 @@ const TAB_ICONS = {
 function TabIcon({ routeName, focused }) {
   const Icon = TAB_ICONS[routeName];
   if (!Icon) return null;
-  return (
-    <Icon size={22} strokeWidth={focused ? 2.35 : 1.75} color={focused ? COLORS.accent : COLORS.textFaint} />
-  );
+  return <Icon size={22} strokeWidth={focused ? 2.35 : 1.75} color={focused ? COLORS.accent : COLORS.textFaint} />;
 }
 
 function TabNavigator() {
@@ -57,7 +55,7 @@ function TabNavigator() {
         tabBarInactiveTintColor: COLORS.textFaint,
         tabBarLabelStyle: {
           fontSize: FONT_SIZE.xs - 1,
-          fontWeight: '500',
+          fontWeight: "500",
           marginTop: 2,
         },
         tabBarIcon: ({ focused }) => <TabIcon routeName={route.name} focused={focused} />,

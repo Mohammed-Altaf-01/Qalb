@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { withLoggedRoute } from "@/lib/api-route-utils";
 import { apiLog } from "@/lib/logger";
+import { normalizeLiveTvStreamUrl } from "@/lib/live-tv-stream-url";
 
 const MP3QURAN_BASE = "https://www.mp3quran.net/api/v3";
 
@@ -18,11 +19,14 @@ export const GET = withLoggedRoute(async (request) => {
     const data = await res.json();
     const channels = Array.isArray(data?.livetv)
       ? data.livetv
-          .map((c) => ({
-            id: Number(c?.id),
-            name: String(c?.name ?? "").trim(),
-            url: String(c?.url ?? "").trim(),
-          }))
+          .map((c) => {
+            const url = normalizeLiveTvStreamUrl(String(c?.url ?? "").trim());
+            return {
+              id: Number(c?.id),
+              name: String(c?.name ?? "").trim(),
+              url,
+            };
+          })
           .filter((c) => Number.isFinite(c.id) && c.name && c.url)
       : [];
     return NextResponse.json({ channels });

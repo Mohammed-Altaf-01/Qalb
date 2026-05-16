@@ -4,9 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Maximize2, RadioTower } from "lucide-react";
 
-import { onLiveRouteEnter, setLiveRouteActive, afterQuranPlaybackEnd } from "@/lib/audio-focus";
+import { afterQuranPlaybackEnd, onLiveRouteEnter, setLiveRouteActive } from "@/lib/audio-focus";
 import { attachLiveHls } from "@/lib/hls-live";
-import { defaultLiveHlsManualLevelIndex, clampLiveHlsUserLevel } from "@/lib/live-hls-level-labels";
 import {
   attachLiveDualPrewarmToContainer,
   ensureLiveDualPrewarm,
@@ -21,6 +20,7 @@ import {
   setLiveDualVideoObjectFit,
   slotForSelectedUrl,
 } from "@/lib/live-dual-prewarm";
+import { clampLiveHlsUserLevel, defaultLiveHlsManualLevelIndex } from "@/lib/live-hls-level-labels";
 import { subscribeQuranAudio } from "@/lib/quran-audio-player";
 import { cn } from "@/lib/utils";
 

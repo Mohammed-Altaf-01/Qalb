@@ -13,3 +13,9 @@ Namespaces for Supabase-backed user blobs are centralized via `lib/constants/app
 ## Mobile parity
 
 Expo consumes the Next deployment (`CONFIG.API_BASE_URL`). AsyncStorage keys mirror web `qalb_*`; gamification persists per JWT `sub`: `qalb_gamification_<userId|guest>` with legacy migrate from plain `qalb_gamification`.
+
+---
+
+## Documentation
+
+This file is the **executive summary** of layers. For product context, hackathon alignment, and setup, see [README.md](README.md). For request flows, API route inventory, sync semantics, audio arbitration, and deployment, see [docs/LOW_LEVEL_DESIGN.md](docs/LOW_LEVEL_DESIGN.md).

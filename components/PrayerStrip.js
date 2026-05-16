@@ -1,7 +1,8 @@
 "use client";
 
-import { Mic, MicOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+import { Mic, MicOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { isAdhanEnabled, schedulePrayerAdhan, setAdhanEnabled, stopPrayerAdhan } from "@/lib/prayer-adhan";
@@ -116,7 +117,11 @@ export default function PrayerStrip() {
               !adhanEnabled && !adhanPlaying && "opacity-70",
             )}
           >
-            {adhanEnabled ? <Mic size={11} strokeWidth={2} aria-hidden /> : <MicOff size={11} strokeWidth={2} aria-hidden />}
+            {adhanEnabled ? (
+              <Mic size={11} strokeWidth={2} aria-hidden />
+            ) : (
+              <MicOff size={11} strokeWidth={2} aria-hidden />
+            )}
           </button>
           <span
             role="tooltip"

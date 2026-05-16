@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Maximize2, RadioTower } from "lucide-react";
 
+import { onLiveRouteEnter, setLiveRouteActive, afterQuranPlaybackEnd } from "@/lib/audio-focus";
 import { attachLiveHls } from "@/lib/hls-live";
 import { defaultLiveHlsManualLevelIndex, clampLiveHlsUserLevel } from "@/lib/live-hls-level-labels";
 import {
   attachLiveDualPrewarmToContainer,
   ensureLiveDualPrewarm,
   getActiveLiveDualVideo,
+  getLiveDualUserMuted,
   pauseLiveDualPrewarm,
   resolveMakkahMadinahUrls,
   resumeLiveDualPrewarm,
@@ -19,6 +21,7 @@ import {
   setLiveDualVideoObjectFit,
   slotForSelectedUrl,
 } from "@/lib/live-dual-prewarm";
+import { subscribeQuranAudio } from "@/lib/quran-audio-player";
 import { cn } from "@/lib/utils";
 
 const LIVE_VIDEO_FIT_KEY = "qalb_live_video_fit";
@@ -72,6 +75,15 @@ export default function LiveClient({ channels }) {
   const channelsKey = useMemo(() => (channels ?? []).map((c) => `${c.id}:${c.url ?? ""}`).join("|"), [channels]);
 
   useEffect(() => {
+    setLiveRouteActive(true);
+    void onLiveRouteEnter();
+    return () => {
+      setLiveRouteActive(false);
+      void afterQuranPlaybackEnd();
+    };
+  }, []);
+
+  useEffect(() => {
     setLiveDualVideoObjectFit(videoFit);
     try {
       window.localStorage.setItem(LIVE_VIDEO_FIT_KEY, videoFit);
@@ -114,6 +126,21 @@ export default function LiveClient({ channels }) {
     setLiveDualPrewarmActive(slotForSelectedUrl(selected?.url));
     setLiveDualUserMuted(isMuted);
   }, [usingPrewarmPair, selected?.url, isMuted]);
+
+  /** Keep Mute button in sync when listen/radio ducks live via audio-focus */
+  useEffect(() => {
+    if (!usingPrewarmPair) return undefined;
+    return subscribeQuranAudio((player) => {
+      const quranActive =
+        (player.mode === "listen" || player.mode === "radio") &&
+        (player.status === "playing" || player.status === "paused" || player.status === "loading");
+      if (quranActive) {
+        setIsMuted(getLiveDualUserMuted());
+      } else if (player.status === "idle") {
+        setIsMuted(getLiveDualUserMuted());
+      }
+    });
+  }, [usingPrewarmPair]);
 
   useEffect(() => {
     if (usingPrewarmPair) {

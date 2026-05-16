@@ -31,18 +31,6 @@ export default function AhadithPage() {
               <span className="text-xs font-semibold uppercase tracking-wider">Hadith library</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">Read Ahadith</h1>
-            <p className="text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
-              Choose a collection, then a chapter (bab), then read the narrations. English text from the{" "}
-              <a
-                href="https://github.com/fawazahmed0/hadith-api"
-                className="text-accent hover:underline underline-offset-2"
-                target="_blank"
-                rel="noreferrer"
-              >
-                hadith-api
-              </a>{" "}
-              corpus — the same structure can later tie into bookmarks, search, and your Quran journey.
-            </p>
           </div>
         </header>
 

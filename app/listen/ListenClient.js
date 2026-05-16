@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Headphones, Play, Search } from "lucide-react";
 import Link from "next/link";
 
+import ListenPlaybackProgress from "@/components/ListenPlaybackProgress";
 import { Button } from "@/components/ui/button";
-import { preferredMoshafEntry } from "@/lib/mp3quran-moshaf";
-import { getQuranAudioState, startExternalQuranAudio, subscribeQuranAudio } from "@/lib/quran-audio-player";
+import { playListenSurah } from "@/lib/listen-playback";
+import { parseMp3QuranReciters } from "@/lib/listen-reciters";
+import { getQuranAudioState, subscribeQuranAudio } from "@/lib/quran-audio-player";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -41,45 +43,7 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
     };
   }, [needsClientReciters]);
 
-  const parsedReciters = useMemo(() => {
-    const raw = Array.isArray(reciters) ? reciters : [];
-    return raw
-      .map((r) => {
-        /** Already normalized via [/api/audio/reciters](/api/audio/reciters) */
-        if (r?.server != null && Array.isArray(r.surahIds)) {
-          let server = String(r.server ?? "").trim();
-          if (!server) return null;
-          server = server.endsWith("/") ? server : `${server}/`;
-          const surahIds = r.surahIds.filter((n) => Number.isFinite(n) && n >= 1 && n <= 114).sort((a, b) => a - b);
-          return {
-            id: Number(r?.id),
-            name: String(r?.name ?? "").trim(),
-            server,
-            surahIds,
-          };
-        }
-        const moshaf = Array.isArray(r?.moshaf) ? r.moshaf : [];
-        const preferred = preferredMoshafEntry(moshaf);
-        let server = String(preferred?.server ?? "").trim();
-        const surahIds = Array.from(
-          new Set(
-            String(preferred?.surah_list ?? "")
-              .split(",")
-              .map((s) => parseInt(s.trim(), 10))
-              .filter((n) => Number.isFinite(n) && n >= 1 && n <= 114),
-          ),
-        ).sort((a, b) => a - b);
-        server = server.endsWith("/") ? server : `${server}/`;
-        return {
-          id: Number(r?.id),
-          name: String(r?.name ?? "").trim(),
-          server,
-          surahIds,
-        };
-      })
-      .filter((r) => r && Number.isFinite(r.id) && r.name && r.server && r.surahIds.length > 0)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [reciters]);
+  const parsedReciters = useMemo(() => parseMp3QuranReciters(reciters), [reciters]);
 
   const [selectedReciterId, setSelectedReciterId] = useState(parsedReciters?.[0]?.id ?? null);
   const [reciterQuery, setReciterQuery] = useState("");
@@ -103,16 +67,18 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
 
   async function playSurah(chapter) {
     if (!selectedReciter) return;
-    const filename = String(chapter.id).padStart(3, "0");
-    await startExternalQuranAudio({
-      mode: "listen",
-      reciterName: selectedReciter.name,
+    await playListenSurah({
       surahId: chapter.id,
-      label: `${chapter.name_simple} · ${selectedReciter.name}`,
-      url: `${selectedReciter.server}${filename}.mp3`,
+      surahName: chapter.name_simple,
+      reciter: selectedReciter,
     });
     award("play_audio", { surahNumber: chapter.id, reciterId: selectedReciter.id });
   }
+
+  const playingName =
+    player.mode === "listen" && player.surahId
+      ? (chapters?.find((c) => c.id === player.surahId)?.name_simple ?? player.label?.split(" · ")[0])
+      : null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-8 py-8 pb-24 md:pb-12 space-y-8">
@@ -122,27 +88,6 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
           <span className="text-xs font-semibold uppercase tracking-wider">Listen</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">Quranic audio</h1>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-xl">
-          Pick a surah and reciter, then play the ayah you choose. Same Quran Foundation audio as Read — inspired by{" "}
-          <a
-            href="https://quranicaudio.com/"
-            className="text-accent hover:underline underline-offset-2"
-            target="_blank"
-            rel="noreferrer"
-          >
-            QuranicAudio
-          </a>{" "}
-          and{" "}
-          <a
-            href="https://quran.com/"
-            className="text-accent hover:underline underline-offset-2"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Quran.com
-          </a>
-          .
-        </p>
       </header>
 
       <div className="rounded-2xl border border-border/40 bg-card/40 p-3 md:p-4 grid gap-3 md:grid-cols-[17rem_1fr] min-h-[28rem]">
@@ -185,10 +130,11 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
             <p className="text-sm text-foreground">
               Surahs for <span className="text-accent font-medium">{selectedReciter?.name}</span>
             </p>
-            {player.mode === "listen" && player.surahId ? (
-              <p className="text-[11px] text-muted-foreground">Playing: Surah {player.surahId}</p>
+            {playingName ? (
+              <p className="text-[11px] text-muted-foreground">Playing: {playingName}</p>
             ) : null}
           </div>
+          {playingName ? <ListenPlaybackProgress className="max-w-md mb-3" /> : null}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[22rem] overflow-y-auto pr-1">
             {playableSurahs.map((chapter) => (
               <button

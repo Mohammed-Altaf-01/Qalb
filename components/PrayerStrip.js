@@ -1,13 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Mic, MicOff } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
-/** Next salah label + ETA from bundled prayer names (server returns HH:MM local). */
+import { isAdhanEnabled, schedulePrayerAdhan, setAdhanEnabled, stopPrayerAdhan } from "@/lib/prayer-adhan";
+import { buildPrayerSlots, formatPrayerTime12h, pickNextPrayer } from "@/lib/prayer-times";
+import { cn } from "@/lib/utils";
+
+const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+/** Next salah label + time; adhan at salah when tab is visible. */
 export default function PrayerStrip() {
-  const [line, setLine] = useState("");
+  const [display, setDisplay] = useState(null);
+  const [adhanPlaying, setAdhanPlaying] = useState(false);
+  const [adhanEnabled, setAdhanEnabledState] = useState(true);
+
+  useEffect(() => {
+    setAdhanEnabledState(isAdhanEnabled());
+  }, []);
+
+  const handleAdhanFire = useCallback((name) => {
+    toast("Salah time", { description: name });
+  }, []);
+
+  function handleMicClick() {
+    if (adhanPlaying) {
+      stopPrayerAdhan();
+      return;
+    }
+    const next = !adhanEnabled;
+    setAdhanEnabled(next);
+    setAdhanEnabledState(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
+    let cancelSchedule = () => {};
+
     async function load() {
       try {
         const cached = typeof window !== "undefined" ? localStorage.getItem("qalb_prayer_coords") : null;
@@ -19,52 +49,91 @@ export default function PrayerStrip() {
         const json = await res.json();
         const timings = json?.timings;
         if (!timings || typeof timings !== "object") {
-          if (!cancelled) setLine("");
+          if (!cancelled) setDisplay(null);
           return;
         }
-        const order = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
         const nowMs = Date.now();
-        /** @type {Array<{ name: string, t: number }>} */
-        const slots = [];
-        for (const name of order) {
-          const s = timings[name];
-          if (typeof s !== "string") continue;
-          const t = parseLoosePrayerToday(s);
-          if (t) slots.push({ name, t: t.getTime() });
-        }
-        slots.sort((a, b) => a.t - b.t);
-        const next = slots.find((x) => x.t > nowMs) ?? slots[0];
+        const slots = buildPrayerSlots(timings, PRAYER_ORDER);
+        const next = pickNextPrayer(slots, nowMs);
         if (!next) {
-          if (!cancelled) setLine("");
+          if (!cancelled) setDisplay(null);
           return;
         }
-        const diff = Math.max(0, next.t - nowMs);
-        const m = Math.floor(diff / 60_000);
-        if (!cancelled) setLine(`Next • ${next.name} in ${m} min`);
+
+        if (!cancelled) {
+          setDisplay({
+            name: next.name,
+            time12: formatPrayerTime12h(next.at),
+          });
+        }
+
+        cancelSchedule();
+        if (!cancelled) {
+          cancelSchedule = schedulePrayerAdhan(slots, {
+            onFire: handleAdhanFire,
+            onPlayingChange: setAdhanPlaying,
+          });
+        }
       } catch {
-        if (!cancelled) setLine("");
+        if (!cancelled) setDisplay(null);
       }
     }
+
     void load();
     const id = setInterval(load, 60_000);
     return () => {
       cancelled = true;
       clearInterval(id);
+      cancelSchedule();
     };
-  }, []);
+  }, [handleAdhanFire]);
 
-  if (!line) return null;
+  if (!display) return null;
+
+  const micTitle = adhanPlaying
+    ? "Mute azaan"
+    : adhanEnabled
+      ? `Azaan will play at ${display.name} (${display.time12})`
+      : "Azaan muted — click to turn on";
+
   return (
     <div className="mx-auto max-w-5xl px-4 md:px-8 pb-2 md:pb-1">
-      <p className="text-[10px] text-muted-foreground/90 truncate text-center md:text-start">{line}</p>
+      <p className="text-[10px] text-muted-foreground/90 flex items-center justify-center md:justify-start gap-1.5">
+        <span className="truncate">
+          {display.name} on {display.time12}
+        </span>
+        <span className="relative shrink-0 group/mic">
+          <button
+            type="button"
+            aria-label={micTitle}
+            onClick={handleMicClick}
+            className={cn(
+              "inline-flex items-center justify-center rounded-sm p-0.5",
+              "text-muted-foreground/90 hover:text-foreground hover:bg-muted/40 transition-colors",
+              adhanEnabled && !adhanPlaying && "text-accent/80",
+              adhanPlaying && "text-accent",
+              !adhanEnabled && !adhanPlaying && "opacity-70",
+            )}
+          >
+            {adhanEnabled ? <Mic size={11} strokeWidth={2} aria-hidden /> : <MicOff size={11} strokeWidth={2} aria-hidden />}
+          </button>
+          <span
+            role="tooltip"
+            className={cn(
+              "pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2",
+              "whitespace-nowrap rounded-md border border-border/60 bg-popover px-2 py-1",
+              "text-[10px] leading-tight text-popover-foreground shadow-md",
+              "invisible opacity-0",
+              "group-hover/mic:visible group-hover/mic:opacity-100",
+              "group-focus-within/mic:visible group-focus-within/mic:opacity-100",
+              "transition-opacity duration-75",
+            )}
+          >
+            {micTitle}
+          </span>
+        </span>
+      </p>
     </div>
   );
-}
-
-function parseLoosePrayerToday(hhmm) {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  if (!m) return null;
-  const d = new Date();
-  d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
-  return d;
 }

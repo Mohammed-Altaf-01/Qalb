@@ -2,6 +2,66 @@
 
 **Connect your daily life to the Quran with AI-powered discovery, reading, reflection, and habits that last beyond Ramadan.**
 
+## See Qalb in action
+
+Four moments that show how Qalb helps someone move from “I want to be closer to the Quran” to a daily habit—in one companion, not five different apps.
+
+### 1. Discover — ayat for what is on your heart
+
+**Route:** [`/discover`](https://qalb-fawn.vercel.app/discover)
+
+**Scene:** You have had a difficult week and want the Quran to speak to your situation—not sure which surah to open.
+
+1. You describe what you are going through in your own words.
+2. Qalb searches the Quran Foundation corpus, then ranks relevant ayat with a short, gentle explanation.
+3. You open any result to read Arabic, translation, and tafsir—and save the moment to your Journey.
+
+**Try it:** [Open Discover →](https://qalb-fawn.vercel.app/discover)
+
+---
+
+### 2. Read & Mushaf — build a daily reading rhythm
+
+**Route:** [`/read`](https://qalb-fawn.vercel.app/read)
+
+**Scene:** Ramadan reminded you how good it feels to read the Quran; now you want ten quiet minutes each evening, without losing your place.
+
+1. Home or Read picks up **continue reading** where you stopped last time.
+2. You read ayah-by-ayah with translation, or switch to **mushaf page mode** (pages 1–604) for a traditional layout.
+3. You tap play on any ayah to hear recitation, and your position syncs when you sign in.
+
+**Try it:** [Open Read →](https://qalb-fawn.vercel.app/read)
+
+---
+
+### 3. Understand & reflect — go deeper than a quote
+
+**Route:** [`/verse/2:255`](https://qalb-fawn.vercel.app/verse/2:255) _(example ayah)_
+
+**Scene:** Discover or Read surfaced an ayah that moved you; you want meaning, not just a screenshot to share.
+
+1. You open the verse page with Arabic, translation, and your chosen **tafsir** source.
+2. **Reflect** offers guided prompts to journal what this ayah means for you today.
+3. **Chat** lets you ask questions in context—alongside classical tafsir, never replacing a scholar.
+
+**Try it:** [Open Ayat al-Kursi →](https://qalb-fawn.vercel.app/verse/2:255)
+
+---
+
+### 4. Journey & habits — stay consistent after Ramadan
+
+**Routes:** [`/journey`](https://qalb-fawn.vercel.app/journey) · [`/goals`](https://qalb-fawn.vercel.app/goals) · [`/hifz`](https://qalb-fawn.vercel.app/hifz)
+
+**Scene:** Shawwal has begun; you do not want the Quran to become “last month’s app.”
+
+1. **Journey** gathers your discover queries, reflections, key themes, and verse chats in one timeline.
+2. You set a **goal** or keep a **streak** so small daily steps feel achievable, not overwhelming.
+3. **Hifz** and **Khatm** track memorization and completion with spaced repetition—progress follows you when signed in.
+
+**Try it:** [Open Journey →](https://qalb-fawn.vercel.app/journey)
+
+---
+
 |                           |                                                                                                           |
 | ------------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Live demo**             | https://qalb-fawn.vercel.app/                                                                             |

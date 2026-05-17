@@ -20,7 +20,10 @@ export const GET = withLoggedRoute(async (request) => {
     const channels = Array.isArray(data?.livetv)
       ? data.livetv
           .map((c) => {
-            const url = normalizeLiveTvStreamUrl(String(c?.url ?? "").trim());
+            const url = normalizeLiveTvStreamUrl(String(c?.url ?? "").trim(), {
+              id: Number(c?.id),
+              name: String(c?.name ?? "").trim(),
+            });
             return {
               id: Number(c?.id),
               name: String(c?.name ?? "").trim(),

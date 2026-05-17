@@ -299,9 +299,7 @@ function isReadNavActive(pathname) {
 }
 
 function isDiscoverNavActive(pathname) {
-  return (
-    navIsActive(pathname, "/discover") || navIsActive(pathname, "/hifz") || navIsActive(pathname, "/khatm")
-  );
+  return navIsActive(pathname, "/discover") || navIsActive(pathname, "/hifz") || navIsActive(pathname, "/khatm");
 }
 
 /**
@@ -482,7 +480,12 @@ export default function Navigation() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
               )}
             >
-              <Target size={14} strokeWidth={navIsActive(pathname, "/goals") ? 2.35 : 1.75} className="shrink-0" aria-hidden />
+              <Target
+                size={14}
+                strokeWidth={navIsActive(pathname, "/goals") ? 2.35 : 1.75}
+                className="shrink-0"
+                aria-hidden
+              />
               Goals
             </Link>
           </nav>

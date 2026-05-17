@@ -2,15 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Maximize2, RadioTower } from "lucide-react";
+import { Loader2, Maximize2, RadioTower } from "lucide-react";
 
 import { afterQuranPlaybackEnd, onLiveRouteEnter, setLiveRouteActive } from "@/lib/audio-focus";
 import { attachLiveHls } from "@/lib/hls-live";
+import {
+  LIVE_OVERLAY_STALL_NUDGE_MS,
+  LIVE_OVERLAY_STALL_SHOW_MS,
+  LIVE_OVERLAY_TIME_ADVANCE_MS,
+  hasLiveTimeAdvanced,
+  shouldShowLiveConnectingOverlay,
+} from "@/lib/live-buffering-state";
 import {
   attachLiveDualPrewarmToContainer,
   ensureLiveDualPrewarm,
   getActiveLiveDualVideo,
   getLiveDualUserMuted,
+  nudgeActiveLiveDualStream,
   pauseLiveDualPrewarm,
   resolveMakkahMadinahUrls,
   resumeLiveDualPrewarm,
@@ -47,6 +55,10 @@ function displayChannelName(name) {
 /** Default manual level: ~384p (Globecast Roku ladder index 1). */
 const DEFAULT_LIVE_HLS_LEVEL_INDEX = 1;
 
+function connectingLabel(selectedUrl) {
+  return slotForSelectedUrl(selectedUrl) === "madinah" ? "Connecting to Madina…" : "Connecting to Makkah…";
+}
+
 export default function LiveClient({ channels }) {
   const initial = useMemo(() => pickDefaultChannel(channels), [channels]);
   const [selectedId, setSelectedId] = useState(initial?.id ?? null);
@@ -54,7 +66,13 @@ export default function LiveClient({ channels }) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [videoFit] = useState(readStoredVideoFit);
   const [levelIndex, setLevelIndex] = useState(DEFAULT_LIVE_HLS_LEVEL_INDEX);
+  const [showOverlay, setShowOverlay] = useState(true);
   const dualContainerRef = useRef(null);
+  const hasRenderedFrameRef = useRef(false);
+  const lastCurrentTimeRef = useRef(0);
+  const stallStartedAtRef = useRef(0);
+  const stallShowTimerRef = useRef(null);
+  const nudgeTimerRef = useRef(null);
   const detachDualRef = useRef(() => {});
   const legacyVideoRef = useRef(null);
   const legacyHlsRef = useRef(null);
@@ -220,6 +238,121 @@ export default function LiveClient({ channels }) {
   }, [usingPrewarmPair, isPlaying, channelsKey]);
 
   useEffect(() => {
+    if (!usingPrewarmPair) {
+      hasRenderedFrameRef.current = false;
+      stallStartedAtRef.current = 0;
+      setShowOverlay(false);
+      return undefined;
+    }
+
+    const video = getActiveLiveDualVideo();
+    if (!video) {
+      hasRenderedFrameRef.current = false;
+      setShowOverlay(true);
+      return undefined;
+    }
+
+    hasRenderedFrameRef.current = false;
+    lastCurrentTimeRef.current = video.currentTime;
+    stallStartedAtRef.current = 0;
+
+    const clearStallShowTimer = () => {
+      if (stallShowTimerRef.current != null) {
+        clearTimeout(stallShowTimerRef.current);
+        stallShowTimerRef.current = null;
+      }
+    };
+
+    const clearNudgeTimer = () => {
+      if (nudgeTimerRef.current != null) {
+        clearTimeout(nudgeTimerRef.current);
+        nudgeTimerRef.current = null;
+      }
+    };
+
+    const updateOverlay = () => {
+      const stallMs = stallStartedAtRef.current > 0 ? Math.max(0, Date.now() - stallStartedAtRef.current) : 0;
+      const next = shouldShowLiveConnectingOverlay({
+        hasRenderedFrame: hasRenderedFrameRef.current,
+        stallMs,
+        isPlaying,
+        isPaused: video.paused,
+      });
+      setShowOverlay(next);
+    };
+
+    const markPlaybackProgress = () => {
+      if (video.readyState >= 2 && !video.paused) {
+        hasRenderedFrameRef.current = true;
+      }
+      if (hasLiveTimeAdvanced(lastCurrentTimeRef.current, video.currentTime)) {
+        lastCurrentTimeRef.current = video.currentTime;
+        stallStartedAtRef.current = 0;
+        clearStallShowTimer();
+        clearNudgeTimer();
+      }
+      updateOverlay();
+    };
+
+    const beginStallWatch = () => {
+      if (!isPlaying || video.paused) return;
+      if (stallStartedAtRef.current === 0) {
+        stallStartedAtRef.current = Date.now();
+      }
+      clearStallShowTimer();
+      stallShowTimerRef.current = window.setTimeout(() => {
+        stallShowTimerRef.current = null;
+        updateOverlay();
+      }, LIVE_OVERLAY_STALL_SHOW_MS);
+
+      clearNudgeTimer();
+      nudgeTimerRef.current = window.setTimeout(() => {
+        nudgeTimerRef.current = null;
+        nudgeActiveLiveDualStream();
+      }, LIVE_OVERLAY_STALL_NUDGE_MS);
+    };
+
+    const onTimeUpdate = () => markPlaybackProgress();
+
+    const onWaiting = () => beginStallWatch();
+
+    const onStalled = () => beginStallWatch();
+
+    const onPlaying = () => markPlaybackProgress();
+
+    const onCanPlay = () => markPlaybackProgress();
+
+    updateOverlay();
+    video.addEventListener("timeupdate", onTimeUpdate);
+    video.addEventListener("waiting", onWaiting);
+    video.addEventListener("stalled", onStalled);
+    video.addEventListener("playing", onPlaying);
+    video.addEventListener("canplay", onCanPlay);
+
+    const advanceCheck = window.setInterval(() => {
+      if (!hasLiveTimeAdvanced(lastCurrentTimeRef.current, video.currentTime)) {
+        if (isPlaying && !video.paused && hasRenderedFrameRef.current) {
+          if (stallStartedAtRef.current === 0) stallStartedAtRef.current = Date.now();
+        }
+      } else {
+        markPlaybackProgress();
+      }
+      updateOverlay();
+    }, LIVE_OVERLAY_TIME_ADVANCE_MS);
+
+    return () => {
+      clearStallShowTimer();
+      clearNudgeTimer();
+      window.clearInterval(advanceCheck);
+      video.removeEventListener("timeupdate", onTimeUpdate);
+      video.removeEventListener("waiting", onWaiting);
+      video.removeEventListener("stalled", onStalled);
+      video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("canplay", onCanPlay);
+    };
+  }, [usingPrewarmPair, selected?.url, isPlaying]);
+
+  useEffect(() => {
     if (usingPrewarmPair) return;
     const video = legacyVideoRef.current;
     if (!video) return;
@@ -333,6 +466,15 @@ export default function LiveClient({ channels }) {
               !usingPrewarmPair && "hidden",
             )}
           />
+          {usingPrewarmPair && showOverlay ? (
+            <div
+              className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-2 bg-black/70 text-muted-foreground pointer-events-none"
+              aria-live="polite"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-accent" aria-hidden />
+              <p className="text-sm">{connectingLabel(selected?.url)}</p>
+            </div>
+          ) : null}
           {!usingPrewarmPair ? (
             <video
               ref={legacyVideoRef}

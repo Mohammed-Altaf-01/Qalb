@@ -10,8 +10,8 @@ import { loadHifzPrefs, saveHifzPrefs } from "@/lib/hifz-prefs";
 import { buildRevisionQueue, countDueCards, mergeKeysIntoDeck } from "@/lib/hifz-queue";
 import { expandSelectionToVerseKeys } from "@/lib/hifz-selection";
 import { toLocalDayKey } from "@/lib/local-calendar-day";
-import { GRADES, scheduleReview } from "@/lib/spaced-repetition";
 import { LS_HIFZ_PROGRESS_KEY } from "@/lib/qalb-storage-keys";
+import { GRADES, scheduleReview } from "@/lib/spaced-repetition";
 import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushHifzProgress } from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 
@@ -84,21 +84,24 @@ export default function HifzClient({ chapters = [] }) {
     setRevAudioUrl("");
   }, [revKey]);
 
-  const loadAudioForKey = useCallback(async (verseKey, setter) => {
-    setter("");
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `/api/verse/audio?key=${encodeURIComponent(verseKey.trim())}&reciter=${prefs.reciterId}`,
-      );
-      const js = await res.json();
-      setter(js?.audioUrl ?? "");
-    } catch {
+  const loadAudioForKey = useCallback(
+    async (verseKey, setter) => {
       setter("");
-    } finally {
-      setLoading(false);
-    }
-  }, [prefs.reciterId]);
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/verse/audio?key=${encodeURIComponent(verseKey.trim())}&reciter=${prefs.reciterId}`,
+        );
+        const js = await res.json();
+        setter(js?.audioUrl ?? "");
+      } catch {
+        setter("");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [prefs.reciterId],
+  );
 
   const schedule = useCallback(
     (verseKey, grade, onDone) => {
@@ -246,7 +249,11 @@ export default function HifzClient({ chapters = [] }) {
 
             {prefs.mode === "ayahRange" && (
               <div className="space-y-2">
-                <SurahSelect chapters={chapters} value={prefs.surahId} onChange={(id) => updatePrefs({ surahId: id })} />
+                <SurahSelect
+                  chapters={chapters}
+                  value={prefs.surahId}
+                  onChange={(id) => updatePrefs({ surahId: id })}
+                />
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-[11px] text-muted-foreground flex flex-col gap-1">
                     From ayah
@@ -280,7 +287,9 @@ export default function HifzClient({ chapters = [] }) {
             >
               {adding ? "Adding…" : "Add to deck"}
             </button>
-            <p className="text-[10px] text-muted-foreground">Your last selection is saved automatically for next time.</p>
+            <p className="text-[10px] text-muted-foreground">
+              Your last selection is saved automatically for next time.
+            </p>
           </div>
 
           <div className="rounded-2xl border border-border/40 bg-card p-4 space-y-3">
@@ -386,7 +395,9 @@ export default function HifzClient({ chapters = [] }) {
             </>
           ) : (
             <div className="text-center py-8 space-y-3">
-              <p className="text-sm text-muted-foreground">Nothing due right now. Add verses in Practice or check back later.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing due right now. Add verses in Practice or check back later.
+              </p>
               <button
                 type="button"
                 onClick={() => setTab("practice")}

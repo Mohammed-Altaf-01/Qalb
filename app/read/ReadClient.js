@@ -27,8 +27,8 @@ import { toast } from "sonner";
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
 import { fetchWithRetry } from "@/lib/client-fetch-retry";
 import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
-import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { markKhatmPage } from "@/lib/khatm-progress";
+import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
 import { LS_READING_PROGRESS_KEY, LS_READ_KEY_THEMES } from "@/lib/qalb-storage-keys";
 import { paginationHasNextPage } from "@/lib/read-pagination";
@@ -880,11 +880,7 @@ export default function ReadClient({
     const observer = new IntersectionObserver(
       (entries) => {
         // Skip if already loading — prevents double-fire on initial mount
-        if (
-          entries[0].isIntersecting &&
-          !isLoadingRef.current &&
-          Date.now() >= loadMoreBackoffUntilRef.current
-        ) {
+        if (entries[0].isIntersecting && !isLoadingRef.current && Date.now() >= loadMoreBackoffUntilRef.current) {
           loadMore();
         }
       },

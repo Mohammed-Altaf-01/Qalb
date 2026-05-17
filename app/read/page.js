@@ -27,6 +27,16 @@ export default async function ReadPage({ searchParams }) {
   const params = await searchParams;
   const initialSurahId = params?.surah ? parseInt(params.surah, 10) : null;
   const initialStartVerse = params?.startVerse ? parseInt(params.startVerse, 10) : 1;
+  const initialLayout = params?.layout === "mushaf" ? "mushaf" : null;
+  const initialMushafPage = params?.page ? parseInt(params.page, 10) : null;
 
-  return <ReadClient chapters={chapters} initialSurahId={initialSurahId} initialStartVerse={initialStartVerse} />;
+  return (
+    <ReadClient
+      chapters={chapters}
+      initialSurahId={initialSurahId}
+      initialStartVerse={initialStartVerse}
+      initialLayout={initialLayout}
+      initialMushafPage={initialMushafPage}
+    />
+  );
 }

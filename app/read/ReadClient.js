@@ -25,8 +25,10 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
+import { fetchWithRetry } from "@/lib/client-fetch-retry";
 import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { markKhatmPage } from "@/lib/khatm-progress";
 import { LS_QALB_LAST_READS, touchReadingProgress } from "@/lib/qalb-last-reads";
 import { LS_READING_PROGRESS_KEY, LS_READ_KEY_THEMES } from "@/lib/qalb-storage-keys";
 import { paginationHasNextPage } from "@/lib/read-pagination";
@@ -639,7 +641,13 @@ function firstVerseKeyFromJuzApiRecord(jrec) {
 // Main Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ReadClient({ chapters, initialSurahId, initialStartVerse = 1 }) {
+export default function ReadClient({
+  chapters,
+  initialSurahId,
+  initialStartVerse = 1,
+  initialLayout = null,
+  initialMushafPage = null,
+}) {
   const router = useRouter();
   const { award } = useGamification();
 
@@ -670,6 +678,19 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   const versesSessionRef = useRef(0);
   const selectedChapterRef = useRef(null);
   const translationIdRef = useRef(DEFAULT_TRANSLATION_ID);
+  const versePageByKeyRef = useRef(new Map());
+
+  useEffect(() => {
+    const map = new Map();
+    for (const v of verses) {
+      const k = v?.verse_key;
+      const p = Number(v?.page_number);
+      if (typeof k === "string" && k && Number.isFinite(p) && p >= 1 && p <= 604) {
+        map.set(k, Math.floor(p));
+      }
+    }
+    versePageByKeyRef.current = map;
+  }, [verses]);
 
   // ── Audio ────────────────────────────────────────────────────────────────
   const [playingKey, setPlayingKey] = useState(null);
@@ -697,6 +718,8 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
   // ── Sentinel for infinite scroll ─────────────────────────────────────────
   const sentinelRef = useRef(null);
+  const loadMoreBackoffUntilRef = useRef(0);
+  const loadMoreRateToastAtRef = useRef(0);
 
   // ── Target verse to scroll to after initial load ─────────────────────────
   const targetVerseRef = useRef(null);
@@ -705,6 +728,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
   // ── Load more verses ──────────────────────────────────────────────────────
   const loadMore = useCallback(async () => {
     if (isLoadingRef.current || !hasMoreRef.current || !selectedChapterRef.current) return;
+    if (Date.now() < loadMoreBackoffUntilRef.current) return;
 
     const session = versesSessionRef.current;
     const chapterId = selectedChapterRef.current.id;
@@ -717,10 +741,19 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     const translation = translationIdRef.current;
 
     try {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `/api/verse/by-chapter?surah=${chapter.id}&page=${page}&perPage=${BATCH_SIZE}&translation=${translation}`,
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 429) {
+          loadMoreBackoffUntilRef.current = Date.now() + 8000;
+          if (Date.now() - loadMoreRateToastAtRef.current > 12_000) {
+            loadMoreRateToastAtRef.current = Date.now();
+            toast.message("Loading paused briefly — fetching more ayat…", { duration: 4000 });
+          }
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
 
       if (session !== versesSessionRef.current || selectedChapterRef.current?.id !== chapterId) {
@@ -762,7 +795,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     async function loadMushafPage() {
       setIsLoadingMushaf(true);
       try {
-        const res = await fetch(`/api/verse/by-page?page=${mushafPage}&translation=${translationId}`);
+        const res = await fetchWithRetry(`/api/verse/by-page?page=${mushafPage}&translation=${translationId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
@@ -847,7 +880,13 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     const observer = new IntersectionObserver(
       (entries) => {
         // Skip if already loading — prevents double-fire on initial mount
-        if (entries[0].isIntersecting && !isLoadingRef.current) loadMore();
+        if (
+          entries[0].isIntersecting &&
+          !isLoadingRef.current &&
+          Date.now() >= loadMoreBackoffUntilRef.current
+        ) {
+          loadMore();
+        }
       },
       { rootMargin: "300px" },
     );
@@ -856,9 +895,28 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     return () => observer.disconnect();
   }, [view, readingLayout, loadMore]);
 
+  // ── Mark khatm page when reading mushaf ─────────────────────────────────
+  useEffect(() => {
+    if (view !== "reading") return;
+    if (readingLayout !== "mushaf" && readingLayout !== "juz") return;
+    markKhatmPage(mushafPage);
+  }, [view, readingLayout, mushafPage]);
+
   // ── Restore last position / handle initialSurahId ────────────────────────
   useEffect(() => {
     if (!chapters?.length) return;
+
+    if (initialLayout === "mushaf" && initialMushafPage) {
+      const page = Math.min(604, Math.max(1, initialMushafPage));
+      const chapter = chapters[0];
+      if (chapter) {
+        setSelectedChapter(chapter);
+        setView("reading");
+        setReadingLayout("mushaf");
+        setMushafPage(page);
+      }
+      return;
+    }
 
     if (initialSurahId) {
       const chapter = chapters.find((c) => c.id === initialSurahId);
@@ -884,21 +942,27 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       /* ignore */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapters, initialSurahId]);
+  }, [chapters, initialSurahId, initialLayout, initialMushafPage]);
 
   // ── Save progress + track last-read verse while scrolling ────────────────
   useEffect(() => {
     if (!selectedChapter) return;
     try {
-      localStorage.setItem(
-        LS_KEY,
-        JSON.stringify({ surahId: selectedChapter.id, translationId, updatedAt: Date.now() }),
-      );
+      const payload = {
+        surahId: selectedChapter.id,
+        translationId,
+        updatedAt: Date.now(),
+      };
+      if (readingLayout === "mushaf" || readingLayout === "juz") {
+        payload.readingLayout = readingLayout;
+        payload.mushafPage = mushafPage;
+      }
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
       schedulePushReadingProgress();
     } catch {
       /* quota exceeded */
     }
-  }, [selectedChapter, translationId]);
+  }, [selectedChapter, translationId, readingLayout, mushafPage]);
 
   useEffect(() => {
     if (view !== "reading" || !selectedChapter) return;
@@ -929,6 +993,11 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
 
       const verseNum = parseInt(verseKey.split(":")[1], 10);
       if (!verseNum) return;
+
+      if (readingLayout === "verses") {
+        const pageNum = versePageByKeyRef.current.get(verseKey);
+        if (pageNum) markKhatmPage(pageNum);
+      }
 
       // Persist last-read verse so the picker can restore it
       try {
@@ -974,7 +1043,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       clearTimeout(timer);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [view, selectedChapter, translationId]);
+  }, [view, selectedChapter, translationId, readingLayout]);
 
   // ── Scroll to target verse (centered) + brief highlight ──────────────────
   useEffect(() => {
@@ -1000,6 +1069,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
     currentPageRef.current = startPage;
     hasMoreRef.current = true;
     isLoadingRef.current = false;
+    loadMoreBackoffUntilRef.current = 0;
 
     targetVerseRef.current = startVerse > 1 ? `${chapter.id}:${startVerse}` : null;
 
@@ -1103,6 +1173,7 @@ export default function ReadClient({ chapters, initialSurahId, initialStartVerse
       currentPageRef.current = 1;
       hasMoreRef.current = true;
       isLoadingRef.current = false;
+      loadMoreBackoffUntilRef.current = 0;
 
       setVerses([]);
       setHasMore(true);

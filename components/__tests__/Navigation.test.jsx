@@ -33,6 +33,7 @@ describe("Navigation", () => {
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Discover").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Goals").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Settings")).toHaveAttribute("href", "/settings");
   });
@@ -47,8 +48,15 @@ describe("Navigation", () => {
   it("marks Discover as current when pathname is /discover", async () => {
     usePathname.mockReturnValue("/discover");
     await act(async () => render(<Navigation />));
-    const discoverLink = screen.getAllByRole("link").find((l) => l.textContent === "Discover");
+    const discoverLink = screen.getAllByRole("link").find((l) => l.getAttribute("href") === "/discover");
     expect(discoverLink).toHaveAttribute("aria-current", "page");
+  });
+
+  it("marks Goals as current when pathname is /goals", async () => {
+    usePathname.mockReturnValue("/goals");
+    await act(async () => render(<Navigation />));
+    const goalsLink = screen.getAllByRole("link").find((l) => l.getAttribute("href") === "/goals");
+    expect(goalsLink).toHaveAttribute("aria-current", "page");
   });
 
   it("marks Settings as current on /settings", async () => {

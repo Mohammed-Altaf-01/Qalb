@@ -2,7 +2,18 @@
 
 import { useEffect, useId, useState } from "react";
 
-import { BookOpen, ChevronDown, Compass, Headphones, Home, LogIn, RadioTower, Settings, User } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  Compass,
+  Headphones,
+  Home,
+  LogIn,
+  RadioTower,
+  Settings,
+  Target,
+  User,
+} from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -15,9 +26,8 @@ import { getLevelInfo, loadState } from "@/lib/gamification";
 import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
 import { cn } from "@/lib/utils";
 
-/** Primary routes (Home is rendered first, before Read). Library & Goals live under Settings. */
+/** Primary routes (Home, Read, Discover menus rendered separately). */
 const PRIMARY_NAV = [
-  { label: "Discover", href: "/discover", icon: Compass },
   { label: "Listen", href: "/listen", icon: Headphones },
   { label: "Live", href: "/live", icon: RadioTower },
 ];
@@ -25,6 +35,11 @@ const PRIMARY_NAV = [
 const READ_MENU_LINKS = [
   { label: "Quran", href: "/read" },
   { label: "Hadith", href: "/ahadith" },
+];
+
+const DISCOVER_MENU_LINKS = [
+  { label: "Hifz", href: "/hifz" },
+  { label: "Khatm", href: "/khatm" },
 ];
 
 const NUDGE_SESSION_KEY = "qalb_signin_nudge_session_id";
@@ -272,15 +287,92 @@ function navIsActive(pathname, href) {
   if (href === "/settings") return pathname.startsWith("/settings");
   if (href === "/listen") return pathname === "/listen";
   if (href === "/live") return pathname === "/live";
+  if (href === "/goals") return pathname === "/goals";
+  if (href === "/discover") return pathname === "/discover";
+  if (href === "/hifz") return pathname.startsWith("/hifz");
+  if (href === "/khatm") return pathname.startsWith("/khatm");
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function isReadNavActive(pathname) {
+  return navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith");
+}
+
+function isDiscoverNavActive(pathname) {
+  return (
+    navIsActive(pathname, "/discover") || navIsActive(pathname, "/hifz") || navIsActive(pathname, "/khatm")
+  );
+}
+
+/**
+ * @param {object} props
+ * @param {string} props.label
+ * @param {import("lucide-react").LucideIcon} props.icon
+ * @param {boolean} props.open
+ * @param {() => void} props.onToggle
+ * @param {boolean} props.active
+ * @param {Array<{ label: string, href: string }>} props.links
+ * @param {string} props.pathname
+ * @param {() => void} props.onClose
+ */
+function NavDropMenu({ label, icon: Icon, open, onToggle, active, links, pathname, onClose }) {
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={cn(
+          "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap",
+          active
+            ? "text-accent bg-accent/10 font-medium"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+        )}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <Icon size={16} aria-hidden />
+        {label}
+        <ChevronDown size={14} className={cn("transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open ? (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 mt-1 min-w-36 rounded-xl border border-border/50 bg-card/95 shadow-xl p-1.5 z-50"
+          role="menu"
+        >
+          {links.map((link) => {
+            const itemActive = navIsActive(pathname, link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={onClose}
+                role="menuitem"
+                aria-current={itemActive ? "page" : undefined}
+                className={cn(
+                  "block rounded-lg px-3 py-2 text-xs transition-colors",
+                  itemActive
+                    ? "text-accent bg-accent/12"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export default function Navigation() {
   const pathname = usePathname();
   const [readMenuOpen, setReadMenuOpen] = useState(false);
+  const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
 
   useEffect(() => {
     setReadMenuOpen(false);
+    setDiscoverMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -333,51 +425,32 @@ export default function Navigation() {
               <Home size={16} strokeWidth={navIsActive(pathname, "/") ? 2.35 : 1.75} className="shrink-0" aria-hidden />
               Home
             </Link>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setReadMenuOpen((v) => !v)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors whitespace-nowrap",
-                  navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")
-                    ? "text-accent bg-accent/10 font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
-                )}
-                aria-expanded={readMenuOpen}
-                aria-haspopup="menu"
-              >
-                <BookOpen size={16} aria-hidden />
-                Read
-                <ChevronDown
-                  size={14}
-                  className={cn("transition-transform", readMenuOpen && "rotate-180")}
-                  aria-hidden
-                />
-              </button>
-              {readMenuOpen ? (
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 mt-1 min-w-36 rounded-xl border border-border/50 bg-card/95 shadow-xl p-1.5 z-50"
-                  role="menu"
-                >
-                  {READ_MENU_LINKS.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={() => setReadMenuOpen(false)}
-                      role="menuitem"
-                      className={cn(
-                        "block rounded-lg px-3 py-2 text-xs transition-colors",
-                        navIsActive(pathname, link.href)
-                          ? "text-accent bg-accent/12"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <NavDropMenu
+              label="Read"
+              icon={BookOpen}
+              open={readMenuOpen}
+              onToggle={() => {
+                setDiscoverMenuOpen(false);
+                setReadMenuOpen((v) => !v);
+              }}
+              active={isReadNavActive(pathname)}
+              links={READ_MENU_LINKS}
+              pathname={pathname}
+              onClose={() => setReadMenuOpen(false)}
+            />
+            <NavDropMenu
+              label="Discover"
+              icon={Compass}
+              open={discoverMenuOpen}
+              onToggle={() => {
+                setReadMenuOpen(false);
+                setDiscoverMenuOpen((v) => !v);
+              }}
+              active={isDiscoverNavActive(pathname)}
+              links={DISCOVER_MENU_LINKS}
+              pathname={pathname}
+              onClose={() => setDiscoverMenuOpen(false)}
+            />
             {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
               const active = navIsActive(pathname, href);
               return (
@@ -399,6 +472,19 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            <Link
+              href="/goals"
+              aria-current={navIsActive(pathname, "/goals") ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-colors whitespace-nowrap shrink-0",
+                navIsActive(pathname, "/goals")
+                  ? "text-accent bg-accent/10 font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/35",
+              )}
+            >
+              <Target size={14} strokeWidth={navIsActive(pathname, "/goals") ? 2.35 : 1.75} className="shrink-0" aria-hidden />
+              Goals
+            </Link>
           </nav>
 
           <div className="flex flex-1 md:flex-none justify-end items-center gap-1 sm:gap-2 shrink-0 min-w-0">
@@ -446,21 +532,30 @@ export default function Navigation() {
           <Link
             href="/read"
             aria-label="Read"
-            aria-current={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? "page" : undefined}
+            aria-current={isReadNavActive(pathname) ? "page" : undefined}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
-              navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")
-                ? "text-accent"
-                : "text-muted-foreground active:opacity-80",
+              isReadNavActive(pathname) ? "text-accent" : "text-muted-foreground active:opacity-80",
             )}
           >
-            <BookOpen
-              size={21}
-              strokeWidth={navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith") ? 2.35 : 1.75}
-              aria-hidden
-            />
+            <BookOpen size={21} strokeWidth={isReadNavActive(pathname) ? 2.35 : 1.75} aria-hidden />
             <span className="text-[10px] font-medium">Read</span>
-            {(navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith")) && (
+            {isReadNavActive(pathname) && (
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
+            )}
+          </Link>
+          <Link
+            href="/discover"
+            aria-label="Discover"
+            aria-current={isDiscoverNavActive(pathname) ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
+              isDiscoverNavActive(pathname) ? "text-accent" : "text-muted-foreground active:opacity-80",
+            )}
+          >
+            <Compass size={21} strokeWidth={isDiscoverNavActive(pathname) ? 2.35 : 1.75} aria-hidden />
+            <span className="text-[10px] font-medium">Discover</span>
+            {isDiscoverNavActive(pathname) && (
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
             )}
           </Link>
@@ -486,6 +581,21 @@ export default function Navigation() {
               </Link>
             );
           })}
+          <Link
+            href="/goals"
+            aria-label="Goals"
+            aria-current={navIsActive(pathname, "/goals") ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-0.5 min-w-[3rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
+              navIsActive(pathname, "/goals") ? "text-accent" : "text-muted-foreground active:opacity-80",
+            )}
+          >
+            <Target size={19} strokeWidth={navIsActive(pathname, "/goals") ? 2.35 : 1.75} aria-hidden />
+            <span className="text-[9px] font-medium">Goals</span>
+            {navIsActive(pathname, "/goals") && (
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
+            )}
+          </Link>
           <Link
             href="/profile"
             aria-label="Profile"

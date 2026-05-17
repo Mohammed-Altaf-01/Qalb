@@ -14,9 +14,11 @@ import {
   stopQuranAudio,
   subscribeQuranAudio,
 } from "@/lib/quran-audio-player";
+import { useListenHistoryTracker } from "@/lib/useListenHistoryTracker";
 import { cn } from "@/lib/utils";
 
 export default function ListenMiniPlayer() {
+  useListenHistoryTracker();
   const [player, setPlayer] = useState(getQuranAudioState());
   const [chapters, setChapters] = useState([]);
   const [parsedReciters, setParsedReciters] = useState([]);

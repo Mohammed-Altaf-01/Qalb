@@ -23,7 +23,7 @@
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Bookmark, BookmarkCheck, ChevronDown, ChevronUp, Loader2, Pause, Play, Sparkles, Volume2 } from "lucide-react";
 import Link from "next/link";
@@ -33,24 +33,17 @@ import AudioPlayer from "@/components/AudioPlayer";
 import { Badge } from "@/components/ui/badge";
 import { filterVerseWords } from "@/lib/arabic-utils";
 import { cn } from "@/lib/utils";
+import { findActiveWord, wordHighlightIndex } from "@/lib/verse-word-highlight";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WordHighlightPlayer — inline mini player with word-by-word highlighting
 // Used when verse.words is available (e.g. Discover page)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function findActiveWord(currentMs, segments) {
-  if (!segments?.length) return -1;
-  for (const seg of segments) {
-    if (currentMs >= seg[2] && currentMs < seg[3]) return seg[1] - 1;
-  }
-  return -1;
-}
-
-function WordHighlightPlayer({ verseKey, words }) {
+function WordHighlightPlayer({ verseKey, words, autoStart = false }) {
   const audioRef = useRef(null);
+  const segmentsRef = useRef(null);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [segments, setSegments] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeWordIdx, setActiveWordIdx] = useState(-1);
@@ -60,20 +53,85 @@ function WordHighlightPlayer({ verseKey, words }) {
     return [1, 2, 3, 6, 7, 10].includes(saved) ? saved : 7;
   });
 
-  async function handlePlay() {
+  useEffect(() => {
+    setAudioUrl(null);
+    segmentsRef.current = null;
+    setIsPlaying(false);
+    setActiveWordIdx(-1);
+  }, [verseKey, reciterId]);
+
+  useEffect(() => {
+    if (!autoStart || isPlaying || isLoading || !words.length) return;
+    void startPlayback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+
+    if (!isPlaying) {
+      audio.pause();
+      audio.currentTime = 0;
+      setActiveWordIdx(-1);
+      return;
+    }
+
+    let cancelled = false;
+
+    const tryPlay = () => {
+      if (cancelled || !audioRef.current) return;
+      audioRef.current.play().catch(() => {
+        if (cancelled) return;
+        const el = audioRef.current;
+        if (!el) return;
+        const once = () => {
+          el.removeEventListener("canplay", once);
+          el.removeEventListener("loadeddata", once);
+          if (cancelled) return;
+          el.play().catch(() => {
+            if (!cancelled) toast.error("Audio unavailable for this verse");
+          });
+        };
+        el.addEventListener("canplay", once, { once: true });
+        el.addEventListener("loadeddata", once, { once: true });
+      });
+    };
+
+    if (audio.readyState >= 2) tryPlay();
+    else audio.addEventListener("canplay", tryPlay, { once: true });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlaying, audioUrl]);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (!audioRef.current || !segmentsRef.current?.length) return;
+    const ms = audioRef.current.currentTime * 1000;
+    setActiveWordIdx(findActiveWord(ms, segmentsRef.current));
+  }, []);
+
+  const handleEnded = useCallback(() => {
+    setIsPlaying(false);
+    setActiveWordIdx(-1);
+  }, []);
+
+  async function startPlayback() {
     if (isLoading) return;
+
     if (!audioUrl) {
       setIsLoading(true);
       try {
+        const useSegments = words.length > 0;
         const res = await fetch(
-          `/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}&segments=true`,
+          `/api/verse/audio?key=${encodeURIComponent(verseKey)}&reciter=${reciterId}&segments=${useSegments}`,
         );
         if (!res.ok) throw new Error("audio failed");
         const data = await res.json();
+        if (!data.audioUrl) throw new Error("no url");
+        segmentsRef.current = data.segments ?? null;
         setAudioUrl(data.audioUrl);
-        setSegments(data.segments ?? null);
-        audioRef.current.src = data.audioUrl;
-        await audioRef.current.play();
         setIsPlaying(true);
       } catch {
         toast.error("Audio unavailable for this verse");
@@ -82,34 +140,41 @@ function WordHighlightPlayer({ verseKey, words }) {
       }
       return;
     }
+
+    setIsPlaying(true);
+  }
+
+  async function handlePlayToggle() {
+    if (isLoading) return;
     if (isPlaying) {
-      audioRef.current.pause();
+      audioRef.current?.pause();
       setIsPlaying(false);
-    } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+      return;
     }
+    await startPlayback();
   }
 
   return (
     <div className="space-y-2">
-      {/* Word-by-word Arabic */}
-      <p className="arabic-text arabic-text-display text-foreground/90" lang="ar" dir="rtl">
-        {words.map((word, i) => (
-          <span
-            key={i}
-            className={cn(
-              "inline px-0.5 mx-0.5 rounded transition-all duration-100",
-              activeWordIdx === (word.position ?? i + 1) - 1 ? "bg-accent/30 text-accent" : "hover:text-accent/80",
-            )}
-          >
-            {word.text_uthmani}
-          </span>
-        ))}
-      </p>
-      {/* Mini play button */}
+      <div className="mx-auto max-w-[min(100%,42rem)]" dir="rtl" lang="ar">
+        <p className="read-quran-arabic text-start text-foreground/90">
+          {words.map((word, i) => (
+            <span
+              key={word.id ?? i}
+              className={cn(
+                "inline rounded px-[0.08em] transition-colors duration-100",
+                wordHighlightIndex(word, i, activeWordIdx) ? "bg-accent/20 text-accent" : "hover:text-accent/80",
+              )}
+            >
+              {word.text_uthmani}
+              {i < words.length - 1 ? " " : ""}
+            </span>
+          ))}
+        </p>
+      </div>
       <button
-        onClick={handlePlay}
+        type="button"
+        onClick={handlePlayToggle}
         className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
       >
         {isLoading ? (
@@ -121,17 +186,17 @@ function WordHighlightPlayer({ verseKey, words }) {
         )}
         <span>{isPlaying ? "Pause" : "Play recitation"}</span>
       </button>
-      <audio
-        ref={audioRef}
-        onTimeUpdate={() => {
-          if (!audioRef.current || !segments) return;
-          setActiveWordIdx(findActiveWord(audioRef.current.currentTime * 1000, segments));
-        }}
-        onEnded={() => {
-          setIsPlaying(false);
-          setActiveWordIdx(-1);
-        }}
-      />
+      {audioUrl ? (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={handleEnded}
+          preload="metadata"
+        />
+      ) : (
+        <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onEnded={handleEnded} preload="metadata" />
+      )}
     </div>
   );
 }
@@ -290,7 +355,7 @@ export default function VerseCard({
       {/* ── Arabic Text + Word Highlight Player ───────────────────────── */}
       <div className="px-4 py-3">
         {showAudio && words.length > 0 ? (
-          <WordHighlightPlayer verseKey={verseKey} words={words} />
+          <WordHighlightPlayer key={verseKey} verseKey={verseKey} words={words} autoStart />
         ) : (
           <p className="arabic-text arabic-text-display text-foreground/90 mb-3" lang="ar" dir="rtl">
             {arabicText}

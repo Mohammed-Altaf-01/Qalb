@@ -6,7 +6,7 @@ import HadithChaptersList from "@/components/HadithChaptersList";
 import { getHadithChaptersForBook } from "@/lib/hadith-catalog";
 
 export async function generateMetadata({ params }) {
-  const p = await Promise.resolve(params);
+  const p = await params;
   const data = getHadithChaptersForBook(p.book);
   return {
     title: data ? `${data.name} · Chapters · Qalb` : "Ahadith · Qalb",
@@ -14,7 +14,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function AhadithBookPage({ params }) {
-  const p = await Promise.resolve(params);
+  const p = await params;
   const data = getHadithChaptersForBook(p.book);
   if (!data) notFound();
 

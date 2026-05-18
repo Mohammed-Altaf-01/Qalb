@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -13,7 +15,7 @@ const ERROR_MESSAGES = {
   Default: "An unexpected error occurred during sign-in.",
 };
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const params = useSearchParams();
   const error = params.get("error") ?? "Default";
   const message = ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default;
@@ -36,5 +38,19 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      }
+    >
+      <AuthErrorContent />
+    </Suspense>
   );
 }

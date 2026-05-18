@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { BookOpen, Flame, Sparkles, Star, Trophy } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
@@ -17,7 +17,7 @@ const FEATURES = [
   { icon: Star, text: "Your Quran journey, always with you" },
 ];
 
-export default function SignInPage() {
+function SignInContent() {
   const { status } = useSession();
   const router = useRouter();
   const params = useSearchParams();
@@ -112,5 +112,19 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <span className="text-sm text-muted-foreground">Loading…</span>
+        </div>
+      }
+    >
+      <SignInContent />
+    </Suspense>
   );
 }

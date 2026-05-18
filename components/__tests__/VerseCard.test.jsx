@@ -30,6 +30,14 @@ const mockVerse = {
   translations: [{ text: "Allah — there is no deity except Him, the Ever-Living, the Sustainer" }],
 };
 
+const mockVerseWithWords = {
+  ...mockVerse,
+  words: [
+    { id: 1, position: 1, text_uthmani: "اللَّهُ", char_type_name: "word" },
+    { id: 2, position: 2, text_uthmani: "لَا", char_type_name: "word" },
+  ],
+};
+
 describe("VerseCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -175,6 +183,38 @@ describe("VerseCard", () => {
       expect(fetch).toHaveBeenCalledWith("/api/user/bookmark", expect.objectContaining({ method: "DELETE" })),
     );
     expect(toast.success).toHaveBeenCalledWith("Bookmark removed");
+  });
+
+  // ── Word highlight audio ─────────────────────────────────────────────────────
+
+  it("highlights the active word during recitation when segments are available", async () => {
+    const user = userEvent.setup();
+    const segments = [
+      [0, 1, 0, 500],
+      [0, 2, 500, 1000],
+    ];
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ audioUrl: "https://example.com/audio.mp3", segments }),
+    });
+
+    render(<VerseCard verse={mockVerseWithWords} />);
+    await user.click(screen.getByLabelText("Play verse recitation"));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/verse/audio?key=2%3A255"));
+    });
+
+    const audio = document.querySelector("audio");
+    expect(audio).toBeTruthy();
+
+    Object.defineProperty(audio, "currentTime", { value: 0.25, configurable: true });
+    audio.dispatchEvent(new Event("timeupdate"));
+
+    await waitFor(() => {
+      const word = screen.getByText("اللَّهُ");
+      expect(word.className).toMatch(/bg-accent/);
+    });
   });
 
   // ── Tafsir ────────────────────────────────────────────────────────────────────

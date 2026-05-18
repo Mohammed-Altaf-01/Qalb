@@ -11,7 +11,7 @@ import {
 } from "@/lib/hadith-catalog";
 
 export async function generateMetadata({ params }) {
-  const p = await Promise.resolve(params);
+  const p = await params;
   const edition = `eng-${p.book}`;
   const data = await fetchHadithSection(edition, p.section);
   const title = data?.metadata?.section?.[p.section] ?? `Section ${p.section}`;
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function AhadithSectionPage({ params }) {
-  const p = await Promise.resolve(params);
+  const p = await params;
   const bookData = getHadithChaptersForBook(p.book);
   if (!bookData) notFound();
 

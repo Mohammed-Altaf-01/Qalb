@@ -25,6 +25,7 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
+import { findActiveWord, wordHighlightIndex } from "@/lib/verse-word-highlight";
 import { fetchWithRetry } from "@/lib/client-fetch-retry";
 import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
 import { markKhatmPage } from "@/lib/khatm-progress";
@@ -185,17 +186,6 @@ function AyahEndBadge({ verseKey, compact }) {
       {digits}
     </span>
   );
-}
-
-function findActiveWord(currentMs, segments) {
-  if (!segments?.length) return -1;
-  for (const seg of segments) {
-    const wordPos = seg[1];
-    const startMs = seg[2];
-    const endMs = seg[3];
-    if (currentMs >= startMs && currentMs < endMs) return wordPos - 1;
-  }
-  return -1;
 }
 
 function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighted, chapterName }) {
@@ -388,7 +378,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
                   key={word.id ?? i}
                   className={cn(
                     "inline rounded px-[0.08em] transition-colors duration-100",
-                    activeWordIdx === (word.position ?? i + 1) - 1 && "bg-accent/20 text-accent",
+                    wordHighlightIndex(word, i, activeWordIdx) && "bg-accent/20 text-accent",
                   )}
                 >
                   {word.text_uthmani}

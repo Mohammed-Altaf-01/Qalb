@@ -6,6 +6,7 @@ import TrackHadithRead from "@/components/TrackHadithRead";
 import {
   attachArabicToHadiths,
   fetchHadithSection,
+  formatHadithGrades,
   getHadithChaptersForBook,
   splitHadithSanad,
 } from "@/lib/hadith-catalog";
@@ -76,6 +77,7 @@ export default async function AhadithSectionPage({ params }) {
           {hadiths.map((h) => {
             const english = splitHadithSanad(h.text, "en");
             const arabic = splitHadithSanad(h.textArabic, "ar");
+            const gradeLabel = formatHadithGrades(h.grades);
             return (
               <li
                 key={`${h.hadithnumber}-${h.reference?.hadith ?? ""}`}
@@ -94,9 +96,7 @@ export default async function AhadithSectionPage({ params }) {
                 ) : null}
                 {english.sanad ? <p className="text-sm text-foreground/55 mb-2 italic">{english.sanad}</p> : null}
                 <p className="reading-prose text-foreground/95">{english.body}</p>
-                {h.grades?.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">Grade: {h.grades.join(", ")}</p>
-                )}
+                {gradeLabel ? <p className="text-xs text-muted-foreground mt-2">Grade: {gradeLabel}</p> : null}
               </li>
             );
           })}

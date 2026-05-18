@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { mergeHadithVisit } from "../../../lib/last-hadith-reads";
 import { CONFIG, isVercelConfigured } from "../config";
 import { attachArabicToHadiths } from "../lib/hadith-arabic";
-import { splitHadithSanad } from "../lib/hadith-sanad";
+import { formatHadithGrades, splitHadithSanad } from "../lib/hadith-sanad";
 import storage, { STORAGE_KEYS } from "../lib/storage";
 import useGamification from "../lib/useGamification";
 import { schedulePushReadingHistory } from "../lib/user-app-sync";
@@ -109,6 +109,7 @@ export default function AhadithSectionScreen({ navigation, route }) {
         {hadiths.map((h) => {
           const english = splitHadithSanad(h.text, "en");
           const arabic = splitHadithSanad(h.textArabic, "ar");
+          const gradeLabel = formatHadithGrades(h.grades);
           return (
             <View key={`${h.hadithnumber}-${h.reference?.hadith ?? ""}`} style={styles.card}>
               <Text style={styles.num}>Hadith {h.hadithnumber}</Text>
@@ -124,7 +125,7 @@ export default function AhadithSectionScreen({ navigation, route }) {
               ) : null}
               {english.sanad ? <Text style={styles.sanadEn}>{english.sanad}</Text> : null}
               <Text style={styles.bodyEn}>{english.body}</Text>
-              {h.grades?.length > 0 ? <Text style={styles.grade}>Grade: {h.grades.join(", ")}</Text> : null}
+              {gradeLabel ? <Text style={styles.grade}>Grade: {gradeLabel}</Text> : null}
             </View>
           );
         })}

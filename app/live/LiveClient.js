@@ -18,9 +18,9 @@ import {
   ensureLiveDualPrewarm,
   getActiveLiveDualVideo,
   getLiveDualUserMuted,
+  isMakkahMadinahStreamUrl,
   nudgeActiveLiveDualStream,
   pauseLiveDualPrewarm,
-  resolveMakkahMadinahUrls,
   resumeLiveDualPrewarm,
   setLiveDualHlsLevelIndex,
   setLiveDualPrewarmActive,
@@ -80,9 +80,8 @@ export default function LiveClient({ channels }) {
   const liveSyncRef = useRef({ url: "", muted: false, usingPrewarm: true });
 
   const selected = (channels ?? []).find((c) => c.id === selectedId) ?? initial;
-  const { makkahUrl, madinahUrl } = useMemo(() => resolveMakkahMadinahUrls(channels), [channels]);
 
-  const usingPrewarmPair = Boolean(selected?.url && (selected.url === makkahUrl || selected.url === madinahUrl));
+  const usingPrewarmPair = isMakkahMadinahStreamUrl(selected?.url, channels);
 
   liveSyncRef.current = {
     url: selected?.url ?? "",

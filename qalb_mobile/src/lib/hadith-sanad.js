@@ -21,3 +21,22 @@ export function splitHadithSanad(text, lang = "en") {
   }
   return { sanad: null, body: source };
 }
+
+/** Same as web `formatHadithGrades` in lib/hadith-catalog.js */
+export function formatHadithGrades(grades) {
+  if (!Array.isArray(grades) || grades.length === 0) return "";
+  return grades
+    .map((g) => {
+      if (g == null) return "";
+      if (typeof g === "string") return g.trim();
+      if (typeof g === "object") {
+        const grade = String(g.grade ?? g.label ?? "").trim();
+        const name = String(g.name ?? g.graded_by ?? "").trim();
+        if (grade && name) return `${grade} (${name})`;
+        return grade || name;
+      }
+      return String(g).trim();
+    })
+    .filter(Boolean)
+    .join(" · ");
+}

@@ -5,8 +5,8 @@ import { useEffect, useId, useState } from "react";
 import {
   BookOpen,
   ChevronDown,
-  Compass,
   Headphones,
+  Sprout,
   Home,
   LogIn,
   RadioTower,
@@ -26,7 +26,7 @@ import { getLevelInfo, loadState } from "@/lib/gamification";
 import { warmMakkahLiveStream } from "@/lib/live-stream-warmup";
 import { cn } from "@/lib/utils";
 
-/** Primary routes (Home, Read, Discover menus rendered separately). */
+/** Primary routes (Home, Read, Grow menus rendered separately). */
 const PRIMARY_NAV = [
   { label: "Listen", href: "/listen", icon: Headphones },
   { label: "Live", href: "/live", icon: RadioTower },
@@ -37,7 +37,9 @@ const READ_MENU_LINKS = [
   { label: "Hadith", href: "/ahadith" },
 ];
 
-const DISCOVER_MENU_LINKS = [
+/** Grow: verse discovery, memorization, and khatm — umbrella nav (not the Discover page title). */
+const GROW_MENU_LINKS = [
+  { label: "Discover", href: "/discover" },
   { label: "Hifz", href: "/hifz" },
   { label: "Khatm", href: "/khatm" },
 ];
@@ -298,7 +300,7 @@ function isReadNavActive(pathname) {
   return navIsActive(pathname, "/read") || navIsActive(pathname, "/ahadith");
 }
 
-function isDiscoverNavActive(pathname) {
+function isGrowNavActive(pathname) {
   return navIsActive(pathname, "/discover") || navIsActive(pathname, "/hifz") || navIsActive(pathname, "/khatm");
 }
 
@@ -366,11 +368,11 @@ function NavDropMenu({ label, icon: Icon, open, onToggle, active, links, pathnam
 export default function Navigation() {
   const pathname = usePathname();
   const [readMenuOpen, setReadMenuOpen] = useState(false);
-  const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
+  const [growMenuOpen, setGrowMenuOpen] = useState(false);
 
   useEffect(() => {
     setReadMenuOpen(false);
-    setDiscoverMenuOpen(false);
+    setGrowMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -428,7 +430,7 @@ export default function Navigation() {
               icon={BookOpen}
               open={readMenuOpen}
               onToggle={() => {
-                setDiscoverMenuOpen(false);
+                setGrowMenuOpen(false);
                 setReadMenuOpen((v) => !v);
               }}
               active={isReadNavActive(pathname)}
@@ -437,17 +439,17 @@ export default function Navigation() {
               onClose={() => setReadMenuOpen(false)}
             />
             <NavDropMenu
-              label="Discover"
-              icon={Compass}
-              open={discoverMenuOpen}
+              label="Grow"
+              icon={Sprout}
+              open={growMenuOpen}
               onToggle={() => {
                 setReadMenuOpen(false);
-                setDiscoverMenuOpen((v) => !v);
+                setGrowMenuOpen((v) => !v);
               }}
-              active={isDiscoverNavActive(pathname)}
-              links={DISCOVER_MENU_LINKS}
+              active={isGrowNavActive(pathname)}
+              links={GROW_MENU_LINKS}
               pathname={pathname}
-              onClose={() => setDiscoverMenuOpen(false)}
+              onClose={() => setGrowMenuOpen(false)}
             />
             {PRIMARY_NAV.map(({ label, href, icon: Icon }) => {
               const active = navIsActive(pathname, href);
@@ -549,16 +551,16 @@ export default function Navigation() {
           </Link>
           <Link
             href="/discover"
-            aria-label="Discover"
-            aria-current={isDiscoverNavActive(pathname) ? "page" : undefined}
+            aria-label="Grow — Discover, Hifz, Khatm"
+            aria-current={isGrowNavActive(pathname) ? "page" : undefined}
             className={cn(
               "flex flex-col items-center justify-center gap-0.5 min-w-[3.35rem] shrink-0 flex-1 py-1 rounded-lg transition-colors relative",
-              isDiscoverNavActive(pathname) ? "text-accent" : "text-muted-foreground active:opacity-80",
+              isGrowNavActive(pathname) ? "text-accent" : "text-muted-foreground active:opacity-80",
             )}
           >
-            <Compass size={21} strokeWidth={isDiscoverNavActive(pathname) ? 2.35 : 1.75} aria-hidden />
-            <span className="text-[10px] font-medium">Discover</span>
-            {isDiscoverNavActive(pathname) && (
+            <Sprout size={21} strokeWidth={isGrowNavActive(pathname) ? 2.35 : 1.75} aria-hidden />
+            <span className="text-[10px] font-medium">Grow</span>
+            {isGrowNavActive(pathname) && (
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-accent/90" />
             )}
           </Link>

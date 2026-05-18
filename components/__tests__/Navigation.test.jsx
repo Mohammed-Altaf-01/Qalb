@@ -32,7 +32,7 @@ describe("Navigation", () => {
     await act(async () => render(<Navigation />));
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Read").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Discover").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Grow").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Goals").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Profile").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Settings")).toHaveAttribute("href", "/settings");
@@ -45,11 +45,23 @@ describe("Navigation", () => {
     expect(homeLink).toHaveAttribute("aria-current", "page");
   });
 
-  it("marks Discover as current when pathname is /discover", async () => {
+  it("marks Grow as current when pathname is /discover", async () => {
     usePathname.mockReturnValue("/discover");
     await act(async () => render(<Navigation />));
     const discoverLink = screen.getAllByRole("link").find((l) => l.getAttribute("href") === "/discover");
     expect(discoverLink).toHaveAttribute("aria-current", "page");
+  });
+
+  it("Grow menu includes Discover, Hifz, and Khatm", async () => {
+    usePathname.mockReturnValue("/");
+    await act(async () => render(<Navigation />));
+    const growButton = screen.getAllByRole("button", { name: /^Grow$/i })[0];
+    await act(async () => {
+      growButton.click();
+    });
+    expect(screen.getByRole("menuitem", { name: "Discover" })).toHaveAttribute("href", "/discover");
+    expect(screen.getByRole("menuitem", { name: "Hifz" })).toHaveAttribute("href", "/hifz");
+    expect(screen.getByRole("menuitem", { name: "Khatm" })).toHaveAttribute("href", "/khatm");
   });
 
   it("marks Goals as current when pathname is /goals", async () => {

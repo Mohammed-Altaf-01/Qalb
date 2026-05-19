@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { DEEDS } from "../lib/gamification";
+import { schedulePushGoalsLocal } from "../lib/user-app-sync";
 import storage, { STORAGE_KEYS } from "../lib/storage";
 import useGamification from "../lib/useGamification";
 import { ARABIC_TYPOGRAPHY, COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
@@ -95,6 +96,7 @@ export default function GoalsScreen() {
   const saveGoals = async (newGoals) => {
     setGoals(newGoals);
     await storage.set(STORAGE_KEYS.GOALS, newGoals);
+    schedulePushGoalsLocal();
   };
 
   const addGoalFromTemplate = async (template) => {

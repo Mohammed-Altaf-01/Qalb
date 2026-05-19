@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { aggregateGoalSignals, computeDerivedProgress, normalizeApiGoal } from "@/lib/goal-progress";
 import { QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
+import { schedulePushGoalsLocal } from "@/lib/user-app-sync-bridge";
+import { LS_GOALS } from "@/lib/user-state-registry";
 import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
@@ -229,7 +231,7 @@ export default function GoalsPage() {
   const hydrate = useCallback(async () => {
     if (status !== "authenticated") {
       try {
-        const raw = typeof window !== "undefined" ? localStorage.getItem("qalb_goals_local") : null;
+        const raw = typeof window !== "undefined" ? localStorage.getItem(LS_GOALS) : null;
         const parsed = raw ? JSON.parse(raw) : [];
         setGoals(Array.isArray(parsed) ? applyDerivedProgress(parsed, []) : []);
       } catch {
@@ -258,7 +260,7 @@ export default function GoalsPage() {
           ? applyDerivedProgress(nextGoals, events)
           : (() => {
               try {
-                const raw = localStorage.getItem("qalb_goals_local");
+                const raw = localStorage.getItem(LS_GOALS);
                 const parsed = raw ? JSON.parse(raw) : [];
                 return Array.isArray(parsed) ? applyDerivedProgress(parsed, events) : [];
               } catch {
@@ -302,7 +304,7 @@ export default function GoalsPage() {
 
   const persistLocalFallback = useCallback((list) => {
     try {
-      localStorage.setItem("qalb_goals_local", JSON.stringify(list));
+      localStorage.setItem(LS_GOALS, JSON.stringify(list));
     } catch {
       /* ignore */
     }
@@ -371,13 +373,15 @@ export default function GoalsPage() {
           persistLocalFallback(u);
           return u;
         });
-        toast.success("Goal synced to your account.");
+        schedulePushGoalsLocal();
+        toast.success("Goal saved to your Qalb cloud.");
       } catch {
         setGoals((prev) => {
           const u = applyDerivedProgress([newGoal, ...prev], activityEvents);
           persistLocalFallback(u);
           return u;
         });
+        schedulePushGoalsLocal();
         toast.success("Goal saved locally (remote sync unavailable).");
       }
     } else {
@@ -386,6 +390,7 @@ export default function GoalsPage() {
         persistLocalFallback(u);
         return u;
       });
+      schedulePushGoalsLocal();
       toast.success("Goal created locally — sign in to sync.");
     }
   };
@@ -397,6 +402,7 @@ export default function GoalsPage() {
         g.id === goalId ? { ...g, progress: Math.min((Number(g.progress) || 0) + 1, g.total) } : g,
       );
       persistLocalFallback(bumped);
+      schedulePushGoalsLocal();
       return applyDerivedProgress(bumped, activityEvents);
     });
     toast.success("Progress saved!");
@@ -407,6 +413,7 @@ export default function GoalsPage() {
     setGoals((prev) => {
       const u = prev.filter((g) => g.id !== goalId);
       persistLocalFallback(u);
+      schedulePushGoalsLocal();
       completedAwardedRef.current.delete(goalId);
       return u;
     });

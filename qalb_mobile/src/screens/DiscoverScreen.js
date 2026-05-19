@@ -28,7 +28,7 @@ import { emitJourneyLocalUpdated } from "../lib/qalb-events";
 import { QuranRepository } from "../lib/quran-api";
 import storage, { STORAGE_KEYS } from "../lib/storage";
 import useGamification from "../lib/useGamification";
-import { schedulePushLibraryBookmarks } from "../lib/user-app-sync";
+import { schedulePushDiscoverHistory, schedulePushLibraryBookmarks } from "../lib/user-app-sync";
 import { COLORS, FONT_SIZE, RADIUS, SPACING } from "../theme";
 
 const EXAMPLE_PROMPTS = [
@@ -104,6 +104,7 @@ export default function DiscoverScreen({ navigation }) {
         existingHist,
       );
       await storage.set(STORAGE_KEYS.DISCOVER_HISTORY, nextHist);
+      schedulePushDiscoverHistory();
       emitJourneyLocalUpdated();
       await loadBookmarks();
     } catch (e) {

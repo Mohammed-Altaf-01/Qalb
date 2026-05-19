@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LS_DISCOVER_HISTORY, appendDiscoverHistory } from "@/lib/qalb-discover-history";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
+import { schedulePushDiscoverHistory } from "@/lib/user-app-sync-bridge";
 import { useGamification } from "@/lib/useGamification";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +139,7 @@ export default function DiscoverPage() {
           localStorage.getItem(LS_DISCOVER_HISTORY),
         );
         localStorage.setItem(LS_DISCOVER_HISTORY, JSON.stringify(next));
+        schedulePushDiscoverHistory();
         emitJourneyLocalUpdated();
       } catch {
         /* ignore */

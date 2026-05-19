@@ -107,6 +107,7 @@ export default function LiveClient({ channels }) {
     } catch {
       /* ignore */
     }
+    void import("@/lib/user-app-sync-bridge").then((m) => m.schedulePushPreferences());
   }, [videoFit]);
 
   useEffect(() => {

@@ -5,10 +5,12 @@
 import { LS_LAST_HADITH_READS, MAX_LAST_HADITH_READS } from "../../../lib/last-hadith-reads";
 import {
   mergeBookmarksMap,
+  mergeDiscoverHistory,
   mergeKeyThemesPayload,
   mergeLibraryCollectionsPayload,
   mergePreferencesPayload,
   mergeReadingProgress,
+  mergeReadingGoals,
   mergeRecentByHref,
   mergeTimeTracking,
   mergeVerseKeyedBlob,
@@ -101,7 +103,7 @@ export async function pullAccountScopedStorageIntoDevice() {
   let wrote = false;
 
   try {
-    const [pr, pg, ph, jref, jchat, jnotes, jthemes, jgoals, prLibBm, prLibCol] = await Promise.all([
+    const [pr, pg, ph, jref, jchat, jnotes, jthemes, jgoals, prLibBm, prLibCol, jdiscover] = await Promise.all([
       apiFetch("/api/user/app-storage/preferences"),
       apiFetch("/api/user/app-storage/reading_progress"),
       apiFetch("/api/user/app-storage/reading_history"),
@@ -112,6 +114,7 @@ export async function pullAccountScopedStorageIntoDevice() {
       apiFetch("/api/user/app-storage/goals_local"),
       apiFetch("/api/user/app-storage/library_bookmarks"),
       apiFetch("/api/user/app-storage/library_collections"),
+      apiFetch("/api/user/app-storage/discover_history"),
     ]);
 
     const jp = await pr.json();
@@ -124,6 +127,7 @@ export async function pullAccountScopedStorageIntoDevice() {
     const goals = await jgoals.json();
     const libBm = await prLibBm.json();
     const libCol = await prLibCol.json();
+    const jDiscover = await jdiscover.json();
 
     const cloudEnabled =
       jp.enabled === true ||
@@ -135,7 +139,8 @@ export async function pullAccountScopedStorageIntoDevice() {
       kthemes.enabled === true ||
       goals.enabled === true ||
       libBm.enabled === true ||
-      libCol.enabled === true;
+      libCol.enabled === true ||
+      jDiscover.enabled === true;
     lastKnownCloudEnabled = cloudEnabled;
 
     if (jp.enabled === true && jp.payload && typeof jp.payload === "object") {
@@ -219,6 +224,23 @@ export async function pullAccountScopedStorageIntoDevice() {
         await storage.set(STORAGE_KEYS.TIME_TRACKING, mergedTT);
         wrote = true;
       }
+      if (Array.isArray(goals.payload.goals)) {
+        const localGoals = (await storage.get(STORAGE_KEYS.GOALS)) ?? [];
+        const merged = mergeReadingGoals(
+          goals.payload.goals,
+          Array.isArray(localGoals) ? localGoals : [],
+        );
+        await storage.set(STORAGE_KEYS.GOALS, merged);
+        wrote = true;
+      }
+    }
+
+    if (jDiscover.enabled === true && jDiscover.payload && typeof jDiscover.payload === "object") {
+      const remoteList = Array.isArray(jDiscover.payload.entries) ? jDiscover.payload.entries : [];
+      const localList = (await storage.get(STORAGE_KEYS.DISCOVER_HISTORY)) ?? [];
+      const merged = mergeDiscoverHistory(remoteList, Array.isArray(localList) ? localList : []);
+      await storage.set(STORAGE_KEYS.DISCOVER_HISTORY, merged);
+      wrote = true;
     }
 
     if (libBm.enabled === true && libBm.payload && typeof libBm.payload === "object") {
@@ -349,9 +371,22 @@ export function schedulePushGoalsLocal() {
   debounce("goals_local", async () => {
     if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
     const timeTracking = (await storage.get(STORAGE_KEYS.TIME_TRACKING)) ?? {};
+    const goals = (await storage.get(STORAGE_KEYS.GOALS)) ?? [];
     await patchNamespace("goals_local", {
       timeTracking:
         typeof timeTracking === "object" && timeTracking && !Array.isArray(timeTracking) ? timeTracking : {},
+      goals: Array.isArray(goals) ? goals : [],
+      updatedAt: Date.now(),
+    });
+  });
+}
+
+export function schedulePushDiscoverHistory() {
+  debounce("discover_history", async () => {
+    if (!(await isSignedIn()) || shouldSuppressPushAfterPull()) return;
+    const entries = (await storage.get(STORAGE_KEYS.DISCOVER_HISTORY)) ?? [];
+    await patchNamespace("discover_history", {
+      entries: Array.isArray(entries) ? entries : [],
       updatedAt: Date.now(),
     });
   });

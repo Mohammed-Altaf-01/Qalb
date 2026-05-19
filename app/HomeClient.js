@@ -13,7 +13,11 @@ import { toLocalDayKey } from "@/lib/local-calendar-day";
 import { LS_DISCOVER_HISTORY } from "@/lib/qalb-discover-history";
 import { LS_QALB_LAST_READS, MAX_QURAN_LAST_READS, dedupeLastReadsByHref } from "@/lib/qalb-last-reads";
 import { useGamification } from "@/lib/useGamification";
-import { ACCOUNT_STORAGE_SYNCED_EVENT, schedulePushReadingHistory } from "@/lib/user-app-sync-bridge";
+import {
+  ACCOUNT_STORAGE_SYNCED_EVENT,
+  schedulePushDailyLetters,
+  schedulePushReadingHistory,
+} from "@/lib/user-app-sync-bridge";
 
 /** Idle time on home before gentle “continue reading” nudge (ms). */
 const HOME_IDLE_NUDGE_MS = 48_000;
@@ -221,6 +225,7 @@ function DailyLetterHomeCard() {
       const dk = toLocalDayKey();
       localStorage.setItem("qalb_daily_letter_day", dk);
       localStorage.setItem("qalb_daily_letter_text", acc);
+      schedulePushDailyLetters();
       setDayBlocked(true);
     } catch {
       setBody("We couldn’t compose a letter right now — try again in a minute.");

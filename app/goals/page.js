@@ -253,7 +253,7 @@ export default function GoalsPage() {
         events = aj?.events && Array.isArray(aj.events) ? aj.events : [];
       }
       setActivityEvents(events);
-      nextGoals =
+      let resolved =
         nextGoals.length > 0
           ? applyDerivedProgress(nextGoals, events)
           : (() => {
@@ -265,7 +265,9 @@ export default function GoalsPage() {
                 return [];
               }
             })();
-      setGoals(nextGoals);
+      setGoals((prev) =>
+        resolved.length > 0 ? resolved : prev.length > 0 ? applyDerivedProgress(prev, events) : [],
+      );
     } catch {
       toast.error("Could not refresh goals.");
     } finally {
@@ -362,13 +364,13 @@ export default function GoalsPage() {
         if (!res.ok) throw new Error(String(res.status));
         const gj = await res.json().catch(() => ({}));
         const normalized = gj?.goal ? normalizeApiGoal(gj.goal, GOAL_TEMPLATES) : normalizeApiGoal(gj, GOAL_TEMPLATES);
-        if (normalized) {
-          setGoals((prev) =>
-            applyDerivedProgress([normalized, ...prev.filter((p) => p.id !== normalized.id)], activityEvents),
-          );
-        } else {
-          setGoals((prev) => applyDerivedProgress([newGoal, ...prev], activityEvents));
-        }
+        setGoals((prev) => {
+          const u = normalized
+            ? applyDerivedProgress([normalized, ...prev.filter((p) => p.id !== normalized.id)], activityEvents)
+            : applyDerivedProgress([newGoal, ...prev], activityEvents);
+          persistLocalFallback(u);
+          return u;
+        });
         toast.success("Goal synced to your account.");
       } catch {
         setGoals((prev) => {
@@ -378,7 +380,6 @@ export default function GoalsPage() {
         });
         toast.success("Goal saved locally (remote sync unavailable).");
       }
-      await hydrate();
     } else {
       setGoals((prev) => {
         const u = applyDerivedProgress([newGoal, ...prev], []);

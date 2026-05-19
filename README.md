@@ -60,21 +60,6 @@ Four moments that show how Qalb helps someone move from “I want to be closer t
 
 **Try it:** [Open Journey →](https://qalb-fawn.vercel.app/journey)
 
----
-
-|                           |                                                                                                           |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Live demo**             | https://qalb-fawn.vercel.app/                                                                             |
-| **Hackathon**             | [Quran Foundation Hackathon](https://launch.provisioncapital.com/quran-hackathon) (deadline May 20, 2026) |
-| **Deep technical design** | [docs/LOW_LEVEL_DESIGN.md](docs/LOW_LEVEL_DESIGN.md)                                                      |
-
-<!-- Fill before submission -->
-
-| **Team** | _Add team member names_ |
-| **Demo video (2–3 min)** | _Add YouTube/Loom URL_ |
-| **Repository** | _Add public GitHub URL if applicable_ |
-
----
 
 ## The problem
 
@@ -90,7 +75,7 @@ Qalb addresses three gaps:
 
 ## Our approach
 
-Qalb is a full-stack Quran companion: **web** (Next.js) and **mobile** (Expo), backed by **Quran Foundation APIs**, optional **cloud sync** (Supabase), and **grounded AI** (Anthropic) for discovery and reflection — never as a substitute for scholars or tafsir, but as a bridge when you do not know where to start.
+Qalb is a full-stack Quran companion: **web** (Next.js) backed by **Quran Foundation APIs**,  **cloud sync** (Supabase), and **grounded AI** for discovery and reflection — never as a substitute for scholars or tafsir, but as a bridge when you do not know where to start.
 
 ### Product pillars
 
@@ -120,27 +105,8 @@ Qalb is a full-stack Quran companion: **web** (Next.js) and **mobile** (Expo), b
 | `/khatm`                | Khatm cycle tracking                                                    |
 | `/profile`, `/settings` | Progress, preferences, sign-in                                          |
 
-Mobile parity for core flows: see [MOBILE_PARITY.md](MOBILE_PARITY.md).
-
----
-
-## Hackathon judging alignment
-
-Projects are scored out of 100 points ([official criteria](https://launch.provisioncapital.com/quran-hackathon)). How Qalb maps to each:
-
-| Criterion                      | Points | How Qalb addresses it                                                                              |
-| ------------------------------ | ------ | -------------------------------------------------------------------------------------------------- |
-| **Impact on Quran engagement** | 30     | Discover + Journey + goals/streaks/Hifz/Khatm; explicit post-Ramadan habit framing                 |
-| **Product quality & UX**       | 20     | Mushaf mode, multiple translations/tafsir sources, cohesive design system, web + Expo parity       |
-| **Technical execution**        | 20     | Layered architecture, Vitest-tested `lib/`, structured API routes, audio-focus arbitration         |
-| **Innovation & creativity**    | 15     | Search-grounded AI Discover, dual HLS prewarm for live TV, unified journey across modalities       |
-| **Effective use of APIs**      | 15     | Deep Content + User API integration (see below); [full inventory in LLD](docs/LOW_LEVEL_DESIGN.md) |
-
----
 
 ## Quran Foundation API usage
-
-Hackathon rules require **at least one Content API** and **at least one User API**. Qalb uses both extensively through server-side adapters (secrets never exposed to the client).
 
 ### Content API
 
@@ -195,16 +161,13 @@ Signed-in users sync rich local state (reading progress, reflections, Hifz, khat
 flowchart TB
   User[User]
   Web[Web App]
-  Mobile[Expo App]
   Next[Next.js API on Vercel]
   QF[Quran Foundation]
   SB[Supabase]
   AI[Claude]
 
   User --> Web
-  User --> Mobile
   Web --> Next
-  Mobile --> Next
   Next --> QF
   Next --> SB
   Next --> AI
@@ -225,7 +188,6 @@ For sequence diagrams, route tables, sync semantics, and audio arbitration, see 
 | Auth          | NextAuth + Quran Foundation OAuth2 PKCE    |
 | Database      | Supabase (Postgres, RLS)                   |
 | AI            | Anthropic Claude API                       |
-| Mobile        | Expo (`qalb_mobile/`)                      |
 | Tests         | Vitest                                     |
 | Deploy        | Vercel                                     |
 
@@ -270,16 +232,6 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 `NEXT_PUBLIC_APP_URL` must match your deployment origin for server-side fetches (verse pages, live channel list).
 
-### Mobile
-
-```bash
-cd qalb_mobile
-npm install
-# Set EXPO_PUBLIC_API_BASE_URL to your machine LAN IP or Vercel URL (not localhost on device)
-npx expo start
-```
-
-See [MOBILE_PARITY.md](MOBILE_PARITY.md) and [MOBILE_SECURITY.md](MOBILE_SECURITY.md).
 
 ### Smoke-test APIs locally
 
@@ -306,12 +258,6 @@ curl -X POST http://localhost:3000/api/ai/discover \
 - **Educator mode** — parent/teacher dashboards for Hifz and Khatm progress.
 - **Quran MCP** — optional curation/admin tools alongside Search API grounding.
 
-### Our roadmap _(customize before submission)_
-
-- _Your vision bullet 1_
-- _Your vision bullet 2_
-- _Your vision bullet 3_
-
 ### Benefits for the ummah
 
 - **Lower the barrier** — Anyone can start from a real-life situation instead of knowing surah names by heart.
@@ -328,8 +274,6 @@ curl -X POST http://localhost:3000/api/ai/discover \
 | ---------------------------------------------------- | --------------------------------------------- |
 | [docs/LOW_LEVEL_DESIGN.md](docs/LOW_LEVEL_DESIGN.md) | Flows, API inventory, state model, deployment |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                   | Layer overview                                |
-| [MOBILE_PARITY.md](MOBILE_PARITY.md)                 | Web ↔ mobile route map                        |
-| [MOBILE_SECURITY.md](MOBILE_SECURITY.md)             | Mobile auth and secrets boundary              |
 | [supabase/README.md](supabase/README.md)             | Database and sync namespaces                  |
 
 ---

@@ -6,6 +6,8 @@
 
 Four moments that show how Qalb helps someone move from “I want to be closer to the Quran” to a daily habit—in one companion, not five different apps.
 
+[![Watch Demo](https://img.shields.io/badge/Watch-Demo-blue?style=for-the-badge)](https://drive.google.com/file/d/1gZvSwPACwTh2gLsJCNsRCkQHCzeKQzNV/view)
+
 ### 1. Discover — ayat for what is on your heart
 
 **Route:** [`/discover`](https://qalb-fawn.vercel.app/discover)

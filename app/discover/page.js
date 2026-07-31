@@ -31,8 +31,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { LS_DISCOVER_HISTORY, appendDiscoverHistory } from "@/lib/qalb-discover-history";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
-import { schedulePushDiscoverHistory } from "@/lib/user-app-sync-bridge";
 import { useGamification } from "@/lib/useGamification";
+import { schedulePushDiscoverHistory } from "@/lib/user-app-sync-bridge";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -233,7 +233,7 @@ export default function DiscoverPage() {
               <button
                 key={prompt}
                 onClick={() => handleExampleClick(prompt)}
-                className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                className="text-[11px] px-2.5 py-1.5 rounded-full border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 transition-colors duration-150 text-left"
               >
                 {prompt.length > 50 ? prompt.slice(0, 50) + "…" : prompt}
               </button>
@@ -249,7 +249,7 @@ export default function DiscoverPage() {
             <div
               key={i}
               className="rounded-2xl border border-border/50 bg-card/80 p-4 md:p-5 space-y-3 animate-fade-in-up"
-              style={{ animationDelay: `${i * 90}ms` }}
+              style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}
             >
               <div className="flex items-start gap-3">
                 <div className="h-9 w-9 rounded-full shrink-0 animate-shimmer" />
@@ -283,7 +283,7 @@ export default function DiscoverPage() {
             <div
               key={result.verse_key}
               className="animate-fade-in-up verse-card-enter"
-              style={{ animationDelay: `${idx * 120}ms` }}
+              style={{ animationDelay: `${Math.min(idx, 6) * 50}ms` }}
             >
               <VerseCard
                 verse={result.verseData?.verse}

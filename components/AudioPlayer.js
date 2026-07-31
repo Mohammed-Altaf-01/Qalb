@@ -242,7 +242,7 @@ export default function AudioPlayer({ verseKey, className }) {
             <button
               onClick={handlePlayPause}
               disabled={isReloading}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-all disabled:opacity-60 disabled:cursor-default"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-primary-foreground hover:bg-primary/80 transition-[background-color,opacity] duration-150 disabled:opacity-60 disabled:cursor-default"
               aria-label={isReloading ? "Loading reciter" : isPlaying ? "Pause" : "Play"}
             >
               {isReloading ? (
@@ -257,7 +257,7 @@ export default function AudioPlayer({ verseKey, className }) {
             {/* Progress scrubber */}
             <div className="flex-1 relative h-1 bg-white/10 rounded-full">
               <div
-                className="absolute left-0 top-0 h-full bg-primary rounded-full pointer-events-none transition-all"
+                className="absolute left-0 top-0 h-full bg-primary rounded-full pointer-events-none"
                 style={{ width: `${progress}%` }}
               />
               <input
@@ -312,7 +312,7 @@ export default function AudioPlayer({ verseKey, className }) {
                     setShowReciterPicker(false);
                   }}
                   className={cn(
-                    "text-[10px] px-2.5 py-1 rounded-full border transition-all duration-150",
+                    "text-[10px] px-2.5 py-1 rounded-full border transition-colors duration-150",
                     r.id === reciterId
                       ? "border-accent/60 bg-accent/15 text-accent"
                       : "border-border/50 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-foreground",

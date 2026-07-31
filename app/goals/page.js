@@ -29,9 +29,9 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { aggregateGoalSignals, computeDerivedProgress, normalizeApiGoal } from "@/lib/goal-progress";
 import { QALB_TIME_TRACKING_UPDATED_EVENT } from "@/lib/qalb-storage-keys";
+import { useGamification } from "@/lib/useGamification";
 import { schedulePushGoalsLocal } from "@/lib/user-app-sync-bridge";
 import { LS_GOALS } from "@/lib/user-state-registry";
-import { useGamification } from "@/lib/useGamification";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,7 +136,13 @@ function GoalCard({ goal, onDelete, onProgress }) {
   const isComplete = progressPct >= 100;
 
   return (
-    <article className={cn("rounded-2xl border p-4 transition-all", template.color, isComplete && "opacity-75")}>
+    <article
+      className={cn(
+        "rounded-2xl border p-4 transition-[opacity,border-color,background-color] duration-200",
+        template.color,
+        isComplete && "opacity-75",
+      )}
+    >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-2.5">
@@ -267,9 +273,7 @@ export default function GoalsPage() {
                 return [];
               }
             })();
-      setGoals((prev) =>
-        resolved.length > 0 ? resolved : prev.length > 0 ? applyDerivedProgress(prev, events) : [],
-      );
+      setGoals((prev) => (resolved.length > 0 ? resolved : prev.length > 0 ? applyDerivedProgress(prev, events) : []));
     } catch {
       toast.error("Could not refresh goals.");
     } finally {
@@ -475,7 +479,7 @@ export default function GoalsPage() {
                 key={template.id}
                 onClick={() => setSelectedTemplate(template.id)}
                 className={cn(
-                  "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
+                  "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-[transform,box-shadow,border-color,background-color] duration-150",
                   template.color,
                   selectedTemplate === template.id ? "ring-2 ring-primary scale-[1.02]" : "hover:scale-[1.01]",
                 )}

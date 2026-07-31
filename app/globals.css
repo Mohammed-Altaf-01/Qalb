@@ -62,6 +62,38 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Motion tokens — single source of truth for easing + duration.
+
+   Not `inline`, so Tailwind emits these as real custom properties on :root
+   (usable from raw CSS via `var(--ease-out)`) *and* generates the matching
+   `ease-*` utilities. The built-in `ease-out` / `ease-in-out` names are
+   deliberately overridden: the CSS defaults are too weak for deliberate UI
+   motion.
+
+   Easing decision order:
+     entering / exiting  → --ease-out
+     moving on screen    → --ease-in-out
+     hover / colour      → ease (browser default is fine here)
+     constant motion     → linear
+───────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  /* Duration scale — UI motion stays under 300ms. */
+  --duration-press: 140ms; /* button / icon press feedback   */
+  --duration-hover: 150ms; /* hover + colour changes         */
+  --duration-popover: 150ms; /* dropdowns, pickers, tooltips   */
+  --duration-panel: 240ms; /* larger panels, tab content     */
+  --duration-overlay: 420ms; /* full-screen overlays, splash   */
+  --stagger-step: 50ms; /* list / grid entrance stagger   */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Color Scheme — Dark mode by default (Islamic apps feel better dark)
 ───────────────────────────────────────────────────────────────────────────── */
 
@@ -144,9 +176,11 @@ html.light body {
 }
 
 html.light .animate-shimmer {
-  background: linear-gradient(90deg, oklch(0.94 0.01 80) 25%, oklch(0.98 0.005 80) 50%, oklch(0.94 0.01 80) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  background: oklch(0.94 0.01 80);
+}
+
+html.light .animate-shimmer::after {
+  background: linear-gradient(90deg, transparent 0%, oklch(0.985 0.005 80) 50%, transparent 100%);
 }
 
 html.light .tafsir-content {
@@ -341,12 +375,19 @@ html.light .ayah-end-badge {
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+/**
+ * Skeleton sweep. Driven by `transform` on a pseudo-element rather than
+ * `background-position` on the skeleton itself: a loading route renders
+ * dozens of these at once (app/read/loading.js paints ~59), and
+ * background-position repaints every one of them every frame — on the exact
+ * main thread that is busy hydrating the route. transform composites.
+ */
+@keyframes shimmer-sweep {
+  from {
+    transform: translateX(-100%);
   }
-  100% {
-    background-position: 200% 0;
+  to {
+    transform: translateX(100%);
   }
 }
 
@@ -366,24 +407,73 @@ html.light .ayah-end-badge {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, oklch(0.16 0.03 155) 25%, oklch(0.2 0.03 155) 50%, oklch(0.16 0.03 155) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  position: relative;
+  overflow: hidden;
+  background: oklch(0.16 0.03 155);
+}
+
+.animate-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, oklch(0.22 0.03 155) 50%, transparent 100%);
+  animation: shimmer-sweep 1.5s linear infinite;
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out forwards;
+  animation: fade-in-up 0.4s var(--ease-out) forwards;
 }
 
-/* Staggered entrance for verse cards in discover results */
-.verse-card-enter:nth-child(1) {
-  animation-delay: 0ms;
+/**
+ * Header sign-in button.
+ *
+ * The once-per-session "spotlight" nudge earns a slow, deliberate 500ms swell
+ * (glow + lift). Ordinary hover on the same button does not — it is a
+ * persistent header control, so its colour feedback runs at the normal 150ms.
+ * One `transition-all duration-500` cannot express both.
+ */
+.signin-nudge-transition {
+  transition:
+    color var(--duration-hover) ease,
+    background-color var(--duration-hover) ease,
+    border-color var(--duration-hover) ease,
+    box-shadow 500ms var(--ease-out),
+    transform 500ms var(--ease-out);
 }
-.verse-card-enter:nth-child(2) {
-  animation-delay: 100ms;
+
+/**
+ * Anchored dropdown / picker panels (translation, tafsir, reciter, quality).
+ *
+ * These are hand-rolled `absolute right-0 top-*` panels, so they grow from the
+ * trigger's corner rather than from their own centre — that is what explains
+ * where the panel came from. Never scale from 0: nothing in the physical world
+ * appears out of nothing.
+ */
+@keyframes dropdown-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
-.verse-card-enter:nth-child(3) {
-  animation-delay: 200ms;
+
+.dropdown-panel-enter {
+  transform-origin: top right;
+  animation: dropdown-panel-in var(--duration-popover) var(--ease-out) both;
+}
+
+.dropdown-panel-enter--start {
+  transform-origin: top left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-panel-enter {
+    animation: reduced-fade-in 0.12s ease both;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -653,6 +743,70 @@ html.light .ayah-end-badge {
   border-top-color: currentColor;
   opacity: 0.88;
   animation: radio-playing-ring-spin 2.75s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Reduced motion
+
+   Fewer and gentler — not zero. Opacity and colour transitions survive
+   because they carry meaning (what appeared, what is loading, what changed).
+   What goes: movement, scaling, blur, and anything that loops forever.
+
+   `animate-spin` is deliberately left alone — a busy spinner is a status
+   indicator, and removing it leaves the user with no feedback at all.
+───────────────────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Infinite loops — the most fatiguing category. */
+  .animate-shimmer::after {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .animate-streak-pulse {
+    animation: none;
+  }
+
+  .radio-playing-ring-arc {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  /* Entrances keep the fade, lose the travel. */
+  .animate-fade-in-up {
+    animation: reduced-fade-in 0.2s ease forwards;
+  }
+
+  /* Bismillah reveal — drop the 10px blur + brightness ramp, keep the fade. */
+  .bismillah-animate {
+    animation: reduced-fade-in 0.3s ease both;
+  }
+
+  .bismillah-translation-animate,
+  .bismillah-date-animate {
+    animation: reduced-fade-in 0.3s ease both;
+  }
+
+  /* Hover energy rings are pure decoration — no comprehension value. */
+  .bismillah-ring-1,
+  .bismillah-ring-2 {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Stagger delays compound the wait without the motion that justified them. */
+  .verse-card-enter {
+    animation-delay: 0ms !important;
+  }
+}
+
+@keyframes reduced-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

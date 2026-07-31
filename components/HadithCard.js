@@ -170,22 +170,28 @@ function todayIndex() {
  */
 export default function HadithCard() {
   const [idx, setIdx] = useState(todayIndex);
-  const [spinning, setSpinning] = useState(false);
+  /** Monotonic full turns of the refresh icon — one per press. */
+  const [turns, setTurns] = useState(0);
   const hadith = HADITH_LIST[idx];
 
   /**
-   * Advances to the next hadith and plays a brief spin animation.
+   * Advances to the next hadith and turns the refresh icon one full rotation.
+   *
+   * The rotation is a *transition* to an ever-increasing angle rather than a
+   * keyframe: keyframes restart from zero when re-triggered, so the previous
+   * implementation (a 1s `animate-spin` cancelled after 500ms) snapped the
+   * icon back from 180° every time, and rapid presses restarted it mid-turn.
+   * A transition retargets from wherever the icon currently is.
    */
   function handleNext() {
-    setSpinning(true);
-    setTimeout(() => setSpinning(false), 500);
+    setTurns((t) => t + 1);
     setIdx((prev) => (prev + 1) % HADITH_LIST.length);
   }
 
   return (
     <div
       className="rounded-2xl border border-border/40 bg-card p-5 relative overflow-hidden
-      transition-all duration-200 hover:brightness-90 hover:border-border/60"
+      transition-[filter,border-color] duration-200 hover:brightness-90 hover:border-border/60"
     >
       {/* Decorative oversized opening quote */}
       <div
@@ -234,13 +240,16 @@ export default function HadithCard() {
           aria-label="Load next hadith"
           title="Next hadith"
           className="flex items-center gap-1 text-[10px] text-muted-foreground/60
-            hover:text-accent hover:opacity-80 transition-all duration-200
-            active:scale-90 shrink-0 group"
+            hover:text-accent hover:opacity-80 transition-[color,opacity] duration-150
+            active:scale-95 shrink-0 group"
         >
           <RotateCcw
             size={11}
-            className={spinning ? "animate-spin" : "transition-transform duration-200 group-hover:rotate-180"}
-            style={{ transitionDuration: spinning ? undefined : "400ms" }}
+            style={{ "--spin-turns": turns }}
+            className="transition-transform duration-400 ease-out
+              [transform:rotate(calc(var(--spin-turns,0)*360deg))]
+              group-hover:[transform:rotate(calc(var(--spin-turns,0)*360deg_+_180deg))]
+              motion-reduce:transition-none"
           />
           <span className="hidden sm:inline">Next</span>
         </button>

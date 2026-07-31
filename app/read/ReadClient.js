@@ -25,7 +25,6 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
 import { filterVerseWords, stripVerseEndMarker, toArabicIndicDigits, verseNumberFromKey } from "@/lib/arabic-utils";
-import { findActiveWord, wordHighlightIndex } from "@/lib/verse-word-highlight";
 import { fetchWithRetry } from "@/lib/client-fetch-retry";
 import { firstMushafPageForJuz, lastMushafPageForJuz } from "@/lib/juz-mushaf-start-page";
 import { markKhatmPage } from "@/lib/khatm-progress";
@@ -45,6 +44,7 @@ import {
 } from "@/lib/user-app-sync-bridge";
 import { cn } from "@/lib/utils";
 import { minVerseKeyFromMapping } from "@/lib/verse-key-compare";
+import { findActiveWord, wordHighlightIndex } from "@/lib/verse-word-highlight";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Translation catalogue
@@ -426,7 +426,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
             disabled={isLoadingAudio}
             aria-label={isPlaying ? "Pause" : "Play recitation"}
             className={cn(
-              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-150",
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors duration-150",
               isPlaying
                 ? "border-accent/60 bg-accent/15 text-accent"
                 : "border-border/40 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-accent",
@@ -448,7 +448,7 @@ function VersePlayer({ verse, reciterId, playingKey, setPlayingKey, isHighlighte
           onClick={toggleBookmark}
           aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
           className={cn(
-            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-150",
+            "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors duration-150",
             isBookmarked
               ? "border-accent/50 bg-accent/12 text-accent"
               : "border-border/40 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-accent",
@@ -1228,19 +1228,19 @@ export default function ReadClient({
             <button
               onClick={() => setShowTranslationPicker((v) => !v)}
               className="text-xs text-muted-foreground border border-border/50 rounded-lg px-3 py-1.5
-                hover:border-accent/40 hover:text-foreground transition-all duration-150 flex items-center gap-1.5"
+                hover:border-accent/40 hover:text-foreground transition-colors duration-150 flex items-center gap-1.5"
             >
               Translation: <span className="text-foreground/80 font-medium">{currentTranslation.name}</span>
               <span className="opacity-50 text-[10px]">▾</span>
             </button>
             {showTranslationPicker && (
-              <div className="absolute right-0 top-9 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+              <div className="absolute right-0 top-9 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5 dropdown-panel-enter">
                 {TRANSLATIONS.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => handleTranslationChange(t.id)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150",
                       t.id === translationId
                         ? "bg-accent/15 text-accent font-medium"
                         : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
@@ -1262,7 +1262,7 @@ export default function ReadClient({
                 key={chapter.id}
                 onClick={() => startReading(chapter)}
                 className="flex flex-col items-start p-3 rounded-xl border border-border/40 bg-card
-                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 text-left group"
+                  hover:border-accent/40 hover:bg-accent/5 transition-colors duration-150 text-left group"
               >
                 <div className="flex items-center justify-between w-full mb-1.5">
                   <span className="text-[10px] text-accent/70 font-semibold">{chapter.id}</span>
@@ -1285,7 +1285,7 @@ export default function ReadClient({
                 type="button"
                 onClick={() => void startJuzReading(jn)}
                 className="aspect-square flex flex-col items-center justify-center rounded-xl border border-border/40 bg-card
-                  hover:border-accent/40 hover:bg-accent/5 transition-all text-sm font-semibold text-foreground"
+                  hover:border-accent/40 hover:bg-accent/5 transition-colors duration-150 text-sm font-semibold text-foreground"
               >
                 {jn}
               </button>
@@ -1391,18 +1391,18 @@ export default function ReadClient({
                 setShowReciterPicker(false);
               }}
               className="text-[10px] text-muted-foreground border border-border/40 rounded-lg px-2.5 py-1
-                hover:border-accent/40 hover:text-foreground transition-all duration-150 flex items-center gap-1"
+                hover:border-accent/40 hover:text-foreground transition-colors duration-150 flex items-center gap-1"
             >
               {currentTranslation.language} <span className="opacity-50">▾</span>
             </button>
             {showTranslationPicker && (
-              <div className="absolute right-0 top-8 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+              <div className="absolute right-0 top-8 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5 dropdown-panel-enter">
                 {TRANSLATIONS.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => handleTranslationChange(t.id)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150",
                       t.id === translationId
                         ? "bg-accent/15 text-accent font-medium"
                         : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
@@ -1424,19 +1424,19 @@ export default function ReadClient({
                 setShowTranslationPicker(false);
               }}
               className="text-[10px] text-muted-foreground border border-border/40 rounded-lg px-2.5 py-1
-                hover:border-accent/40 hover:text-foreground transition-all duration-150 flex items-center gap-1"
+                hover:border-accent/40 hover:text-foreground transition-colors duration-150 flex items-center gap-1"
             >
               <Volume2 size={9} className="mr-0.5" />
               {currentReciter.name.split(" ")[0]} <span className="opacity-50">▾</span>
             </button>
             {showReciterPicker && (
-              <div className="absolute right-0 top-8 z-50 w-52 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+              <div className="absolute right-0 top-8 z-50 w-52 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5 dropdown-panel-enter">
                 {READ_RECITERS.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => handleReciterChange(r.id)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                      "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150",
                       r.id === reciterId
                         ? "bg-accent/15 text-accent font-medium"
                         : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
@@ -1646,7 +1646,7 @@ export default function ReadClient({
             className="flex items-center gap-2 px-4 py-2.5 rounded-full
               bg-accent text-accent-foreground text-xs font-semibold
               shadow-lg shadow-accent/25 hover:bg-accent/90
-              transition-all duration-200 active:scale-95"
+              transition-[color,background-color,transform] duration-200 active:scale-95"
           >
             <Sparkles size={13} />
             Key Themes

@@ -6,11 +6,11 @@ import {
   BookOpen,
   ChevronDown,
   Headphones,
-  Sprout,
   Home,
   LogIn,
   RadioTower,
   Settings,
+  Sprout,
   Target,
   User,
 } from "lucide-react";
@@ -216,7 +216,7 @@ function UserButton() {
             signIn(QURAN_FOUNDATION_PROVIDER_ID);
           }}
           className={cn(
-            "relative z-50 overflow-hidden text-xs font-medium rounded-lg px-2.5 py-2 border transition-all duration-500 ease-out shrink-0",
+            "relative z-50 overflow-hidden text-xs font-medium rounded-lg px-2.5 py-2 border signin-nudge-transition shrink-0",
             spotlightActive
               ? "text-foreground border-accent/40 bg-background shadow-[0_0_20px_rgba(200,169,81,0.25)] scale-[1.03]"
               : "text-muted-foreground border-border/40 hover:text-foreground hover:bg-muted/30",
@@ -275,7 +275,7 @@ function UserButton() {
         </span>
         <div className="w-full h-1 rounded-full bg-muted overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-[width] duration-500 ease-out"
             style={{ width: `${levelInfo.progress}%` }}
           />
         </div>

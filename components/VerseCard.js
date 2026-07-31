@@ -187,13 +187,7 @@ function WordHighlightPlayer({ verseKey, words, autoStart = false }) {
         <span>{isPlaying ? "Pause" : "Play recitation"}</span>
       </button>
       {audioUrl ? (
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={handleEnded}
-          preload="metadata"
-        />
+        <audio ref={audioRef} src={audioUrl} onTimeUpdate={handleTimeUpdate} onEnded={handleEnded} preload="metadata" />
       ) : (
         <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onEnded={handleEnded} preload="metadata" />
       )}
@@ -338,7 +332,7 @@ export default function VerseCard({
               onClick={handleBookmark}
               disabled={isBookmarking}
               className={cn(
-                "p-1.5 rounded-lg transition-all",
+                "p-1.5 rounded-lg transition-[color,background-color,transform] duration-150",
                 isBookmarked
                   ? "text-accent bg-accent/10 scale-110"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5",

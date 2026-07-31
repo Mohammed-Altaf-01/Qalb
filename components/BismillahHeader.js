@@ -14,6 +14,8 @@ export default function BismillahHeader() {
   const [ringKey, setRingKey] = useState(0);
   const [animate, setAnimate] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
+  /** Real pointer only — a tap on touch fires `mouseenter` and the glow sticks. */
+  const [canHover, setCanHover] = useState(false);
 
   useEffect(() => {
     const seen = sessionStorage.getItem(SESSION_KEY);
@@ -26,14 +28,30 @@ export default function BismillahHeader() {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined;
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const apply = () => setCanHover(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
   function handleEnter() {
+    if (!canHover) return;
     setHovered(true);
     setRingKey((k) => k + 1);
   }
 
-  const glowFilter = hovered
-    ? "drop-shadow(0 0 8px rgba(200,169,81,0.9)) drop-shadow(0 0 28px rgba(200,169,81,0.45)) drop-shadow(0 0 56px rgba(200,169,81,0.18))"
-    : "drop-shadow(0 0 0px transparent)";
+  /**
+   * Single drop-shadow at 14px.
+   *
+   * Was three stacked shadows out to a 56px blur radius, transitioned over
+   * 550ms. Large-radius drop-shadow repaints the whole subtree every frame
+   * (worst in Safari), and 550ms is three times the hover budget — the glow
+   * arrived long after the pointer had moved on.
+   */
+  const glowFilter = hovered ? "drop-shadow(0 0 14px rgba(200,169,81,0.55))" : "drop-shadow(0 0 0 transparent)";
 
   return (
     <section className="select-none mb-4">
@@ -79,10 +97,10 @@ export default function BismillahHeader() {
             className="relative text-center md:text-left"
             onMouseEnter={handleEnter}
             onMouseLeave={() => setHovered(false)}
-            style={{ filter: glowFilter, transition: "filter 0.55s ease" }}
+            style={{ filter: glowFilter, transition: "filter var(--duration-hover, 150ms) ease" }}
           >
             <div key={ringKey} aria-hidden="true" className="absolute inset-0 pointer-events-none">
-              {hovered && (
+              {hovered && canHover && (
                 <>
                   <div
                     className="absolute rounded-[50%] border border-accent/45 bismillah-ring-1"

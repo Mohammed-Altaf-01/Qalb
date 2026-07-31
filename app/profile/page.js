@@ -53,7 +53,7 @@ function XPBar({ xp }) {
       </div>
       <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-700"
+          className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-[width] duration-700 ease-out"
           style={{ width: `${info.progress}%` }}
         />
       </div>
@@ -128,7 +128,7 @@ function BadgesGrid({ earned }) {
           <div
             key={badge.id}
             className={cn(
-              "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-all",
+              "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-[opacity,filter,border-color,background-color] duration-200",
               isEarned ? "border-accent/30 bg-accent/5" : "border-border/20 bg-card/20 opacity-30 grayscale",
             )}
           >
@@ -154,7 +154,7 @@ function DeedsGrid({ earned }) {
           <div
             key={deed.id}
             className={cn(
-              "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-all",
+              "flex flex-col items-center gap-1.5 rounded-xl p-3 border text-center transition-[opacity,filter,border-color,background-color] duration-200",
               isEarned ? "border-primary/30 bg-primary/5" : "border-border/20 bg-card/20 opacity-35 grayscale",
             )}
           >
@@ -562,7 +562,7 @@ export default function ProfilePage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex-1 py-2 text-xs font-medium rounded-lg transition-all inline-flex items-center justify-center gap-1",
+                "flex-1 py-2 text-xs font-medium rounded-lg transition-[color,background-color,box-shadow] duration-150 inline-flex items-center justify-center gap-1",
                 tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               )}
             >

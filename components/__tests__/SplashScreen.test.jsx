@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import SplashScreen from "../SplashScreen";
+import SplashScreen, { SPLASH_EXIT_MS, SPLASH_HOLD_MS } from "../SplashScreen";
 
 describe("SplashScreen", () => {
   beforeEach(() => {
@@ -35,26 +35,59 @@ describe("SplashScreen", () => {
     expect(sessionStorage.getItem("qalb_splash_shown")).toBe("1");
   });
 
-  it("unmounts after the exit animation completes (2700ms)", async () => {
+  it("unmounts after the hold plus the exit animation", async () => {
     const { container } = render(<SplashScreen />);
     expect(container.firstChild).not.toBeNull();
 
     await act(async () => {
-      vi.advanceTimersByTime(2700);
+      vi.advanceTimersByTime(SPLASH_HOLD_MS + SPLASH_EXIT_MS);
     });
 
     expect(container.firstChild).toBeNull();
   });
 
-  it("starts exit animation at 2200ms (exiting phase)", async () => {
+  it("enters the exiting phase once the hold elapses", async () => {
     const { container } = render(<SplashScreen />);
 
     await act(async () => {
-      vi.advanceTimersByTime(2200);
+      vi.advanceTimersByTime(SPLASH_HOLD_MS);
     });
 
-    // Component is still rendered (not gone yet) but in exiting phase
+    // Still rendered (not gone yet) but marked as exiting
     expect(container.firstChild).not.toBeNull();
+    expect(container.querySelector("#qalb-splash")).toHaveAttribute("data-phase", "exiting");
+  });
+
+  it("keeps the whole hold under a second and a half", () => {
+    // A per-tab-session splash is not a rare first-run moment; it must not
+    // sit between a returning user and the app.
+    expect(SPLASH_HOLD_MS).toBeLessThanOrEqual(1500);
+  });
+
+  it("skips to the exit on pointerdown instead of blocking input", async () => {
+    const { container } = render(<SplashScreen />);
+
+    await act(async () => {
+      window.dispatchEvent(new window.PointerEvent("pointerdown"));
+    });
+
+    expect(container.querySelector("#qalb-splash")).toHaveAttribute("data-phase", "exiting");
+
+    await act(async () => {
+      vi.advanceTimersByTime(SPLASH_EXIT_MS);
+    });
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("skips to the exit on keydown", async () => {
+    const { container } = render(<SplashScreen />);
+
+    await act(async () => {
+      window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" }));
+    });
+
+    expect(container.querySelector("#qalb-splash")).toHaveAttribute("data-phase", "exiting");
   });
 
   it("renders 3 pulsing dots", () => {

@@ -64,7 +64,7 @@ function SurahRow({ chapter }) {
         saveLastRead({ href, label: chapter.name_simple, sub: chapter.translated_name?.name ?? "", type: "surah" })
       }
       className="flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 rounded-xl border border-transparent
-        hover:bg-card hover:border-border/40 transition-all duration-150 group"
+        hover:bg-card hover:border-border/40 transition-colors duration-150 group"
     >
       <div
         className="w-9 h-9 rounded-full border border-accent/30 bg-accent/8 flex items-center
@@ -424,7 +424,7 @@ export default function HomeClient({ chapters }) {
                 href={r.href}
                 onClick={() => saveLastRead(r)}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card
-                  hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group max-w-full"
+                  hover:border-accent/40 hover:bg-accent/5 transition-colors duration-150 group max-w-full"
               >
                 <BookOpen size={13} className="text-accent/60 group-hover:text-accent transition-colors shrink-0" />
                 <div className="min-w-0">

@@ -138,7 +138,7 @@ export default function DailyVerseSection({ initialVerse, initialChapterName }) 
           aria-label="Load a different verse"
           title="Load a different verse"
           className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50
-            hover:text-accent hover:opacity-80 transition-all duration-200
+            hover:text-accent hover:opacity-80 transition-[color,opacity] duration-150
             active:scale-90 disabled:opacity-25 disabled:cursor-not-allowed group"
         >
           {loading ? (

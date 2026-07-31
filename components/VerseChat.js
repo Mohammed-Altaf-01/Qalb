@@ -203,7 +203,7 @@ export default function VerseChat({
         <button
           onClick={() => setIsOpen((v) => !v)}
           className={cn(
-            "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all duration-200",
+            "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors duration-200",
             isOpen
               ? "border-accent/50 bg-accent/8 text-foreground"
               : "border-dashed border-accent/35 bg-accent/5 hover:bg-accent/10 hover:border-accent/50",
@@ -338,7 +338,7 @@ function ChatPanel({
                   onClick={() => sendMessage(q)}
                   className="text-[11px] px-3 py-1.5 rounded-full border border-border/60 bg-muted/40
                     hover:border-accent/50 hover:bg-accent/10 hover:text-accent
-                    transition-all duration-150 text-foreground/70"
+                    transition-colors duration-150 text-foreground/70"
                 >
                   {q}
                 </button>
@@ -376,7 +376,7 @@ function ChatPanel({
           className="p-1.5 rounded-lg bg-primary/20 border border-primary/20
             hover:bg-primary/35 text-accent
             disabled:opacity-30 disabled:cursor-not-allowed
-            transition-all duration-150 active:scale-90 shrink-0"
+            transition-[color,background-color,opacity,transform] duration-150 active:scale-95 shrink-0"
         >
           <Send size={14} />
         </button>

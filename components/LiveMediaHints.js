@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { ensureLiveDualPrewarm } from "@/lib/live-dual-prewarm";
-import { LIVE_STREAM_CDN_ORIGIN } from "@/lib/live-stream-defaults";
+import { LIVE_STREAM_ORIGINS } from "@/lib/live-stream-defaults";
 
 function injectOnce(rel, href, crossOrigin) {
   if (typeof document === "undefined") return;
@@ -21,8 +21,12 @@ function injectOnce(rel, href, crossOrigin) {
  */
 export default function LiveMediaHints() {
   useEffect(() => {
-    injectOnce("dns-prefetch", LIVE_STREAM_CDN_ORIGIN, false);
-    injectOnce("preconnect", LIVE_STREAM_CDN_ORIGIN, true);
+    // Every candidate origin — a failover to the backup host should not pay for
+    // a cold DNS + TLS handshake on top of the failed manifest request.
+    for (const origin of LIVE_STREAM_ORIGINS) {
+      injectOnce("dns-prefetch", origin, false);
+      injectOnce("preconnect", origin, true);
+    }
   }, []);
 
   useEffect(() => {

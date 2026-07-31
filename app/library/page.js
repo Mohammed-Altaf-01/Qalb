@@ -280,7 +280,7 @@ export default function LibraryPage() {
             key={key}
             onClick={() => setActiveTab(key)}
             className={cn(
-              "flex-1 text-xs font-medium py-2 rounded-lg transition-all",
+              "flex-1 text-xs font-medium py-2 rounded-lg transition-[color,background-color,box-shadow] duration-150",
               activeTab === key
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

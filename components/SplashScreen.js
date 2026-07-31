@@ -2,12 +2,14 @@
  * @fileoverview SplashScreen Component — Bismillah Intro Animation
  *
  * Displays a full-screen bismillah calligraphy animation on the user's
- * first visit per session. After ~2.4 s the screen slides upward,
+ * first visit per session. After the hold the screen slides upward,
  * revealing the app beneath.
  *
  * Implementation notes:
  *  - sessionStorage flag ensures it plays only once per browser tab session
  *  - Pure CSS keyframes — no animation library needed
+ *  - Any pointerdown/keydown skips straight to the exit; the splash never
+ *    holds the app hostage
  *  - `pointer-events: none` after exit so it never blocks interaction
  *  - Rendered inside a portal via a fixed-position div so it sits above
  *    everything else without affecting document flow
@@ -16,6 +18,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+/**
+ * How long the splash holds before exiting.
+ *
+ * This is not a first-run moment — the flag lives in `sessionStorage`, so a
+ * returning user pays it again in every new tab. That puts it well outside the
+ * "rare, can add delight" tier, so the hold is kept short and the whole screen
+ * is dismissible on tap or keypress rather than blocking input outright.
+ */
+export const SPLASH_HOLD_MS = 1400;
+
+/** Exit animation length; the component unmounts once it finishes. */
+export const SPLASH_EXIT_MS = 420;
 
 /**
  * Inline style blocks for the animation phases.
@@ -30,10 +45,11 @@ const KEYFRAME_CSS = `
     0%   { background-position: -200% center; }
     100% { background-position:  200% center; }
   }
+  /* scaleX, not width: width forces layout on every frame of the reveal. */
   @keyframes line-expand {
-    0%   { width: 0;    opacity: 0; }
-    60%  { opacity: 1;              }
-    100% { width: 120px; opacity: 0.6; }
+    0%   { transform: scaleX(0); opacity: 0;   }
+    60%  {                       opacity: 1;   }
+    100% { transform: scaleX(1); opacity: 0.6; }
   }
   @keyframes splash-exit {
     0%   { transform: translateY(0);     opacity: 1; }
@@ -42,6 +58,21 @@ const KEYFRAME_CSS = `
   @keyframes dot-pulse {
     0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
     40%            { transform: scale(1);   opacity: 1;   }
+  }
+  @keyframes splash-fade-out {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #qalb-splash, #qalb-splash * {
+      animation-name: none !important;
+    }
+    #qalb-splash[data-phase="exiting"] {
+      animation-name: splash-fade-out !important;
+      animation-duration: 200ms !important;
+      animation-fill-mode: forwards !important;
+    }
   }
 `;
 
@@ -57,16 +88,28 @@ export default function SplashScreen() {
     }
     sessionStorage.setItem("qalb_splash_shown", "1");
 
-    // Hold for 2.2 s, then start the exit slide
-    const exitTimer = setTimeout(() => setPhase("exiting"), 2200);
-    // After exit animation (500 ms), unmount entirely
-    const goneTimer = setTimeout(() => setPhase("gone"), 2700);
+    const exitTimer = setTimeout(() => setPhase("exiting"), SPLASH_HOLD_MS);
+    const goneTimer = setTimeout(() => setPhase("gone"), SPLASH_HOLD_MS + SPLASH_EXIT_MS);
+
+    // Any deliberate input means the user wants the app, not the animation.
+    const skip = () => setPhase((p) => (p === "visible" ? "exiting" : p));
+    window.addEventListener("pointerdown", skip);
+    window.addEventListener("keydown", skip);
 
     return () => {
       clearTimeout(exitTimer);
       clearTimeout(goneTimer);
+      window.removeEventListener("pointerdown", skip);
+      window.removeEventListener("keydown", skip);
     };
   }, []);
+
+  // Once skipped early, still unmount after the exit finishes.
+  useEffect(() => {
+    if (phase !== "exiting") return undefined;
+    const t = setTimeout(() => setPhase("gone"), SPLASH_EXIT_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   // Fully unmounted — render nothing
   if (phase === "gone") return null;
@@ -78,7 +121,9 @@ export default function SplashScreen() {
 
       {/* ── Overlay ─────────────────────────────────────────────────────── */}
       <div
+        id="qalb-splash"
         aria-hidden="true"
+        data-phase={phase}
         style={{
           position: "fixed",
           inset: 0,
@@ -88,7 +133,10 @@ export default function SplashScreen() {
           alignItems: "center",
           justifyContent: "center",
           background: "oklch(0.09 0.022 155)",
-          animation: phase === "exiting" ? "splash-exit 0.5s cubic-bezier(0.76, 0, 0.24, 1) forwards" : "none",
+          animation:
+            phase === "exiting"
+              ? `splash-exit ${SPLASH_EXIT_MS}ms var(--ease-in-out, cubic-bezier(0.77, 0, 0.175, 1)) forwards`
+              : "none",
           pointerEvents: phase === "exiting" ? "none" : "all",
         }}
       >
@@ -100,7 +148,7 @@ export default function SplashScreen() {
             height: "340px",
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(200,169,81,0.12) 0%, transparent 70%)",
-            animation: "bismillah-fade-in 1s ease-out 0.2s both",
+            animation: "bismillah-fade-in 0.8s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) 0.1s both",
           }}
         />
 
@@ -122,8 +170,8 @@ export default function SplashScreen() {
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
             animation:
-              "bismillah-fade-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both, " +
-              "gold-shimmer 2.5s linear 0.8s infinite",
+              "bismillah-fade-in 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both, " +
+              "gold-shimmer 2.5s linear 0.6s infinite",
           }}
         >
           بسم الله الرحمن الرحيم
@@ -133,8 +181,9 @@ export default function SplashScreen() {
         <div
           style={{
             height: "1px",
+            width: "120px",
             background: "linear-gradient(90deg, transparent, #c8a951, transparent)",
-            animation: "line-expand 1.2s ease-out 0.9s both",
+            animation: "line-expand 0.9s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) 0.5s both",
             marginTop: "1.25rem",
           }}
         />
@@ -149,7 +198,7 @@ export default function SplashScreen() {
             textTransform: "uppercase",
             color: "rgba(200,169,81,0.65)",
             marginTop: "1rem",
-            animation: "bismillah-fade-in 0.8s ease-out 1.3s both",
+            animation: "bismillah-fade-in 0.6s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) 0.7s both",
           }}
         >
           Qalb
@@ -161,7 +210,7 @@ export default function SplashScreen() {
             display: "flex",
             gap: "6px",
             marginTop: "2.5rem",
-            animation: "bismillah-fade-in 0.6s ease-out 1.5s both",
+            animation: "bismillah-fade-in 0.5s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) 0.85s both",
           }}
         >
           {[0, 1, 2].map((i) => (

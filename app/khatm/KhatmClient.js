@@ -84,7 +84,7 @@ export default function KhatmClient() {
         </div>
         <div className="h-2.5 rounded-full bg-muted/50 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-[width] duration-500 ease-out"
             style={{ width: `${Math.min(100, stats.overallPct)}%` }}
           />
         </div>

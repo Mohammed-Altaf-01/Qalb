@@ -201,7 +201,7 @@ export default function ListenClient({ chapters, reciters: initialReciters }) {
                       key={`${entry.reciterId}:${entry.surahId}:${entry.updatedAt}`}
                       type="button"
                       onClick={() => void resumeListenEntry(entry)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card hover:border-accent/40 hover:bg-accent/5 transition-all duration-150 group max-w-full text-left"
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border/40 bg-card hover:border-accent/40 hover:bg-accent/5 transition-colors duration-150 group max-w-full text-left"
                     >
                       <Play size={13} className="text-accent/60 group-hover:text-accent transition-colors shrink-0" />
                       <div className="min-w-0">

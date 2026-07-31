@@ -100,10 +100,7 @@ export default function RotatingVerse() {
   return (
     // Desktop-only — hidden on mobile where space is tight
     <div className="hidden md:block mb-5">
-      <div
-        className={cn("transition-opacity duration-450 ease-in-out", visible ? "opacity-100" : "opacity-0")}
-        style={{ transitionDuration: "450ms" }}
-      >
+      <div className={cn("transition-opacity duration-450 ease-in-out", visible ? "opacity-100" : "opacity-0")}>
         <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm px-5 py-3.5 flex items-start gap-4">
           {/* Type badge */}
           <span

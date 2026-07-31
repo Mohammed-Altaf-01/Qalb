@@ -32,6 +32,7 @@ import { stripVerseEndMarker } from "@/lib/arabic-utils";
 import { emitJourneyLocalUpdated } from "@/lib/qalb-journey-events";
 import { LS_VERSE_CHAT, LS_VERSE_NOTES, LS_VERSE_REFLECTIONS } from "@/lib/qalb-verse-local-keys";
 import { cleanTranslationText } from "@/lib/translation-utils";
+import { charsRevealedAt, prefersReducedMotion, typingRevealDurationMs } from "@/lib/typing-reveal";
 import { useGamification } from "@/lib/useGamification";
 import {
   ACCOUNT_STORAGE_SYNCED_EVENT,
@@ -148,7 +149,6 @@ export default function VerseDetailClient({ verseKey, initialData }) {
   const activeTranslationRef = useRef(translation);
   const [displayedTranslation, setDisplayedTranslation] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const typingTimerRef = useRef(null);
   const [translationId, setTranslationId] = useState(20);
   const [showTranslationPicker, setShowTranslationPicker] = useState(false);
   const [isFetchingTranslation, setIsFetchingTranslation] = useState(false);
@@ -171,24 +171,54 @@ export default function VerseDetailClient({ verseKey, initialData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Typing animation — 2 chars / 20ms ≈ 100 chars/sec
+  /**
+   * Typing reveal — duration-capped and rAF-driven.
+   *
+   * Was `setInterval(…, 20)` at a fixed 2 chars/tick, so a long translation
+   * took seconds to become readable and re-rendered this page ~50 times a
+   * second to get there. Now the whole reveal fits the UI motion budget
+   * (see lib/typing-reveal.js) and repaints at most once per frame.
+   */
   useEffect(() => {
-    if (!activeTranslation) return;
+    if (!activeTranslation) return undefined;
     activeTranslationRef.current = activeTranslation;
-    clearInterval(typingTimerRef.current);
+
+    if (prefersReducedMotion()) {
+      setDisplayedTranslation(activeTranslation);
+      setIsTyping(false);
+      return undefined;
+    }
+
+    const total = activeTranslation.length;
+    const durationMs = typingRevealDurationMs(total);
+
     setDisplayedTranslation("");
     setIsTyping(true);
-    let i = 0;
-    typingTimerRef.current = setInterval(() => {
-      i += 2;
-      setDisplayedTranslation(activeTranslation.slice(0, i));
-      if (i >= activeTranslation.length) {
-        clearInterval(typingTimerRef.current);
-        setDisplayedTranslation(activeTranslation);
-        setIsTyping(false);
+
+    let frame = 0;
+    let startedAt = 0;
+    let lastCount = -1;
+
+    const step = (now) => {
+      if (startedAt === 0) startedAt = now;
+      const count = charsRevealedAt(now - startedAt, total, durationMs);
+
+      // Skip the state update when the frame reveals no new character.
+      if (count !== lastCount) {
+        lastCount = count;
+        setDisplayedTranslation(activeTranslation.slice(0, count));
       }
-    }, 20);
-    return () => clearInterval(typingTimerRef.current);
+
+      if (count >= total) {
+        setIsTyping(false);
+        return;
+      }
+      frame = requestAnimationFrame(step);
+    };
+
+    frame = requestAnimationFrame(step);
+
+    return () => cancelAnimationFrame(frame);
   }, [activeTranslation]);
 
   async function handleChangeTranslation(tid) {
@@ -396,7 +426,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
               onClick={handleToggleBookmark}
               aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this verse"}
               className={cn(
-                "p-1.5 rounded-lg border transition-all duration-200",
+                "p-1.5 rounded-lg border transition-colors duration-200",
                 isBookmarked
                   ? "border-accent/60 bg-accent/15 text-accent"
                   : "border-border/50 bg-muted/30 text-muted-foreground hover:border-accent/40 hover:text-accent",
@@ -416,7 +446,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
               aria-selected={activeTab === id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-medium border-b-2 transition-all duration-150 whitespace-nowrap",
+                "flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-medium border-b-2 transition-colors duration-150 whitespace-nowrap",
                 activeTab === id
                   ? "border-accent text-accent"
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
@@ -441,28 +471,48 @@ export default function VerseDetailClient({ verseKey, initialData }) {
 
           {/* Translation + language picker */}
           <div className="space-y-2 px-1">
-            <p
-              dir={isRtl ? "rtl" : "ltr"}
-              lang={isRtl ? "ur" : undefined}
-              className={cn(
-                "reading-prose text-foreground/80 transition-opacity duration-200",
-                isFetchingTranslation && "opacity-40",
-                isRtl && "font-[system-ui] text-right",
-              )}
-            >
-              {isFetchingTranslation ? (
-                <span className="text-muted-foreground/40 italic">Loading translation…</span>
-              ) : displayedTranslation ? (
-                <>
-                  {displayedTranslation}
-                  {isTyping && (
-                    <span className="inline-block w-[2px] h-[1em] bg-accent ml-[1px] align-middle animate-[blink_0.7s_step-end_infinite]" />
+            {/*
+              Grid stack: an invisible copy of the *full* translation sits in
+              the same cell and sets the block's height from the first frame,
+              so the reveal never reflows the page and pushes the audio player
+              and tafsir around under the reader's cursor.
+            */}
+            <div className="grid">
+              {!isFetchingTranslation && activeTranslation ? (
+                <p
+                  aria-hidden="true"
+                  dir={isRtl ? "rtl" : "ltr"}
+                  className={cn(
+                    "reading-prose invisible pointer-events-none [grid-area:1/1]",
+                    isRtl && "font-[system-ui] text-right",
                   )}
-                </>
-              ) : (
-                <span className="text-muted-foreground/40 italic">Translation loading…</span>
-              )}
-            </p>
+                >
+                  {activeTranslation}
+                </p>
+              ) : null}
+              <p
+                dir={isRtl ? "rtl" : "ltr"}
+                lang={isRtl ? "ur" : undefined}
+                className={cn(
+                  "reading-prose text-foreground/80 transition-opacity duration-200 [grid-area:1/1]",
+                  isFetchingTranslation && "opacity-40",
+                  isRtl && "font-[system-ui] text-right",
+                )}
+              >
+                {isFetchingTranslation ? (
+                  <span className="text-muted-foreground/40 italic">Loading translation…</span>
+                ) : displayedTranslation ? (
+                  <>
+                    {displayedTranslation}
+                    {isTyping && (
+                      <span className="inline-block w-[2px] h-[1em] bg-accent ml-[1px] align-middle animate-[blink_0.7s_step-end_infinite]" />
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground/40 italic">Translation loading…</span>
+                )}
+              </p>
+            </div>
 
             {/* Language picker */}
             <div className="relative flex justify-end">
@@ -474,13 +524,13 @@ export default function VerseDetailClient({ verseKey, initialData }) {
                 <span className="opacity-50">▾</span>
               </button>
               {showTranslationPicker && (
-                <div className="absolute right-0 top-6 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+                <div className="absolute right-0 top-6 z-50 w-64 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5 dropdown-panel-enter">
                   {TRANSLATIONS.map((t) => (
                     <button
                       key={t.id}
                       onClick={() => handleChangeTranslation(t.id)}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                        "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150",
                         t.id === translationId
                           ? "bg-accent/15 text-accent font-medium"
                           : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
@@ -529,7 +579,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
                   <span className="opacity-50">▾</span>
                 </button>
                 {showTafsirPicker && (
-                  <div className="absolute right-0 top-6 z-50 w-72 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5">
+                  <div className="absolute right-0 top-6 z-50 w-72 rounded-xl border border-border/60 bg-card shadow-xl p-2 space-y-0.5 dropdown-panel-enter">
                     {["English", "Urdu", "Arabic"].map((lang) => (
                       <div key={lang}>
                         <p className="text-[10px] text-muted-foreground/50 px-3 pt-2 pb-1 uppercase tracking-wider">
@@ -540,7 +590,7 @@ export default function VerseDetailClient({ verseKey, initialData }) {
                             key={t.id}
                             onClick={() => handleChangeTafsir(t.id)}
                             className={cn(
-                              "w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-150",
+                              "w-full text-left px-3 py-2 rounded-lg text-xs transition-colors duration-150",
                               t.id === tafsirId
                                 ? "bg-accent/15 text-accent font-medium"
                                 : "text-foreground/70 hover:bg-muted/60 hover:text-foreground",
